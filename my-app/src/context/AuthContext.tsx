@@ -6,6 +6,9 @@ import { jwtDecode } from 'jwt-decode';
 import { User, LoginRequest, RegisterRequest, AuthResponse } from '../types/auth';
 import { api, tokenStorage } from '../lib/api';
 
+import { Role, PermissionGroup } from '../types';
+import { roleService } from '../services/roleService';
+
 interface JwtPayload {
   sub?: string;
   nameid?: string;
@@ -21,11 +24,14 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  permissionGroups: PermissionGroup[];
   login: (credentials: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
   hasRole: (role: string) => boolean;
+  can: (module: string, action: string) => boolean;
+  loadPermissionTree: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,15 +73,27 @@ function parseUserFromToken(token: string): User | null {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[]>([]);
   const router = useRouter();
 
-  // Khôi phục user từ token khi mở trang
+  // Tải danh mục phân nhóm quyền từ Backend API: /api/roles/permissions-tree
+  const loadPermissionTree = useCallback(async () => {
+    try {
+      const data = await roleService.getPermissionsTree();
+      setPermissionGroups(data || []);
+    } catch {
+      // Bỏ qua lỗi nếu chưa có quyền truy cập
+    }
+  }, []);
+
+  // Khởi tạo kiểm tra token lưu trong storage khi mở app
   useEffect(() => {
     const token = tokenStorage.getAccessToken();
     if (token) {
       const parsedUser = parseUserFromToken(token);
       if (parsedUser) {
         setUser(parsedUser);
+        loadPermissionTree();
       } else {
         tokenStorage.clearTokens();
         setUser(null);
@@ -103,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Giải mã trực tiếp từ token vừa nhận
       const parsedUser = parseUserFromToken(data.accessToken);
       setUser(parsedUser);
+      loadPermissionTree();
     } finally {
       setIsLoading(false);
     }
@@ -116,6 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const parsedUser = parseUserFromToken(data.accessToken);
       setUser(parsedUser);
+      loadPermissionTree();
     } finally {
       setIsLoading(false);
     }
@@ -127,6 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       tokenStorage.clearTokens();
       setUser(null);
+      setPermissionGroups([]);
       router.push('/login');
     }
   };
@@ -136,6 +157,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Role Admin luôn có toàn quyền
     if (user.roles.includes('Admin')) return true;
     return user.permissions.includes(permission);
+  };
+
+  const can = (module: string, action: string): boolean => {
+    if (!user) return false;
+    if (user.roles.includes('Admin')) return true;
+    return user.permissions.includes(`Permissions.${module}.${action}`);
   };
 
   const hasRole = (role: string): boolean => {
@@ -149,11 +176,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isAuthenticated: !!user,
         isLoading,
+        permissionGroups,
         login,
         register,
         logout,
         hasPermission,
         hasRole,
+        can,
+        loadPermissionTree,
       }}
     >
       {children}

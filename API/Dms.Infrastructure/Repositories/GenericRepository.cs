@@ -32,34 +32,47 @@ namespace Dms.Infrastructure.Repositories
 
         public async Task<IEnumerable<T>> GetAllAsync()
         {
-            return await _context.Set<T>().ToListAsync();
+            return await _context.Set<T>().AsNoTracking().ToListAsync();
         }
 
         public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
         {
-            return await _context.Set<T>().Where(predicate).ToListAsync();
+            return await _context.Set<T>().AsNoTracking().Where(predicate).ToListAsync();
         }
 
         public async Task<PagedResult<T>> GetPagedAsync(
             int pageIndex, 
             int pageSize, 
             Expression<Func<T, bool>>? predicate = null, 
-            Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null)
+            Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+            params Expression<Func<T, object>>[] includes)
         {
-            IQueryable<T> query = _context.Set<T>();
+            // 1. Dùng AsNoTracking() để không tốn RAM và CPU cho ChangeTracker
+            IQueryable<T> query = _context.Set<T>().AsNoTracking();
 
             if (predicate != null)
             {
                 query = query.Where(predicate);
             }
 
+            // 2. CountAsync chạy nhanh trên query gốc không cần Include
             var totalCount = await query.CountAsync();
+
+            // 3. Nạp trước các quan hệ liên kết (Eager Loading) để tránh lỗi N+1 Query
+            if (includes != null && includes.Length > 0)
+            {
+                foreach (var include in includes)
+                {
+                    query = query.Include(include);
+                }
+            }
 
             if (orderBy != null)
             {
                 query = orderBy(query);
             }
 
+            // 4. Phân trang dữ liệu
             var items = await query
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)

@@ -62,7 +62,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "DienLanh DMS API", Version = "v1" });
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = " API", Version = "v1" });
 
     // Cấu hình nút Authorize Bearer Token trong Swagger UI
     var securityScheme = new Microsoft.OpenApi.Models.OpenApiSecurityScheme

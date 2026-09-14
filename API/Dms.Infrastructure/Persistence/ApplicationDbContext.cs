@@ -20,66 +20,21 @@ namespace Dms.Infrastructure.Persistence
         public DbSet<Repair> Repairs => Set<Repair>();
         public DbSet<RepairBooking> RepairBookings => Set<RepairBooking>();
 
+        // Sport & Tournament Entities
+        public DbSet<Tournament> Tournaments => Set<Tournament>();
+        public DbSet<Sport> Sports => Set<Sport>();
+        public DbSet<TournamentSport> TournamentSports => Set<TournamentSport>();
+        public DbSet<Team> Teams => Set<Team>();
+        public DbSet<Athlete> Athletes => Set<Athlete>();
+        public DbSet<Group> Groups => Set<Group>();
+        public DbSet<Match> Matches => Set<Match>();
+        public DbSet<MatchResult> MatchResults => Set<MatchResult>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<RepairBooking>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.CustomerName).IsRequired().HasMaxLength(150);
-                entity.Property(e => e.PhoneNumber).IsRequired().HasMaxLength(20);
-                entity.Property(e => e.Notes).HasMaxLength(500);
-                entity.Property(e => e.Status).HasMaxLength(50);
-
-                entity.HasOne(e => e.Repair)
-                      .WithMany()
-                      .HasForeignKey(e => e.RepairId)
-                      .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasOne(e => e.User)
-                      .WithMany()
-                      .HasForeignKey(e => e.UserId)
-                      .OnDelete(DeleteBehavior.SetNull);
-            });
-
-            modelBuilder.Entity<Category>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Name).IsRequired().HasMaxLength(150);
-                entity.Property(e => e.Description).HasMaxLength(500);
-            });
-
-            modelBuilder.Entity<RefreshToken>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Token).IsRequired().HasMaxLength(500);
-                entity.HasOne(r => r.User)
-                    .WithMany(u => u.RefreshTokens)
-                    .HasForeignKey(r => r.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            modelBuilder.Entity<Menu>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Title).IsRequired().HasMaxLength(150);
-                entity.Property(e => e.Url).IsRequired().HasMaxLength(250);
-                entity.Property(e => e.Icon).HasMaxLength(100);
-
-                entity.HasOne(m => m.Parent)
-                      .WithMany(m => m.Children)
-                      .HasForeignKey(m => m.ParentId)
-                      .OnDelete(DeleteBehavior.Restrict);
-            });
-
-            modelBuilder.Entity<SystemSetting>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Key).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.Value).IsRequired().HasMaxLength(2000);
-                entity.Property(e => e.Description).HasMaxLength(500);
-            });
+           
 
             // Đổi tên các bảng Identity thành tên thân thiện hơn
             modelBuilder.Entity<ApplicationUser>().ToTable("Users");

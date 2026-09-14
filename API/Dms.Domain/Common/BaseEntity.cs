@@ -15,7 +15,6 @@ namespace Dms.Domain.Common
         public string? CreatedBy { get; set; }
         public string? LastModifiedBy { get; set; }
         public DateTime? LastModified { get; set; }
-
         public bool? IsDeleted { get; set; }=false;
     }
 }

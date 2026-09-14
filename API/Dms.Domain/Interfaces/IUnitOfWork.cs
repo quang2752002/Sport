@@ -9,6 +9,16 @@ namespace Dms.Domain.Interfaces
         IGenericRepository<SystemSetting> SystemSettings { get; }
         IGenericRepository<Repair> Repairs { get; }
         IGenericRepository<RepairBooking> RepairBookings { get; }
+
+        IGenericRepository<Tournament> Tournaments { get; }
+        IGenericRepository<Sport> Sports { get; }
+        IGenericRepository<TournamentSport> TournamentSports { get; }
+        IGenericRepository<Team> Teams { get; }
+        IGenericRepository<Athlete> Athletes { get; }
+        IGenericRepository<Group> Groups { get; }
+        IGenericRepository<Match> Matches { get; }
+        IGenericRepository<MatchResult> MatchResults { get; }
+
         Task<int> CompleteAsync();
     }
 }

@@ -1,101 +1,220 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useAuth } from '../../../context/AuthContext';
-import { api } from '../../../lib/api';
-import { Shield, Settings, Database, UserCheck, CheckCircle2, RefreshCw } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Row, Col, Card, CardBody, CardTitle, Table, Badge, Button, Spinner } from 'reactstrap';
+import Link from 'next/link';
+import { tournamentService, sportService, matchService } from '@/services';
+import { Tournament, Match } from '@/types';
 
-export default function AdminPage() {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+export default function AdminDashboardPage() {
+  const [loading, setLoading] = useState(true);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [recentMatches, setRecentMatches] = useState<Match[]>([]);
+  const [stats, setStats] = useState({
+    totalTournaments: 0,
+    totalSports: 0,
+    totalMatches: 0,
+  });
 
-  const handleBackup = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setMessage('Sao lưu toàn bộ cơ sở dữ liệu giải đấu thành công lúc ' + new Date().toLocaleTimeString());
-    }, 800);
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [tPaged, sPaged, mPaged] = await Promise.all([
+          tournamentService.getPaged({ pageIndex: 1, pageSize: 5 }),
+          sportService.getPaged({ pageIndex: 1, pageSize: 5 }),
+          matchService.getPaged({ pageIndex: 1, pageSize: 5 }),
+        ]);
+
+        setTournaments(tPaged.items || []);
+        setRecentMatches(mPaged.items || []);
+        setStats({
+          totalTournaments: tPaged.totalCount || 0,
+          totalSports: sPaged.totalCount || 0,
+          totalMatches: mPaged.totalCount || 0,
+        });
+      } catch (err) {
+        console.error('Lỗi khi tải dữ liệu tổng quan admin:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
-    <div className="p-6 md:p-10 space-y-6 max-w-6xl">
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
-          <Shield className="w-6 h-6" />
+    <div className="container-fluid p-0">
+      {/* Tiêu đề */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 className="fw-bold mb-1">Bảng điều khiển Quản trị (Admin Overview)</h3>
+          <p className="text-muted mb-0">Hệ thống quản trị giải đấu thể thao, kết quả thi đấu và dữ liệu theo thời gian thực.</p>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-white">Quản Trị Hệ Thống (Admin)</h1>
-          <p className="text-xs text-slate-400">
-            Quản trị toàn bộ phần mềm, cấu hình tham số chung, cấp tài khoản và sao lưu dữ liệu.
-          </p>
+          <Link href="/admin/tournaments" className="btn btn-primary d-inline-flex align-items-center gap-1">
+            <i className="bi bi-award"></i> Quản lý Giải đấu
+          </Link>
         </div>
       </div>
 
-      {message && (
-        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/50 text-xs text-emerald-300 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{message}</span>
-        </div>
-      )}
+      {/* Thẻ thống kê */}
+      <Row className="g-3 mb-4">
+        <Col sm={6} lg={4}>
+          <Card className="border-0 shadow-sm">
+            <CardBody className="p-4 d-flex align-items-center">
+              <div className="rounded-circle p-3 bg-primary-subtle text-primary me-3">
+                <i className="bi bi-award fs-3"></i>
+              </div>
+              <div>
+                <h6 className="text-muted mb-1 text-uppercase fw-semibold" style={{ fontSize: '0.75rem' }}>Tổng số Giải đấu</h6>
+                <h3 className="fw-bold mb-0 text-dark">
+                  {loading ? <Spinner size="sm" /> : stats.totalTournaments}
+                </h3>
+              </div>
+            </CardBody>
+          </Card>
+        </Col>
+        <Col sm={6} lg={4}>
+          <Card className="border-0 shadow-sm">
+            <CardBody className="p-4 d-flex align-items-center">
+              <div className="rounded-circle p-3 bg-success-subtle text-success me-3">
+                <i className="bi bi-dribbble fs-3"></i>
+              </div>
+              <div>
+                <h6 className="text-muted mb-1 text-uppercase fw-semibold" style={{ fontSize: '0.75rem' }}>Môn thể thao</h6>
+                <h3 className="fw-bold mb-0 text-dark">
+                  {loading ? <Spinner size="sm" /> : stats.totalSports}
+                </h3>
+              </div>
+            </CardBody>
+          </Card>
+        </Col>
+        <Col sm={6} lg={4}>
+          <Card className="border-0 shadow-sm">
+            <CardBody className="p-4 d-flex align-items-center">
+              <div className="rounded-circle p-3 bg-warning-subtle text-warning me-3">
+                <i className="bi bi-calendar-event fs-3"></i>
+              </div>
+              <div>
+                <h6 className="text-muted mb-1 text-uppercase fw-semibold" style={{ fontSize: '0.75rem' }}>Trận đấu ghi nhận</h6>
+                <h3 className="fw-bold mb-0 text-dark">
+                  {loading ? <Spinner size="sm" /> : stats.totalMatches}
+                </h3>
+              </div>
+            </CardBody>
+          </Card>
+        </Col>
+      </Row>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-4">
-          <div className="space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-400 flex items-center justify-center">
-              <Settings className="w-5 h-5" />
-            </div>
-            <h3 className="text-sm font-semibold text-white">Cấu Hình Tham Số Chung</h3>
-            <p className="text-xs text-slate-400">
-              Thiết lập quy chế tính điểm giải đấu, thời gian hiệp phụ, số lượng thẻ phạt kích hoạt đình chỉ.
-            </p>
-          </div>
-          <button
-            onClick={() => setMessage('Đã lưu cấu hình tham số chung hệ thống.')}
-            className="w-full py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            Lưu Cấu Hình Tham Số
-          </button>
-        </div>
+      {/* Bảng dữ liệu giải đấu gần đây */}
+      <Row className="g-4">
+        <Col lg={7}>
+          <Card className="border-0 shadow-sm h-100">
+            <CardBody className="p-4">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <CardTitle tag="h5" className="fw-bold mb-0">Giải đấu gần đây</CardTitle>
+                <Link href="/admin/tournaments" className="small text-primary text-decoration-none">
+                  Xem tất cả ({stats.totalTournaments}) <i className="bi bi-arrow-right"></i>
+                </Link>
+              </div>
 
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-4">
-          <div className="space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-purple-600/10 text-purple-400 flex items-center justify-center">
-              <UserCheck className="w-5 h-5" />
-            </div>
-            <h3 className="text-sm font-semibold text-white">Cấp Tài Khoản & Phân Quyền</h3>
-            <p className="text-xs text-slate-400">
-              Cấp tài khoản cho Ban điều hành, Trưởng ban trọng tài, Thư ký giải và Đoàn Sở/Xã.
-            </p>
-          </div>
-          <button
-            onClick={() => setMessage('Mở giao diện cấp và phân quyền tài khoản.')}
-            className="w-full py-2.5 px-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            Quản Lý Tài Khoản
-          </button>
-        </div>
+              <div className="table-responsive">
+                <Table hover className="align-middle mb-0 text-nowrap">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Tên giải</th>
+                      <th>Địa điểm</th>
+                      <th>Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={3} className="text-center py-4 text-muted">
+                          <Spinner size="sm" className="me-2" /> Đang tải...
+                        </td>
+                      </tr>
+                    ) : tournaments.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="text-center py-4 text-muted">
+                          Chưa có giải đấu nào.
+                        </td>
+                      </tr>
+                    ) : (
+                      tournaments.map((t) => (
+                        <tr key={t.id}>
+                          <td>
+                            <strong className="text-dark d-block">{t.name}</strong>
+                            <small className="text-muted">{t.code || '---'}</small>
+                          </td>
+                          <td className="small text-muted">{t.location || 'Chưa rõ'}</td>
+                          <td>
+                            <Badge color={t.status === 'Ongoing' ? 'success' : 'primary'}>
+                              {t.status || 'Upcoming'}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </Table>
+              </div>
+            </CardBody>
+          </Card>
+        </Col>
 
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-4">
-          <div className="space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600/10 text-emerald-400 flex items-center justify-center">
-              <Database className="w-5 h-5" />
-            </div>
-            <h3 className="text-sm font-semibold text-white">Sao Lưu Dữ Liệu</h3>
-            <p className="text-xs text-slate-400">
-              Xuất bản backup SQL Database và dữ liệu hồ sơ VĐV, kết quả thi đấu toàn giải.
-            </p>
-          </div>
-          <button
-            onClick={handleBackup}
-            disabled={loading}
-            className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-medium transition flex items-center justify-center gap-2 cursor-pointer"
-          >
-            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-            <span>Sao Lưu Dữ Liệu Ngay</span>
-          </button>
-        </div>
-      </div>
+        {/* Lịch thi đấu mới nhất */}
+        <Col lg={5}>
+          <Card className="border-0 shadow-sm h-100">
+            <CardBody className="p-4">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <CardTitle tag="h5" className="fw-bold mb-0">Trận đấu sắp tới & Kết quả</CardTitle>
+                <Link href="/admin/matches" className="small text-primary text-decoration-none">
+                  Xem tất cả <i className="bi bi-arrow-right"></i>
+                </Link>
+              </div>
+
+              {loading ? (
+                <div className="text-center py-4 text-muted">
+                  <Spinner size="sm" className="me-2" /> Đang tải...
+                </div>
+              ) : recentMatches.length === 0 ? (
+                <div className="text-center py-4 text-muted small">
+                  Chưa có lịch thi đấu.
+                </div>
+              ) : (
+                <div className="list-group list-group-flush">
+                  {recentMatches.map((m) => (
+                    <div key={m.id} className="list-group-item px-0 py-3 border-bottom">
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <span className="badge bg-light text-muted border small">{m.round || 'Vòng bảng'}</span>
+                        <span className="small text-muted">
+                          {m.scheduledStartTime ? new Date(m.scheduledStartTime).toLocaleDateString('vi-VN') : ''}
+                        </span>
+                      </div>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div>
+                          <span className="fw-semibold text-dark">{m.homeTeamName || 'Đội 1'}</span>
+                          <span className="text-muted mx-2">vs</span>
+                          <span className="fw-semibold text-dark">{m.awayTeamName || 'Đội 2'}</span>
+                        </div>
+                        {m.result ? (
+                          <span className="badge bg-dark fw-bold px-2 py-1">
+                            {m.result.homeScore} - {m.result.awayScore}
+                          </span>
+                        ) : (
+                          <Badge color="info">Sắp đấu</Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 }

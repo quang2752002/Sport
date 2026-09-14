@@ -14,7 +14,8 @@ namespace Dms.Domain.Interfaces
             int pageIndex, 
             int pageSize, 
             Expression<Func<T, bool>>? predicate = null, 
-            Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null);
+            Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+            params Expression<Func<T, object>>[] includes);
         Task AddAsync(T entity);
         void Update(T entity);
         void Delete(T entity);

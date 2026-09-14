@@ -51,14 +51,42 @@ namespace Dms.Infrastructure.Persistence
                     Dms.Application.Common.Permissions.Tournaments.Edit,
                     Dms.Application.Common.Permissions.Tournaments.Delete,
                     Dms.Application.Common.Permissions.Tournaments.AssignManager,
-                    Dms.Application.Common.Permissions.Matches.View
+                    Dms.Application.Common.Permissions.Sports.View,
+                    Dms.Application.Common.Permissions.Sports.Create,
+                    Dms.Application.Common.Permissions.Sports.Edit,
+                    Dms.Application.Common.Permissions.Sports.Delete,
+                    Dms.Application.Common.Permissions.TournamentSports.View,
+                    Dms.Application.Common.Permissions.TournamentSports.Create,
+                    Dms.Application.Common.Permissions.TournamentSports.Delete,
+                    Dms.Application.Common.Permissions.Groups.View,
+                    Dms.Application.Common.Permissions.Groups.Create,
+                    Dms.Application.Common.Permissions.Groups.Edit,
+                    Dms.Application.Common.Permissions.Groups.Delete,
+                    Dms.Application.Common.Permissions.Teams.View,
+                    Dms.Application.Common.Permissions.Teams.Create,
+                    Dms.Application.Common.Permissions.Teams.Edit,
+                    Dms.Application.Common.Permissions.Teams.Delete,
+                    Dms.Application.Common.Permissions.Athletes.View,
+                    Dms.Application.Common.Permissions.Athletes.Create,
+                    Dms.Application.Common.Permissions.Athletes.Edit,
+                    Dms.Application.Common.Permissions.Athletes.Delete,
+                    Dms.Application.Common.Permissions.Matches.View,
+                    Dms.Application.Common.Permissions.Matches.Create,
+                    Dms.Application.Common.Permissions.Matches.Edit,
+                    Dms.Application.Common.Permissions.Matches.Delete,
+                    Dms.Application.Common.Permissions.Categories.View,
+                    Dms.Application.Common.Permissions.Categories.Create,
+                    Dms.Application.Common.Permissions.Categories.Edit,
+                    Dms.Application.Common.Permissions.Categories.Delete,
                 },
                 [Dms.Application.Common.AppRoles.HeadReferee] = new()
                 {
                     Dms.Application.Common.Permissions.Referees.Assign,
                     Dms.Application.Common.Permissions.Referees.Supervise,
                     Dms.Application.Common.Permissions.Tournaments.View,
-                    Dms.Application.Common.Permissions.Matches.View
+                    Dms.Application.Common.Permissions.Sports.View,
+                    Dms.Application.Common.Permissions.Matches.View,
+                    Dms.Application.Common.Permissions.Matches.UpdateScore,
                 },
                 [Dms.Application.Common.AppRoles.Referee] = new()
                 {
@@ -76,7 +104,13 @@ namespace Dms.Infrastructure.Persistence
                 {
                     Dms.Application.Common.Permissions.Delegations.ManageAthletes,
                     Dms.Application.Common.Permissions.Delegations.ViewTeams,
-                    Dms.Application.Common.Permissions.Tournaments.View
+                    Dms.Application.Common.Permissions.Tournaments.View,
+                    Dms.Application.Common.Permissions.Teams.View,
+                    Dms.Application.Common.Permissions.Teams.Create,
+                    Dms.Application.Common.Permissions.Teams.Edit,
+                    Dms.Application.Common.Permissions.Athletes.View,
+                    Dms.Application.Common.Permissions.Athletes.Create,
+                    Dms.Application.Common.Permissions.Athletes.Edit,
                 }
             };
 
