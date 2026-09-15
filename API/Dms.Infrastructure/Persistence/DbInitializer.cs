@@ -46,71 +46,94 @@ namespace Dms.Infrastructure.Persistence
             {
                 [Dms.Application.Common.AppRoles.Manager] = new()
                 {
-                    Dms.Application.Common.Permissions.Tournaments.View,
-                    Dms.Application.Common.Permissions.Tournaments.Create,
-                    Dms.Application.Common.Permissions.Tournaments.Edit,
-                    Dms.Application.Common.Permissions.Tournaments.Delete,
-                    Dms.Application.Common.Permissions.Tournaments.AssignManager,
-                    Dms.Application.Common.Permissions.Sports.View,
-                    Dms.Application.Common.Permissions.Sports.Create,
-                    Dms.Application.Common.Permissions.Sports.Edit,
-                    Dms.Application.Common.Permissions.Sports.Delete,
-                    Dms.Application.Common.Permissions.TournamentSports.View,
-                    Dms.Application.Common.Permissions.TournamentSports.Create,
-                    Dms.Application.Common.Permissions.TournamentSports.Delete,
-                    Dms.Application.Common.Permissions.Groups.View,
-                    Dms.Application.Common.Permissions.Groups.Create,
-                    Dms.Application.Common.Permissions.Groups.Edit,
-                    Dms.Application.Common.Permissions.Groups.Delete,
-                    Dms.Application.Common.Permissions.Teams.View,
-                    Dms.Application.Common.Permissions.Teams.Create,
-                    Dms.Application.Common.Permissions.Teams.Edit,
-                    Dms.Application.Common.Permissions.Teams.Delete,
-                    Dms.Application.Common.Permissions.Athletes.View,
-                    Dms.Application.Common.Permissions.Athletes.Create,
-                    Dms.Application.Common.Permissions.Athletes.Edit,
-                    Dms.Application.Common.Permissions.Athletes.Delete,
-                    Dms.Application.Common.Permissions.Matches.View,
-                    Dms.Application.Common.Permissions.Matches.Create,
-                    Dms.Application.Common.Permissions.Matches.Edit,
-                    Dms.Application.Common.Permissions.Matches.Delete,
-                    Dms.Application.Common.Permissions.Categories.View,
-                    Dms.Application.Common.Permissions.Categories.Create,
-                    Dms.Application.Common.Permissions.Categories.Edit,
-                    Dms.Application.Common.Permissions.Categories.Delete,
+                    Dms.Application.Common.Permissions.GiaiDau.View,
+                    Dms.Application.Common.Permissions.GiaiDau.Create,
+                    Dms.Application.Common.Permissions.GiaiDau.Edit,
+                    Dms.Application.Common.Permissions.GiaiDau.Delete,
+                    Dms.Application.Common.Permissions.GiaiDau.AssignManager,
+                    Dms.Application.Common.Permissions.Khoi.View,
+                    Dms.Application.Common.Permissions.Khoi.Create,
+                    Dms.Application.Common.Permissions.Khoi.Edit,
+                    Dms.Application.Common.Permissions.DonVi.View,
+                    Dms.Application.Common.Permissions.DonVi.Create,
+                    Dms.Application.Common.Permissions.DonVi.Edit,
+                    Dms.Application.Common.Permissions.DanhMucMonTheThao.View,
+                    Dms.Application.Common.Permissions.DanhMucMonTheThao.Create,
+                    Dms.Application.Common.Permissions.DanhMucMonTheThao.Edit,
+                    Dms.Application.Common.Permissions.MonTheThao.View,
+                    Dms.Application.Common.Permissions.MonTheThao.Create,
+                    Dms.Application.Common.Permissions.MonTheThao.Edit,
+                    Dms.Application.Common.Permissions.MonTheThao.Delete,
+                    Dms.Application.Common.Permissions.GiaiDauMonTheThao.View,
+                    Dms.Application.Common.Permissions.GiaiDauMonTheThao.Create,
+                    Dms.Application.Common.Permissions.GiaiDauMonTheThao.Delete,
+                    Dms.Application.Common.Permissions.NoiDungThiDau.View,
+                    Dms.Application.Common.Permissions.NoiDungThiDau.Create,
+                    Dms.Application.Common.Permissions.NoiDungThiDau.Edit,
+                    Dms.Application.Common.Permissions.BangDau.View,
+                    Dms.Application.Common.Permissions.BangDau.Create,
+                    Dms.Application.Common.Permissions.BangDau.Edit,
+                    Dms.Application.Common.Permissions.BangDau.Delete,
+                    Dms.Application.Common.Permissions.VongDau.View,
+                    Dms.Application.Common.Permissions.VongDau.Create,
+                    Dms.Application.Common.Permissions.VongDau.Edit,
+                    Dms.Application.Common.Permissions.Doi.View,
+                    Dms.Application.Common.Permissions.Doi.Create,
+                    Dms.Application.Common.Permissions.Doi.Edit,
+                    Dms.Application.Common.Permissions.Doi.Delete,
+                    Dms.Application.Common.Permissions.VanDongVien.View,
+                    Dms.Application.Common.Permissions.VanDongVien.Create,
+                    Dms.Application.Common.Permissions.VanDongVien.Edit,
+                    Dms.Application.Common.Permissions.VanDongVien.Delete,
+                    Dms.Application.Common.Permissions.DangKyThiDau.View,
+                    Dms.Application.Common.Permissions.DangKyThiDau.Create,
+                    Dms.Application.Common.Permissions.DangKyThiDau.Edit,
+                    Dms.Application.Common.Permissions.DangKyThiDau.Approve,
+                    Dms.Application.Common.Permissions.TranDau.View,
+                    Dms.Application.Common.Permissions.TranDau.Create,
+                    Dms.Application.Common.Permissions.TranDau.Edit,
+                    Dms.Application.Common.Permissions.TranDau.Delete,
+                    Dms.Application.Common.Permissions.SanDau.View,
+                    Dms.Application.Common.Permissions.SanDau.Create,
+                    Dms.Application.Common.Permissions.SanDau.Edit,
+                    Dms.Application.Common.Permissions.HuyChuong.View,
+                    Dms.Application.Common.Permissions.HuyChuong.Create,
+                    Dms.Application.Common.Permissions.HuyChuong.Edit,
                 },
                 [Dms.Application.Common.AppRoles.HeadReferee] = new()
                 {
-                    Dms.Application.Common.Permissions.Referees.Assign,
-                    Dms.Application.Common.Permissions.Referees.Supervise,
-                    Dms.Application.Common.Permissions.Tournaments.View,
-                    Dms.Application.Common.Permissions.Sports.View,
-                    Dms.Application.Common.Permissions.Matches.View,
-                    Dms.Application.Common.Permissions.Matches.UpdateScore,
+                    Dms.Application.Common.Permissions.TrongTai.Assign,
+                    Dms.Application.Common.Permissions.TrongTai.Supervise,
+                    Dms.Application.Common.Permissions.TrongTai.View,
+                    Dms.Application.Common.Permissions.GiaiDau.View,
+                    Dms.Application.Common.Permissions.MonTheThao.View,
+                    Dms.Application.Common.Permissions.TranDau.View,
+                    Dms.Application.Common.Permissions.TranDau.UpdateScore,
                 },
                 [Dms.Application.Common.AppRoles.Referee] = new()
                 {
-                    Dms.Application.Common.Permissions.Matches.View,
-                    Dms.Application.Common.Permissions.Matches.UpdateScore
+                    Dms.Application.Common.Permissions.TranDau.View,
+                    Dms.Application.Common.Permissions.TranDau.UpdateScore
                 },
                 [Dms.Application.Common.AppRoles.Secretary] = new()
                 {
-                    Dms.Application.Common.Permissions.Tournaments.View,
-                    Dms.Application.Common.Permissions.Matches.View,
-                    Dms.Application.Common.Permissions.Results.VerifyReport,
-                    Dms.Application.Common.Permissions.Results.ExportReport
+                    Dms.Application.Common.Permissions.GiaiDau.View,
+                    Dms.Application.Common.Permissions.TranDau.View,
+                    Dms.Application.Common.Permissions.TranDau.VerifyReport,
+                    Dms.Application.Common.Permissions.TranDau.ExportReport
                 },
                 [Dms.Application.Common.AppRoles.Delegation] = new()
                 {
-                    Dms.Application.Common.Permissions.Delegations.ManageAthletes,
-                    Dms.Application.Common.Permissions.Delegations.ViewTeams,
-                    Dms.Application.Common.Permissions.Tournaments.View,
-                    Dms.Application.Common.Permissions.Teams.View,
-                    Dms.Application.Common.Permissions.Teams.Create,
-                    Dms.Application.Common.Permissions.Teams.Edit,
-                    Dms.Application.Common.Permissions.Athletes.View,
-                    Dms.Application.Common.Permissions.Athletes.Create,
-                    Dms.Application.Common.Permissions.Athletes.Edit,
+                    Dms.Application.Common.Permissions.DonVi.ManageAthletes,
+                    Dms.Application.Common.Permissions.GiaiDau.View,
+                    Dms.Application.Common.Permissions.Doi.View,
+                    Dms.Application.Common.Permissions.Doi.Create,
+                    Dms.Application.Common.Permissions.Doi.Edit,
+                    Dms.Application.Common.Permissions.VanDongVien.View,
+                    Dms.Application.Common.Permissions.VanDongVien.Create,
+                    Dms.Application.Common.Permissions.VanDongVien.Edit,
+                    Dms.Application.Common.Permissions.DangKyThiDau.View,
+                    Dms.Application.Common.Permissions.DangKyThiDau.Create,
                 }
             };
 
@@ -199,248 +222,258 @@ namespace Dms.Infrastructure.Persistence
                 await context.SaveChangesAsync();
             }
 
-            // Khởi tạo Danh mục dịch vụ mặc định (Categories)
-            if (!await context.Categories.AnyAsync())
+            // ==========================================
+            // SEED DỮ LIỆU THỂ THAO TOÀN DIỆN CHO TẤT CẢ 22 BẢNG
+            // ==========================================
+            if (!await context.GiaiDaus.AnyAsync())
             {
-                var catMayLanh = new Category { Name = "Máy Lạnh & Điều Hòa", Description = "Dịch vụ lắp đặt, vệ sinh và sửa chữa máy lạnh treo tường, âm trần, Multi, VRV", IsActive = true, Created = DateTime.UtcNow, CreatedBy = "System" };
-                var catTuLanh = new Category { Name = "Tủ Lạnh & Tủ Đông", Description = "Dịch vụ sửa chữa tủ lạnh Inverter, tủ đông, tủ mát các thương hiệu hàng đầu", IsActive = true, Created = DateTime.UtcNow, CreatedBy = "System" };
-                var catMayGiat = new Category { Name = "Máy Giặt & Máy Sấy", Description = "Dịch vụ vệ sinh lồng giặt, sửa board mạch, bảo dưỡng máy giặt cửa ngang và cửa trên", IsActive = true, Created = DateTime.UtcNow, CreatedBy = "System" };
-
-                await context.Categories.AddRangeAsync(catMayLanh, catTuLanh, catMayGiat);
-                await context.SaveChangesAsync();
-            }
-
-            // Khởi tạo Bài viết Dịch vụ sửa chữa mặc định (Repairs)
-            if (!await context.Repairs.AnyAsync())
-            {
-                var categories = await context.Categories.ToListAsync();
-                var mayLanhCatId = categories.FirstOrDefault(c => c.Name.Contains("Máy Lạnh"))?.Id;
-                var tuLanhCatId = categories.FirstOrDefault(c => c.Name.Contains("Tủ Lạnh"))?.Id;
-                var mayGiatCatId = categories.FirstOrDefault(c => c.Name.Contains("Máy Giặt"))?.Id;
-
-                var repairs = new List<Repair>
-                {
-                    new Repair
-                    {
-                        Name = "Bảo Dưỡng & Vệ Sinh Máy Lạnh Treo Tường, Âm Trần",
-                        Slug = "bao-duong-ve-sinh-may-lanh",
-                        Description = "Quy trình vệ sinh lưới lọc, xịt rửa dàn lạnh, dàn nóng chuyên sâu bằng máy áp lực cao, kiểm tra và nạp gas chuẩn R32/R410A.",
-                        Img = "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=800&auto=format&fit=crop",
-                        CategoryId = mayLanhCatId,
-                        Created = DateTime.UtcNow,
-                        CreatedBy = "System",
-                        IsDeleted = false,
-                        Content = @"
-                            <h3>1. Khi nào bạn cần bảo dưỡng vệ sinh máy lạnh?</h3>
-                            <p>Máy lạnh sau 3-6 tháng sử dụng thường bám nhiều bụi bẩn trên lưới lọc và dàn tản nhiệt. Điều này dẫn đến việc máy làm mát kém, tiêu tốn nhiều điện năng và tạo môi trường cho vi khuẩn nấm mốc phát triển.</p>
-                            <ul>
-                                <li>Máy lạnh phả ra mùi hôi khó chịu khi mới bật.</li>
-                                <li>Máy chạy nhưng không thấy mát hoặc làm mát rất chậm.</li>
-                                <li>Hiện tượng chảy nước ở cục lạnh trong nhà.</li>
-                                <li>Cục nóng ngoài trời kêu to hoặc phát ra tiếng ồn bất thường.</li>
-                            </ul>
-                            <h3>2. Quy trình 6 bước vệ sinh chuẩn kỹ thuật tại DMS:</h3>
-                            <ol>
-                                <li><strong>Kiểm tra tổng quan:</strong> Khảo sát tình trạng hoạt động của máy, kiểm tra rò điện và đo áp suất gas trước khi tháo.</li>
-                                <li><strong>Tháo dỡ vỏ máy:</strong> Vệ sinh lưới lọc bụi, mặt nạ dàn lạnh bằng dung dịch tẩy rửa sinh học an toàn.</li>
-                                <li><strong>Xịt rửa dàn lạnh:</strong> Sử dụng bạt hứng chuyên dụng và máy bơm tăng áp rửa sạch sâu bụi bẩn bám ở lá nhôm tản nhiệt và quạt lồng sóc.</li>
-                                <li><strong>Xịt rửa dàn nóng:</strong> Vệ sinh quạt và dàn tản nhiệt cục nóng ngoài trời giúp giải nhiệt nhanh, tăng tuổi thọ máy nén (block).</li>
-                                <li><strong>Đo kiểm tra gas & dòng điện:</strong> Đo áp suất gas và dòng tải ampe, bổ sung gas nếu thiếu hụt theo đúng tiêu chuẩn hãng.</li>
-                                <li><strong>Lắp ráp & chạy thử:</strong> Vận hành kiểm tra nhiệt độ cửa gió đạt chuẩn từ 16-20°C, dán tem bảo hành và bàn giao cho khách hàng.</li>
-                            </ol>
-                            <div class='alert alert-info'>
-                                <h5><i class='bi bi-shield-check me-2'></i>Cam kết chất lượng DMS:</h5>
-                                <p class='mb-0'>Cam kết sạch sẽ, không làm bẩn tường/sàn nhà của khách hàng. Bảo hành dàn lạnh không chảy nước trong 30 ngày sau vệ sinh.</p>
-                            </div>
-                        "
-                    },
-                    new Repair
-                    {
-                        Name = "Sửa Chữa Tủ Lạnh Inverter Không Đông Đá, Kêu To",
-                        Slug = "sua-chua-tu-lanh-inverter",
-                        Description = "Khắc phục triệt để các sự cố tủ lạnh không lạnh, không đông đá, hỏng sensor cảm biến nhiệt độ, hỏng block, xì dàn gas hoặc lỗi bo mạch Inverter.",
-                        Img = "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop",
-                        CategoryId = tuLanhCatId,
-                        Created = DateTime.UtcNow,
-                        CreatedBy = "System",
-                        IsDeleted = false,
-                        Content = @"
-                            <h3>1. Các lỗi phổ biến thường gặp ở tủ lạnh Inverter:</h3>
-                            <p>Tủ lạnh công nghệ Inverter tiết kiệm điện nhưng có cấu tạo mạch điện tử phức tạp. Dưới đây là những triệu chứng hư hỏng cần gọi thợ kỹ thuật ngay:</p>
-                            <ul>
-                                <li>Ngăn đá không đông hoặc làm đá rất chậm, ngăn mát không có hơi lạnh.</li>
-                                <li>Tủ lạnh phát tiếng kêu rè rè hoặc lạch cạch lớn từ phía sau hoặc quạt gió.</li>
-                                <li>Tủ bị đọng sương, chảy nước ở cửa tủ hoặc mặt đáy ngăn rau củ.</li>
-                                <li>Đèn tủ lạnh vẫn sáng nhưng block máy nén không chạy, thân tủ không ấm.</li>
-                                <li>Tủ báo lỗi nháy đèn trên bảng điều khiển điện tử (lỗi giao tiếp bo mạch).</li>
-                            </ul>
-                            <h3>2. Dịch vụ sửa chữa tủ lạnh uy tín tại DMS:</h3>
-                            <p>Đội ngũ thợ điện lạnh tay nghề cao, được đào tạo chuyên sâu về các dòng tủ lạnh Side by Side, Inverter của các hãng Panasonic, Toshiba, Hitachi, Samsung, LG, Electrolux...</p>
-                            <ol>
-                                <li>Khám đúng bệnh - Báo đúng giá theo quy định niêm yết của công ty.</li>
-                                <li>Linh kiện thay thế chính hãng 100% (Block, Sò nóng, Sò lạnh, Sensor, Bo mạch...).</li>
-                                <li>Bảo hành chu đáo từ 6 đến 12 tháng tùy hạng mục linh kiện thay thế.</li>
-                            </ol>
-                        "
-                    },
-                    new Repair
-                    {
-                        Name = "Sửa Chữa & Vệ Sinh Lồng Giặt Máy Giặt Cửa Ngang / Cửa Trên",
-                        Slug = "sua-chua-ve-sinh-may-giat",
-                        Description = "Bảo dưỡng tháo lồng giặt vệ sinh cặn bẩn xơ vải, sửa máy giặt không vắt, không xả nước, rung lắc mạnh khi vắt hoặc hỏng board điều khiển.",
-                        Img = "https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?q=80&w=800&auto=format&fit=crop",
-                        CategoryId = mayGiatCatId,
-                        Created = DateTime.UtcNow,
-                        CreatedBy = "System",
-                        IsDeleted = false,
-                        Content = @"
-                            <h3>1. Tầm quan trọng của việc bảo dưỡng máy giặt định kỳ</h3>
-                            <p>Sau thời gian dài sử dụng, cặn xà phòng kết hợp với bụi bẩn và xơ vải bám thành từng mảng đen dày đặc phía sau lồng giặt mà mắt thường không thấy được. Điều này làm quần áo giặt xong vẫn có mùi ẩm mốc và dễ gây dị ứng da.</p>
-                            <h3>2. Các hạng mục dịch vụ máy giặt tại DMS:</h3>
-                            <ul>
-                                <li><strong>Tháo lồng giặt vệ sinh chuyên sâu:</strong> Tháo rời toàn bộ mâm giặt, lồng giặt inox, dùng máy xịt cao áp tẩy sạch 100% mảng bám cặn bẩn.</li>
-                                <li><strong>Sửa lỗi không cấp/xả nước:</strong> Thay van cấp nước đơn/đôi, mô tơ xả nước chính hãng.</li>
-                                <li><strong>Khắc phục rung lắc, kêu to:</strong> Thay giảm xóc (phuộc nhún), căn chỉnh chân đế, thay thế vòng bi (bạc đạn) và chảng ba lồng giặt.</li>
-                                <li><strong>Sửa lỗi bo mạch điều khiển:</strong> Xử lý máy giặt chớp đèn báo lỗi E1, E2, E3, E4, DE, IE, OE...</li>
-                            </ul>
-                            <div class='alert alert-success'>
-                                <strong>Ưu đãi:</strong> Giảm ngay 10% chi phí khi đặt lịch combo vệ sinh cả máy lạnh và máy giặt cùng lúc!
-                            </div>
-                        "
-                    },
-                    new Repair
-                    {
-                        Name = "Lắp Đặt & Di Dời Máy Lạnh Chuyên Nghiệp",
-                        Slug = "lap-dat-di-doi-may-lanh",
-                        Description = "Dịch vụ tháo dỡ, di dời vị trí và lắp đặt mới máy lạnh treo tường, máy lạnh âm trần cassette, Multi đảm bảo tính thẩm mỹ và kỹ thuật tối ưu.",
-                        Img = "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=800&auto=format&fit=crop",
-                        CategoryId = mayLanhCatId,
-                        Created = DateTime.UtcNow,
-                        CreatedBy = "System",
-                        IsDeleted = false,
-                        Content = @"
-                            <h3>1. Tiêu chuẩn thi công lắp đặt máy lạnh tại DMS</h3>
-                            <p>Lắp đặt máy lạnh sai kỹ thuật có thể gây xì gas, chảy nước, block nhanh hỏng và hao tốn nhiều điện năng. DMS cam kết thực hiện đúng tiêu chuẩn kỹ thuật:</p>
-                            <ol>
-                                <li><strong>Ống đồng dẫn gas:</strong> Độ dày ống đồng đạt chuẩn tối thiểu 0.71mm, ống đồng dài tối thiểu 3m để máy vận hành êm ái, bền bỉ.</li>
-                                <li><strong>Hút chân không hệ thống:</strong> 100% công trình đều được hút chân không kỹ càng bằng bơm chân không chuyên dụng trước khi xả gas.</li>
-                                <li><strong>Bọc bảo ôn & quấn xi:</strong> Bọc bảo ôn cách nhiệt đôi chống đọng sương, quấn xi thẩm mỹ ngăn chuột bọ cắn phá.</li>
-                                <li><strong>Cân chỉnh thăng bằng:</strong> Dùng thước thủy cân bằng máy chuẩn xác, chống rung lắc và tránh tắc máng nước thải.</li>
-                            </ol>
-                        "
-                    }
-                };
-
-                await context.Repairs.AddRangeAsync(repairs);
-                await context.SaveChangesAsync();
-            }
-
-            // Khởi tạo dữ liệu mẫu Đặt Lịch Sửa Chữa (RepairBooking) nếu chưa có dữ liệu
-            if (!await context.RepairBookings.AnyAsync())
-            {
-                var sampleRepairs = await context.Repairs.Take(4).ToListAsync();
-                var r1 = sampleRepairs.ElementAtOrDefault(0)?.Id ?? 1;
-                var r2 = sampleRepairs.ElementAtOrDefault(1)?.Id ?? r1;
-                var r3 = sampleRepairs.ElementAtOrDefault(2)?.Id ?? r1;
-                var r4 = sampleRepairs.ElementAtOrDefault(3)?.Id ?? r2;
-
                 var now = DateTime.UtcNow;
 
-                var initialBookings = new List<RepairBooking>
+                // 1. Seed Loại Huy Chương
+                var lhcVang = new LoaiHuyChuong { Ma = "VANG", Ten = "Huy chương Vàng", ThuTu = 1 };
+                var lhcBac = new LoaiHuyChuong { Ma = "BAC", Ten = "Huy chương Bạc", ThuTu = 2 };
+                var lhcDong = new LoaiHuyChuong { Ma = "DONG", Ten = "Huy chương Đồng", ThuTu = 3 };
+                await context.LoaiHuyChuongs.AddRangeAsync(lhcVang, lhcBac, lhcDong);
+                await context.SaveChangesAsync();
+
+                // 2. Seed Khối
+                var khoiTruongHoc = new Khoi { Ma = "KHOI_TRUONG", Ten = "Khối Trường Học & Sinh Viên", MoTa = "Các trường ĐH, CĐ và THPT", TrangThai = true };
+                var khoiDoanhNghiep = new Khoi { Ma = "KHOI_DN", Ten = "Khối Cơ Quan & Doanh Nghiệp", MoTa = "Các cơ quan ban ngành và doanh nghiệp trên địa bàn", TrangThai = true };
+                var khoiCauLacBo = new Khoi { Ma = "KHOI_CLB", Ten = "Khối Câu Lạc Bộ Chuyên Nghiệp", MoTa = "Các câu lạc bộ thể thao mở rộng", TrangThai = true };
+                await context.Khois.AddRangeAsync(khoiTruongHoc, khoiDoanhNghiep, khoiCauLacBo);
+                await context.SaveChangesAsync();
+
+                // 3. Seed Đơn Vị (thuộc khối)
+                var dvBachKhoa = new DonVi { Ma = "DV_BK", Ten = "Đại học Bách Khoa", KhoiId = khoiTruongHoc.Id, LoaiDonVi = "TruongHoc", DiaChi = "268 Lý Thường Kiệt, Q.10, TP.HCM", NguoiDaiDien = "Nguyễn Văn Hùng", SoDienThoai = "0901234567", Email = "sport@hcmut.edu.vn", TrangThai = true };
+                var dvKinhTe = new DonVi { Ma = "DV_UEH", Ten = "Đại học Kinh Tế TP.HCM", KhoiId = khoiTruongHoc.Id, LoaiDonVi = "TruongHoc", DiaChi = "59C Nguyễn Đình Chiểu, Q.3, TP.HCM", NguoiDaiDien = "Trần Thị Mai", SoDienThoai = "0902345678", Email = "sport@ueh.edu.vn", TrangThai = true };
+                var dvFpt = new DonVi { Ma = "DV_FPT", Ten = "Tập đoàn FPT", KhoiId = khoiDoanhNghiep.Id, LoaiDonVi = "DoanhNghiep", DiaChi = "Khu Công nghệ cao, TP.Thủ Đức", NguoiDaiDien = "Lê Hoàng Quân", SoDienThoai = "0903456789", Email = "sport@fpt.com.vn", TrangThai = true };
+                var dvViettel = new DonVi { Ma = "DV_VTL", Ten = "Tập đoàn Viettel", KhoiId = khoiDoanhNghiep.Id, LoaiDonVi = "DoanhNghiep", DiaChi = "285 Cách Mạng Tháng 8, Q.10", NguoiDaiDien = "Phạm Quốc Tuấn", SoDienThoai = "0904567890", Email = "sport@viettel.vn", TrangThai = true };
+                await context.DonVis.AddRangeAsync(dvBachKhoa, dvKinhTe, dvFpt, dvViettel);
+                await context.SaveChangesAsync();
+
+                // 4. Seed Danh Mục Môn Thể Thao & Môn Thể Thao
+                var dmBong = new DanhMucMonTheThao { Ma = "DM_BONG", Ten = "Các môn bóng", MoTa = "Bóng đá, bóng chuyền, bóng rổ...", TrangThai = true };
+                var dmVot = new DanhMucMonTheThao { Ma = "DM_VOT", Ten = "Các môn dùng vợt", MoTa = "Cầu lông, bóng bàn, tennis, pickleball...", TrangThai = true };
+                var dmDienKinh = new DanhMucMonTheThao { Ma = "DM_DIENKINH", Ten = "Điền kinh & Bơi lội", MoTa = "Chạy cự ly, bơi tự do, bơi ếch...", TrangThai = true };
+                await context.DanhMucMonTheThaos.AddRangeAsync(dmBong, dmVot, dmDienKinh);
+                await context.SaveChangesAsync();
+
+                var monBongDa = new MonTheThao { DanhMucId = dmBong.Id, Ma = "BONG_DA", Ten = "Bóng đá sân 7", LaMonDongDoi = true, MoTa = "Bóng đá mini cỏ nhân tạo 7 người", TrangThai = true };
+                var monCauLong = new MonTheThao { DanhMucId = dmVot.Id, Ma = "CAU_LONG", Ten = "Cầu lông", LaMonDongDoi = false, MoTa = "Thi đấu đơn và đôi", TrangThai = true };
+                var monBongBan = new MonTheThao { DanhMucId = dmVot.Id, Ma = "BONG_BAN", Ten = "Bóng bàn", LaMonDongDoi = false, MoTa = "Thi đấu đơn và đôi", TrangThai = true };
+                var monBoi = new MonTheThao { DanhMucId = dmDienKinh.Id, Ma = "BOI_LOI", Ten = "Bơi lội 50m", LaMonDongDoi = false, MoTa = "Bơi tự do 50m cự ly ngắn", TrangThai = true };
+                await context.MonTheThaos.AddRangeAsync(monBongDa, monCauLong, monBongBan, monBoi);
+                await context.SaveChangesAsync();
+
+                // 5. Seed Giải Đấu & Liên kết Khối (GiaiDauKhoi)
+                var giaiHoiThao = new GiaiDau
                 {
-                    new RepairBooking
-                    {
-                        RepairId = r1,
-                        CustomerName = "Nguyễn Văn An",
-                        PhoneNumber = "0988123456",
-                        BookingDate = now.AddDays(-6),
-                        Notes = "Máy lạnh Daikin 1.5HP không phả hơi lạnh, phát tiếng kêu to",
-                        Status = "Completed",
-                        Created = now.AddDays(-6),
-                        CreatedBy = "Customer"
-                    },
-                    new RepairBooking
-                    {
-                        RepairId = r2,
-                        CustomerName = "Trần Thị Bích",
-                        PhoneNumber = "0912345678",
-                        BookingDate = now.AddDays(-5),
-                        Notes = "Tủ lạnh Panasonic Inverter ngăn mát không lạnh, đèn nhấp nháy",
-                        Status = "Completed",
-                        Created = now.AddDays(-5),
-                        CreatedBy = "Customer"
-                    },
-                    new RepairBooking
-                    {
-                        RepairId = r1,
-                        CustomerName = "Lê Hoàng Long",
-                        PhoneNumber = "0909888999",
-                        BookingDate = now.AddDays(-4),
-                        Notes = "Vệ sinh và đo áp suất nạp bổ sung gas máy lạnh tại văn phòng công ty",
-                        Status = "Confirmed",
-                        Created = now.AddDays(-4),
-                        CreatedBy = "Customer"
-                    },
-                    new RepairBooking
-                    {
-                        RepairId = r3,
-                        CustomerName = "Phạm Minh Đức",
-                        PhoneNumber = "0977665544",
-                        BookingDate = now.AddDays(-3),
-                        Notes = "Máy giặt Electrolux lồng ngang không vắt được và báo lỗi E20",
-                        Status = "Confirmed",
-                        Created = now.AddDays(-3),
-                        CreatedBy = "Customer"
-                    },
-                    new RepairBooking
-                    {
-                        RepairId = r2,
-                        CustomerName = "Vũ Thu Trang",
-                        PhoneNumber = "0933221100",
-                        BookingDate = now.AddDays(-2),
-                        Notes = "Tủ lạnh bị đọng sương nhiều và chảy nước phía sau lưng",
-                        Status = "Pending",
-                        Created = now.AddDays(-2),
-                        CreatedBy = "Customer"
-                    },
-                    new RepairBooking
-                    {
-                        RepairId = r1,
-                        CustomerName = "Hoàng Anh Tuấn",
-                        PhoneNumber = "0966554433",
-                        BookingDate = now.AddDays(-1),
-                        Notes = "Cần kiểm tra bo mạch điều khiển điều hòa Daikin Inverter gấp trong chiều nay",
-                        Status = "Pending",
-                        Created = now.AddDays(-1),
-                        CreatedBy = "Customer"
-                    },
-                    new RepairBooking
-                    {
-                        RepairId = r4,
-                        CustomerName = "Đặng Thanh Thảo",
-                        PhoneNumber = "0944332211",
-                        BookingDate = now.AddDays(1),
-                        Notes = "Khách hàng yêu cầu khảo sát vị trí lắp đặt máy lạnh âm trần tại căn hộ mới",
-                        Status = "Pending",
-                        Created = now,
-                        CreatedBy = "Customer"
-                    },
-                    new RepairBooking
-                    {
-                        RepairId = r3,
-                        CustomerName = "Bùi Quốc Huy",
-                        PhoneNumber = "0987112233",
-                        BookingDate = now.AddDays(2),
-                        Notes = "Khách bận việc đột xuất xin dời lịch sang tuần sau",
-                        Status = "Cancelled",
-                        Created = now,
-                        CreatedBy = "Customer"
-                    }
+                    Ma = "HSSV_2026",
+                    Ten = "Đại Hội Thể Thao Học Sinh Sinh Viên Mở Rộng 2026",
+                    MoTa = "Giải đấu thường niên dành cho sinh viên và thanh niên các trường đại học, cao đẳng.",
+                    NgayBatDau = now.AddDays(-10),
+                    NgayKetThuc = now.AddDays(20),
+                    DiaDiem = "Trung tâm Văn hóa Thể thao Quận 10",
+                    PhamVi = Dms.Domain.Enums.PhamViGiaiDau.TheoKhoi,
+                    TrangThai = Dms.Domain.Enums.TrangThaiGiaiDau.DangDienRa
                 };
 
-                await context.RepairBookings.AddRangeAsync(initialBookings);
+                var giaiDoanhNghiep = new GiaiDau
+                {
+                    Ma = "CUP_DN_2026",
+                    Ten = "Giải Thể Thao Doanh Nghiệp Trẻ Thành Phố 2026",
+                    MoTa = "Tranh cúp giao lưu giữa các doanh nghiệp và tập đoàn công nghệ hàng đầu.",
+                    NgayBatDau = now.AddDays(15),
+                    NgayKetThuc = now.AddDays(30),
+                    DiaDiem = "Nhà thi đấu Phú Thọ, TP.HCM",
+                    PhamVi = Dms.Domain.Enums.PhamViGiaiDau.TatCa,
+                    TrangThai = Dms.Domain.Enums.TrangThaiGiaiDau.SapDienRa
+                };
+                await context.GiaiDaus.AddRangeAsync(giaiHoiThao, giaiDoanhNghiep);
+                await context.SaveChangesAsync();
+
+                // Liên kết GiaiDau - Khoi
+                var gdk1 = new GiaiDauKhoi { GiaiDauId = giaiHoiThao.Id, KhoiId = khoiTruongHoc.Id };
+                var gdk2 = new GiaiDauKhoi { GiaiDauId = giaiDoanhNghiep.Id, KhoiId = khoiDoanhNghiep.Id };
+                await context.GiaiDauKhois.AddRangeAsync(gdk1, gdk2);
+                await context.SaveChangesAsync();
+
+                // 6. GiaiDauMonTheThao (Đưa môn thể thao vào giải đấu)
+                var gdmBongDa = new GiaiDauMonTheThao { GiaiDauId = giaiHoiThao.Id, MonTheThaoId = monBongDa.Id, MoTa = "Môn bóng đá nam sinh viên", TrangThai = true };
+                var gdmCauLong = new GiaiDauMonTheThao { GiaiDauId = giaiHoiThao.Id, MonTheThaoId = monCauLong.Id, MoTa = "Môn cầu lông nam nữ", TrangThai = true };
+                await context.GiaiDauMonTheThaos.AddRangeAsync(gdmBongDa, gdmCauLong);
+                await context.SaveChangesAsync();
+
+                // 7. Nội dung thi đấu (NoiDungThiDau)
+                var ndBongDaNam = new NoiDungThiDau
+                {
+                    GiaiDauMonTheThaoId = gdmBongDa.Id,
+                    Ma = "BD_NAM_S7",
+                    Ten = "Bóng đá nam 7 người",
+                    GioiTinh = "Nam",
+                    LoaiThiDau = "TapThe",
+                    SoLuongToiThieu = 7,
+                    SoLuongToiDa = 14,
+                    TrangThai = true
+                };
+                var ndCauLongDonNam = new NoiDungThiDau
+                {
+                    GiaiDauMonTheThaoId = gdmCauLong.Id,
+                    Ma = "CL_DON_NAM",
+                    Ten = "Đơn nam Cầu lông",
+                    GioiTinh = "Nam",
+                    LoaiThiDau = "CaNhan",
+                    SoLuongToiThieu = 1,
+                    SoLuongToiDa = 1,
+                    TrangThai = true
+                };
+                await context.NoiDungThiDaus.AddRangeAsync(ndBongDaNam, ndCauLongDonNam);
+                await context.SaveChangesAsync();
+
+                // 8. Cụm Sân & Sân Đấu (CumSan, SanDau)
+                var cumSanPhuTho = new CumSan { Ma = "CS_PHUTHO", Ten = "Khu liên hợp thể thao Phú Thọ", DiaChi = "Số 1 Lữ Gia, P.15, Q.11, TP.HCM", SoLuongSan = 5, TrangThai = true };
+                await context.CumSans.AddAsync(cumSanPhuTho);
+                await context.SaveChangesAsync();
+
+                var sanBong1 = new SanDau { CumSanId = cumSanPhuTho.Id, Ma = "SAN_BONG_01", Ten = "Sân Bóng Đá 1 (Cỏ nhân tạo)", LoaiSan = "SanBongDa", SoSan = 1, TrangThai = true };
+                var sanCauLong1 = new SanDau { CumSanId = cumSanPhuTho.Id, Ma = "SAN_CL_01", Ten = "Sân Cầu Lông A1", LoaiSan = "SanCauLong", SoSan = 2, TrangThai = true };
+                await context.SanDaus.AddRangeAsync(sanBong1, sanCauLong1);
+                await context.SaveChangesAsync();
+
+                // 9. Trọng Tài (TrongTai)
+                var tt1 = new TrongTai { Ma = "TT_001", HoTen = "Trần Trọng Tài Quốc Gia", GioiTinh = "Nam", SoDienThoai = "0988112233", Email = "ref1@sport.vn", CapBac = "Trọng tài cấp 1", TrangThai = true };
+                var tt2 = new TrongTai { Ma = "TT_002", HoTen = "Lê Thị Bích Hạnh", GioiTinh = "Nu", SoDienThoai = "0988223344", Email = "ref2@sport.vn", CapBac = "Trọng tài FIFA", TrangThai = true };
+                await context.TrongTais.AddRangeAsync(tt1, tt2);
+                await context.SaveChangesAsync();
+
+                // 10. Vận động viên & Đội (VanDongVien, Doi, ThanhVienDoi)
+                var vdv1 = new VanDongVien { Ma = "VDV_001", HoTen = "Nguyễn Văn Quang", DonViId = dvBachKhoa.Id, GioiTinh = "Nam", NgaySinh = new DateTime(2002, 5, 27), SoDienThoai = "0911223344", Email = "quang@hcmut.edu.vn", TrangThai = true };
+                var vdv2 = new VanDongVien { Ma = "VDV_002", HoTen = "Lê Hồng Phát", DonViId = dvBachKhoa.Id, GioiTinh = "Nam", NgaySinh = new DateTime(2003, 8, 15), SoDienThoai = "0911223345", Email = "phat@hcmut.edu.vn", TrangThai = true };
+                var vdv3 = new VanDongVien { Ma = "VDV_003", HoTen = "Phạm Minh Triết", DonViId = dvKinhTe.Id, GioiTinh = "Nam", NgaySinh = new DateTime(2002, 11, 20), SoDienThoai = "0922334455", Email = "triet@ueh.edu.vn", TrangThai = true };
+                var vdv4 = new VanDongVien { Ma = "VDV_004", HoTen = "Võ Hoàng Nam", DonViId = dvKinhTe.Id, GioiTinh = "Nam", NgaySinh = new DateTime(2004, 3, 10), SoDienThoai = "0922334456", Email = "nam@ueh.edu.vn", TrangThai = true };
+                await context.VanDongViens.AddRangeAsync(vdv1, vdv2, vdv3, vdv4);
+                await context.SaveChangesAsync();
+
+                var doiBk = new Doi { Ma = "DOI_BK_FC", Ten = "FC Bách Khoa TP.HCM", DonViId = dvBachKhoa.Id, NguoiQuanLy = "Thầy Hùng", SoDienThoai = "0901234567", TrangThai = true };
+                var doiUeh = new Doi { Ma = "DOI_UEH_FC", Ten = "FC Kinh Tế UEH", DonViId = dvKinhTe.Id, NguoiQuanLy = "Cô Mai", SoDienThoai = "0902345678", TrangThai = true };
+                await context.Dois.AddRangeAsync(doiBk, doiUeh);
+                await context.SaveChangesAsync();
+
+                var tvd1 = new ThanhVienDoi { DoiId = doiBk.Id, VanDongVienId = vdv1.Id, SoAo = "10", ViTri = "Tiền đạo", LaDoiTruong = true, NgayThamGia = now.AddMonths(-3) };
+                var tvd2 = new ThanhVienDoi { DoiId = doiBk.Id, VanDongVienId = vdv2.Id, SoAo = "07", ViTri = "Tiền vệ", LaDoiTruong = false, NgayThamGia = now.AddMonths(-3) };
+                var tvd3 = new ThanhVienDoi { DoiId = doiUeh.Id, VanDongVienId = vdv3.Id, SoAo = "09", ViTri = "Tiền đạo", LaDoiTruong = true, NgayThamGia = now.AddMonths(-3) };
+                var tvd4 = new ThanhVienDoi { DoiId = doiUeh.Id, VanDongVienId = vdv4.Id, SoAo = "01", ViTri = "Thủ môn", LaDoiTruong = false, NgayThamGia = now.AddMonths(-3) };
+                await context.ThanhVienDois.AddRangeAsync(tvd1, tvd2, tvd3, tvd4);
+                await context.SaveChangesAsync();
+
+                // 11. Đăng ký thi đấu & Chi tiết đăng ký (DangKyThiDau, ChiTietDangKyThiDau)
+                var dkBk = new DangKyThiDau { NoiDungThiDauId = ndBongDaNam.Id, DoiId = doiBk.Id, SoDangKy = "DK_BK_BD", TenDangKy = "Đội tuyển Bóng đá ĐH Bách Khoa", TrangThai = "DaDuyet", NgayDangKy = now.AddDays(-15) };
+                var dkUeh = new DangKyThiDau { NoiDungThiDauId = ndBongDaNam.Id, DoiId = doiUeh.Id, SoDangKy = "DK_UEH_BD", TenDangKy = "Đội tuyển Bóng đá ĐH Kinh Tế", TrangThai = "DaDuyet", NgayDangKy = now.AddDays(-14) };
+                var dkCauLong1 = new DangKyThiDau { NoiDungThiDauId = ndCauLongDonNam.Id, SoDangKy = "DK_CL_VDV1", TenDangKy = "Nguyễn Văn Quang (BK)", TrangThai = "DaDuyet", NgayDangKy = now.AddDays(-12) };
+                var dkCauLong2 = new DangKyThiDau { NoiDungThiDauId = ndCauLongDonNam.Id, SoDangKy = "DK_CL_VDV3", TenDangKy = "Phạm Minh Triết (UEH)", TrangThai = "DaDuyet", NgayDangKy = now.AddDays(-12) };
+                await context.DangKyThiDaus.AddRangeAsync(dkBk, dkUeh, dkCauLong1, dkCauLong2);
+                await context.SaveChangesAsync();
+
+                var ctdk1 = new ChiTietDangKyThiDau { DangKyThiDauId = dkBk.Id, VanDongVienId = vdv1.Id, SoThuTu = 1, VaiTro = "Đội trưởng" };
+                var ctdk2 = new ChiTietDangKyThiDau { DangKyThiDauId = dkBk.Id, VanDongVienId = vdv2.Id, SoThuTu = 2, VaiTro = "Cầu thủ" };
+                var ctdk3 = new ChiTietDangKyThiDau { DangKyThiDauId = dkUeh.Id, VanDongVienId = vdv3.Id, SoThuTu = 1, VaiTro = "Đội trưởng" };
+                var ctdk4 = new ChiTietDangKyThiDau { DangKyThiDauId = dkUeh.Id, VanDongVienId = vdv4.Id, SoThuTu = 2, VaiTro = "Thủ môn" };
+                var ctdk5 = new ChiTietDangKyThiDau { DangKyThiDauId = dkCauLong1.Id, VanDongVienId = vdv1.Id, SoThuTu = 1, VaiTro = "Vận động viên đơn" };
+                var ctdk6 = new ChiTietDangKyThiDau { DangKyThiDauId = dkCauLong2.Id, VanDongVienId = vdv3.Id, SoThuTu = 1, VaiTro = "Vận động viên đơn" };
+                await context.ChiTietDangKyThiDaus.AddRangeAsync(ctdk1, ctdk2, ctdk3, ctdk4, ctdk5, ctdk6);
+                await context.SaveChangesAsync();
+
+                // 12. Bảng đấu & Thành viên bảng (BangDau, ThanhVienBang)
+                var bangA = new BangDau { NoiDungThiDauId = ndBongDaNam.Id, Ma = "BANG_A", Ten = "Bảng A Bóng Đá", ThuTu = 1 };
+                await context.BangDaus.AddAsync(bangA);
+                await context.SaveChangesAsync();
+
+                var tvb1 = new ThanhVienBang { BangDauId = bangA.Id, DangKyThiDauId = dkBk.Id, HatGiong = 1, SoTran = 1, SoThang = 1, SoHoa = 0, SoThua = 0, DiemGhiDuoc = 3, DiemBiGhi = 1, Diem = 3, XepHang = 1 };
+                var tvb2 = new ThanhVienBang { BangDauId = bangA.Id, DangKyThiDauId = dkUeh.Id, HatGiong = 2, SoTran = 1, SoThang = 0, SoHoa = 0, SoThua = 1, DiemGhiDuoc = 1, DiemBiGhi = 3, Diem = 0, XepHang = 2 };
+                await context.ThanhVienBangs.AddRangeAsync(tvb1, tvb2);
+                await context.SaveChangesAsync();
+
+                // 13. Vòng đấu (VongDau)
+                var vongBang = new VongDau { NoiDungThiDauId = ndBongDaNam.Id, Ten = "Vòng Bảng", LoaiVong = "VongBang", ThuTu = 1 };
+                var vongChungKet = new VongDau { NoiDungThiDauId = ndBongDaNam.Id, Ten = "Trận Chung Kết", LoaiVong = "ChungKet", ThuTu = 2 };
+                await context.VongDaus.AddRangeAsync(vongBang, vongChungKet);
+                await context.SaveChangesAsync();
+
+                // 14. Trận đấu & Phân công trọng tài (TranDau, PhanCongTrongTai)
+                var tranBong1 = new TranDau
+                {
+                    NoiDungThiDauId = ndBongDaNam.Id,
+                    VongDauId = vongBang.Id,
+                    BangDauId = bangA.Id,
+                    SanDauId = sanBong1.Id,
+                    SoTran = 1,
+                    TenTran = "Bách Khoa vs Kinh Tế (Lượt 1 Bảng A)",
+                    ThoiGianDuKien = now.AddDays(-2),
+                    ThoiGianBatDau = now.AddDays(-2).AddHours(8),
+                    ThoiGianKetThuc = now.AddDays(-2).AddHours(9).AddMinutes(30),
+                    TrangThai = "KetThuc",
+                    GhiChu = "Trận đấu sôi nổi, thời tiết đẹp"
+                };
+                await context.TranDaus.AddAsync(tranBong1);
+                await context.SaveChangesAsync();
+
+                var pc1 = new PhanCongTrongTai { TranDauId = tranBong1.Id, TrongTaiId = tt1.Id, VaiTro = "Trọng tài chính", GhiChu = "Điều hành tốt trận đấu" };
+                var pc2 = new PhanCongTrongTai { TranDauId = tranBong1.Id, TrongTaiId = tt2.Id, VaiTro = "Trọng tài bàn", GhiChu = "Ghi chép biên bản chính xác" };
+                await context.PhanCongTrongTais.AddRangeAsync(pc1, pc2);
+                await context.SaveChangesAsync();
+
+                // 15. Thành phần trận đấu (ThanhPhanTranDau)
+                var tp1 = new ThanhPhanTranDau { TranDauId = tranBong1.Id, DangKyThiDauId = dkBk.Id, ViTri = 1, TrangThai = "ThamGia" };
+                var tp2 = new ThanhPhanTranDau { TranDauId = tranBong1.Id, DangKyThiDauId = dkUeh.Id, ViTri = 2, TrangThai = "ThamGia" };
+                await context.ThanhPhanTranDaus.AddRangeAsync(tp1, tp2);
+                await context.SaveChangesAsync();
+
+                // 16. Hiệp đấu (HiepDau)
+                var hiep1 = new HiepDau { TranDauId = tranBong1.Id, SoHiep = 1, ThoiGianBatDau = tranBong1.ThoiGianBatDau, ThoiGianKetThuc = tranBong1.ThoiGianBatDau?.AddMinutes(35), TrangThai = "KetThuc" };
+                var hiep2 = new HiepDau { TranDauId = tranBong1.Id, SoHiep = 2, ThoiGianBatDau = tranBong1.ThoiGianBatDau?.AddMinutes(45), ThoiGianKetThuc = tranBong1.ThoiGianKetThuc, TrangThai = "KetThuc" };
+                await context.HiepDaus.AddRangeAsync(hiep1, hiep2);
+                await context.SaveChangesAsync();
+
+                // 17. Kết quả hiệp đấu (KetQuaHiepDau)
+                var kqHiep1_Tp1 = new KetQuaHiepDau { HiepDauId = hiep1.Id, ThanhPhanTranDauId = tp1.Id, Diem = 2, GhiChu = "Ghi 2 bàn trong hiệp 1" };
+                var kqHiep1_Tp2 = new KetQuaHiepDau { HiepDauId = hiep1.Id, ThanhPhanTranDauId = tp2.Id, Diem = 0 };
+                var kqHiep2_Tp1 = new KetQuaHiepDau { HiepDauId = hiep2.Id, ThanhPhanTranDauId = tp1.Id, Diem = 1, GhiChu = "Ghi thêm 1 bàn trong hiệp 2" };
+                var kqHiep2_Tp2 = new KetQuaHiepDau { HiepDauId = hiep2.Id, ThanhPhanTranDauId = tp2.Id, Diem = 1, GhiChu = "Gỡ lại 1 bàn danh dự" };
+                await context.KetQuaHiepDaus.AddRangeAsync(kqHiep1_Tp1, kqHiep1_Tp2, kqHiep2_Tp1, kqHiep2_Tp2);
+                await context.SaveChangesAsync();
+
+                // 18. Kết quả chung cuộc trận đấu (KetQuaTranDau)
+                var kqTran_Tp1 = new KetQuaTranDau { ThanhPhanTranDauId = tp1.Id, LoaiKetQua = "Thang", Diem = 3, XepHang = 1, KetQuaText = "Thắng 3 - 1" };
+                var kqTran_Tp2 = new KetQuaTranDau { ThanhPhanTranDauId = tp2.Id, LoaiKetQua = "Thua", Diem = 1, XepHang = 2, KetQuaText = "Thua 1 - 3" };
+                await context.KetQuaTranDaus.AddRangeAsync(kqTran_Tp1, kqTran_Tp2);
+                await context.SaveChangesAsync();
+
+                // 19. Trao Huy Chương (HuyChuong)
+                var huyChuongVang = new HuyChuong
+                {
+                    GiaiDauId = giaiHoiThao.Id,
+                    NoiDungThiDauId = ndBongDaNam.Id,
+                    DangKyThiDauId = dkBk.Id,
+                    LoaiHuyChuongId = lhcVang.Id,
+                    XepHang = 1,
+                    NgayTrao = now,
+                    GhiChu = "Nhà vô địch Bóng đá nam SV 2026"
+                };
+                var huyChuongBac = new HuyChuong
+                {
+                    GiaiDauId = giaiHoiThao.Id,
+                    NoiDungThiDauId = ndBongDaNam.Id,
+                    DangKyThiDauId = dkUeh.Id,
+                    LoaiHuyChuongId = lhcBac.Id,
+                    XepHang = 2,
+                    NgayTrao = now,
+                    GhiChu = "Á quân Bóng đá nam SV 2026"
+                };
+                await context.HuyChuongs.AddRangeAsync(huyChuongVang, huyChuongBac);
                 await context.SaveChangesAsync();
             }
         }
     }
 }
+
+

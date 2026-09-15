@@ -7,28 +7,42 @@ namespace Dms.Infrastructure.Repositories
     public class UnitOfWork : IUnitOfWork
     {
         private readonly ApplicationDbContext _context;
-        private IGenericRepository<Category>? _categories;
         private IGenericRepository<Menu>? _menus;
         private IGenericRepository<SystemSetting>? _systemSettings;
-        private IGenericRepository<Repair>? _repairs;
-        private IGenericRepository<RepairBooking>? _repairBookings;
 
-        private IGenericRepository<Tournament>? _tournaments;
-        private IGenericRepository<Sport>? _sports;
-        private IGenericRepository<TournamentSport>? _tournamentSports;
-        private IGenericRepository<Team>? _teams;
-        private IGenericRepository<Athlete>? _athletes;
-        private IGenericRepository<Group>? _groups;
-        private IGenericRepository<Match>? _matches;
-        private IGenericRepository<MatchResult>? _matchResults;
+        // Vietnamese Sport Tournament Repositories
+        private IGenericRepository<Khoi>? _khois;
+        private IGenericRepository<DonVi>? _donVis;
+        private IGenericRepository<GiaiDau>? _giaiDaus;
+        private IGenericRepository<GiaiDauKhoi>? _giaiDauKhois;
+        private IGenericRepository<DanhMucMonTheThao>? _danhMucMonTheThaos;
+        private IGenericRepository<MonTheThao>? _monTheThaos;
+        private IGenericRepository<GiaiDauMonTheThao>? _giaiDauMonTheThaos;
+        private IGenericRepository<NoiDungThiDau>? _noiDungThiDaus;
+        private IGenericRepository<VanDongVien>? _vanDongViens;
+        private IGenericRepository<Doi>? _dois;
+        private IGenericRepository<ThanhVienDoi>? _thanhVienDois;
+        private IGenericRepository<DangKyThiDau>? _dangKyThiDaus;
+        private IGenericRepository<ChiTietDangKyThiDau>? _chiTietDangKyThiDaus;
+        private IGenericRepository<BangDau>? _bangDaus;
+        private IGenericRepository<ThanhVienBang>? _thanhVienBangs;
+        private IGenericRepository<VongDau>? _vongDaus;
+        private IGenericRepository<CumSan>? _cumSans;
+        private IGenericRepository<SanDau>? _sanDaus;
+        private IGenericRepository<TrongTai>? _trongTais;
+        private IGenericRepository<TranDau>? _tranDaus;
+        private IGenericRepository<ThanhPhanTranDau>? _thanhPhanTranDaus;
+        private IGenericRepository<HiepDau>? _hiepDaus;
+        private IGenericRepository<KetQuaHiepDau>? _ketQuaHiepDaus;
+        private IGenericRepository<KetQuaTranDau>? _ketQuaTranDaus;
+        private IGenericRepository<PhanCongTrongTai>? _phanCongTrongTais;
+        private IGenericRepository<LoaiHuyChuong>? _loaiHuyChuongs;
+        private IGenericRepository<HuyChuong>? _huyChuongs;
 
         public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;
         }
-
-        public IGenericRepository<Category> Categories => 
-            _categories ??= new GenericRepository<Category>(_context);
 
         public IGenericRepository<Menu> Menus => 
             _menus ??= new GenericRepository<Menu>(_context);
@@ -36,35 +50,86 @@ namespace Dms.Infrastructure.Repositories
         public IGenericRepository<SystemSetting> SystemSettings => 
             _systemSettings ??= new GenericRepository<SystemSetting>(_context);
 
-        public IGenericRepository<Repair> Repairs => 
-            _repairs ??= new GenericRepository<Repair>(_context);
+        public IGenericRepository<Khoi> Khois => 
+            _khois ??= new GenericRepository<Khoi>(_context);
 
-        public IGenericRepository<RepairBooking> RepairBookings => 
-            _repairBookings ??= new GenericRepository<RepairBooking>(_context);
+        public IGenericRepository<DonVi> DonVis => 
+            _donVis ??= new GenericRepository<DonVi>(_context);
 
-        public IGenericRepository<Tournament> Tournaments => 
-            _tournaments ??= new GenericRepository<Tournament>(_context);
+        public IGenericRepository<GiaiDau> GiaiDaus => 
+            _giaiDaus ??= new GenericRepository<GiaiDau>(_context);
 
-        public IGenericRepository<Sport> Sports => 
-            _sports ??= new GenericRepository<Sport>(_context);
+        public IGenericRepository<GiaiDauKhoi> GiaiDauKhois => 
+            _giaiDauKhois ??= new GenericRepository<GiaiDauKhoi>(_context);
 
-        public IGenericRepository<TournamentSport> TournamentSports => 
-            _tournamentSports ??= new GenericRepository<TournamentSport>(_context);
+        public IGenericRepository<DanhMucMonTheThao> DanhMucMonTheThaos => 
+            _danhMucMonTheThaos ??= new GenericRepository<DanhMucMonTheThao>(_context);
 
-        public IGenericRepository<Team> Teams => 
-            _teams ??= new GenericRepository<Team>(_context);
+        public IGenericRepository<MonTheThao> MonTheThaos => 
+            _monTheThaos ??= new GenericRepository<MonTheThao>(_context);
 
-        public IGenericRepository<Athlete> Athletes => 
-            _athletes ??= new GenericRepository<Athlete>(_context);
+        public IGenericRepository<GiaiDauMonTheThao> GiaiDauMonTheThaos => 
+            _giaiDauMonTheThaos ??= new GenericRepository<GiaiDauMonTheThao>(_context);
 
-        public IGenericRepository<Group> Groups => 
-            _groups ??= new GenericRepository<Group>(_context);
+        public IGenericRepository<NoiDungThiDau> NoiDungThiDaus => 
+            _noiDungThiDaus ??= new GenericRepository<NoiDungThiDau>(_context);
 
-        public IGenericRepository<Match> Matches => 
-            _matches ??= new GenericRepository<Match>(_context);
+        public IGenericRepository<VanDongVien> VanDongViens => 
+            _vanDongViens ??= new GenericRepository<VanDongVien>(_context);
 
-        public IGenericRepository<MatchResult> MatchResults => 
-            _matchResults ??= new GenericRepository<MatchResult>(_context);
+        public IGenericRepository<Doi> Dois => 
+            _dois ??= new GenericRepository<Doi>(_context);
+
+        public IGenericRepository<ThanhVienDoi> ThanhVienDois => 
+            _thanhVienDois ??= new GenericRepository<ThanhVienDoi>(_context);
+
+        public IGenericRepository<DangKyThiDau> DangKyThiDaus => 
+            _dangKyThiDaus ??= new GenericRepository<DangKyThiDau>(_context);
+
+        public IGenericRepository<ChiTietDangKyThiDau> ChiTietDangKyThiDaus => 
+            _chiTietDangKyThiDaus ??= new GenericRepository<ChiTietDangKyThiDau>(_context);
+
+        public IGenericRepository<BangDau> BangDaus => 
+            _bangDaus ??= new GenericRepository<BangDau>(_context);
+
+        public IGenericRepository<ThanhVienBang> ThanhVienBangs => 
+            _thanhVienBangs ??= new GenericRepository<ThanhVienBang>(_context);
+
+        public IGenericRepository<VongDau> VongDaus => 
+            _vongDaus ??= new GenericRepository<VongDau>(_context);
+
+        public IGenericRepository<CumSan> CumSans => 
+            _cumSans ??= new GenericRepository<CumSan>(_context);
+
+        public IGenericRepository<SanDau> SanDaus => 
+            _sanDaus ??= new GenericRepository<SanDau>(_context);
+
+        public IGenericRepository<TrongTai> TrongTais => 
+            _trongTais ??= new GenericRepository<TrongTai>(_context);
+
+        public IGenericRepository<TranDau> TranDaus => 
+            _tranDaus ??= new GenericRepository<TranDau>(_context);
+
+        public IGenericRepository<ThanhPhanTranDau> ThanhPhanTranDaus => 
+            _thanhPhanTranDaus ??= new GenericRepository<ThanhPhanTranDau>(_context);
+
+        public IGenericRepository<HiepDau> HiepDaus => 
+            _hiepDaus ??= new GenericRepository<HiepDau>(_context);
+
+        public IGenericRepository<KetQuaHiepDau> KetQuaHiepDaus => 
+            _ketQuaHiepDaus ??= new GenericRepository<KetQuaHiepDau>(_context);
+
+        public IGenericRepository<KetQuaTranDau> KetQuaTranDaus => 
+            _ketQuaTranDaus ??= new GenericRepository<KetQuaTranDau>(_context);
+
+        public IGenericRepository<PhanCongTrongTai> PhanCongTrongTais => 
+            _phanCongTrongTais ??= new GenericRepository<PhanCongTrongTai>(_context);
+
+        public IGenericRepository<LoaiHuyChuong> LoaiHuyChuongs => 
+            _loaiHuyChuongs ??= new GenericRepository<LoaiHuyChuong>(_context);
+
+        public IGenericRepository<HuyChuong> HuyChuongs => 
+            _huyChuongs ??= new GenericRepository<HuyChuong>(_context);
 
         public async Task<int> CompleteAsync()
         {

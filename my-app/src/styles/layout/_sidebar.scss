@@ -3,10 +3,48 @@
 .sidebarArea {
   flex-shrink: 0;
   width: $sidebarWidth;
-  background-color: $sidebarColor;
-  .sidenav-bg:hover {
-    background-color: $gray-100;
-    border-radius: $border-radius;
+  background-color: #4e73df !important;
+  color: #ffffff;
+
+  .nav-link {
+    color: rgba(255, 255, 255, 0.8) !important;
+    transition: all 0.2s ease-in-out;
+
+    i {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    &:hover {
+      color: #ffffff !important;
+      background-color: rgba(255, 255, 255, 0.15) !important;
+      border-radius: $border-radius;
+
+      i {
+        color: #ffffff !important;
+      }
+    }
+
+    &.active,
+    &.text-primary {
+      color: #ffffff !important;
+      background-color: rgba(255, 255, 255, 0.22) !important;
+      font-weight: 700 !important;
+      border-radius: $border-radius;
+
+      i {
+        color: #ffffff !important;
+      }
+    }
+  }
+
+  .sidenav-bg {
+    &:hover {
+      background-color: transparent !important;
+    }
+  }
+
+  .border-start {
+    border-color: rgba(255, 255, 255, 0.2) !important;
   }
 }
 

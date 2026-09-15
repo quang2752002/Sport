@@ -28,7 +28,7 @@ const Header = ({ showMobmenu }) => {
     <Navbar color="primary" dark expand="md">
       <div className="d-flex align-items-center">
         <NavbarBrand href="/" className="d-lg-none">
-          <Image src="/images/logos/xtremelogowhite.svg" alt="logo" width={150} height={40} />
+          <Image src="/images/logos/logo.png" alt="logo" width={150} height={40} />
         </NavbarBrand>
         <Button color="primary" className="d-lg-none" onClick={showMobmenu}>
           <i className="bi bi-list"></i>
@@ -57,8 +57,8 @@ const Header = ({ showMobmenu }) => {
             </Link>
           </NavItem>
           <NavItem>
-            <Link href="/pages/about"  className="nav-link">
-             About
+            <Link href="/pages/about" className="nav-link">
+              About
             </Link>
           </NavItem>
           <UncontrolledDropdown inNavbar nav>

@@ -25,8 +25,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   permissionGroups: PermissionGroup[];
-  login: (credentials: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
+  login: (credentials: LoginRequest) => Promise<User | null>;
+  register: (data: RegisterRequest) => Promise<User | null>;
   logout: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
   hasRole: (role: string) => boolean;
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
-  const login = async (credentials: LoginRequest) => {
+  const login = async (credentials: LoginRequest): Promise<User | null> => {
     setIsLoading(true);
     try {
       const { data } = await api.post<AuthResponse>('/api/auth/login', credentials);
@@ -122,12 +122,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const parsedUser = parseUserFromToken(data.accessToken);
       setUser(parsedUser);
       loadPermissionTree();
+      return parsedUser;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (dataPayload: RegisterRequest) => {
+  const register = async (dataPayload: RegisterRequest): Promise<User | null> => {
     setIsLoading(true);
     try {
       const { data } = await api.post<AuthResponse>('/api/auth/register', dataPayload);
@@ -136,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const parsedUser = parseUserFromToken(data.accessToken);
       setUser(parsedUser);
       loadPermissionTree();
+      return parsedUser;
     } finally {
       setIsLoading(false);
     }

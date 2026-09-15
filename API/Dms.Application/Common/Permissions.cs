@@ -1,117 +1,20 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 namespace Dms.Application.Common
 {
+    /// <summary>
+    /// Danh mục phân quyền động Permissions phân theo các Module và Entity tiếng Việt
+    /// </summary>
     public static class Permissions
     {
-        // 1. Quản trị hệ thống (Admin)
+        // 1. Quản trị hệ thống & tài khoản (System / Users / Roles)
         public static class System
         {
-            public const string ManageUsers = "Permissions.System.ManageUsers";             // Cấp & quản lý tài khoản người dùng
-            public const string ConfigSettings = "Permissions.System.ConfigSettings";       // Cấu hình tham số chung
-            public const string BackupData = "Permissions.System.BackupData";               // Sao lưu và phục hồi dữ liệu
-        }
-
-        // 2. Quản lý giải đấu (Tournaments)
-        public static class Tournaments
-        {
-            public const string View = "Permissions.Tournaments.View";
-            public const string Create = "Permissions.Tournaments.Create";
-            public const string Edit = "Permissions.Tournaments.Edit";
-            public const string Delete = "Permissions.Tournaments.Delete";
-            public const string AssignManager = "Permissions.Tournaments.AssignManager";    // Chọn 1 thành viên điều hành 1 giải cụ thể
-        }
-
-        // 3. Quản lý môn thể thao (Sports)
-        public static class Sports
-        {
-            public const string View = "Permissions.Sports.View";
-            public const string Create = "Permissions.Sports.Create";
-            public const string Edit = "Permissions.Sports.Edit";
-            public const string Delete = "Permissions.Sports.Delete";
-        }
-
-        // 4. Môn thi thuộc giải (TournamentSports)
-        public static class TournamentSports
-        {
-            public const string View = "Permissions.TournamentSports.View";
-            public const string Create = "Permissions.TournamentSports.Create";
-            public const string Edit = "Permissions.TournamentSports.Edit";
-            public const string Delete = "Permissions.TournamentSports.Delete";
-        }
-
-        // 5. Bảng đấu (Groups)
-        public static class Groups
-        {
-            public const string View = "Permissions.Groups.View";
-            public const string Create = "Permissions.Groups.Create";
-            public const string Edit = "Permissions.Groups.Edit";
-            public const string Delete = "Permissions.Groups.Delete";
-        }
-
-        // 6. Đội thi đấu (Teams)
-        public static class Teams
-        {
-            public const string View = "Permissions.Teams.View";
-            public const string Create = "Permissions.Teams.Create";
-            public const string Edit = "Permissions.Teams.Edit";
-            public const string Delete = "Permissions.Teams.Delete";
-        }
-
-        // 7. Vận động viên (Athletes)
-        public static class Athletes
-        {
-            public const string View = "Permissions.Athletes.View";
-            public const string Create = "Permissions.Athletes.Create";
-            public const string Edit = "Permissions.Athletes.Edit";
-            public const string Delete = "Permissions.Athletes.Delete";
-        }
-
-        // 8. Trận đấu & Lịch thi đấu (Matches)
-        public static class Matches
-        {
-            public const string View = "Permissions.Matches.View";
-            public const string Create = "Permissions.Matches.Create";
-            public const string Edit = "Permissions.Matches.Edit";
-            public const string Delete = "Permissions.Matches.Delete";
-            public const string UpdateScore = "Permissions.Matches.UpdateScore";            // Cập nhật tỷ số, thẻ phạt, nhật ký thời gian thực
-        }
-
-        // 9. Phân công & điều hành trọng tài (Referees)
-        public static class Referees
-        {
-            public const string Assign = "Permissions.Referees.Assign";                     // Phân công trọng tài chính, phụ cho trận đấu/môn
-            public const string Supervise = "Permissions.Referees.Supervise";               // Giám sát tiến độ thi đấu
-        }
-
-        // 10. Thư ký giải đấu & Báo cáo kết quả (Results)
-        public static class Results
-        {
-            public const string VerifyReport = "Permissions.Results.VerifyReport";          // Kiểm tra biên bản thi đấu
-            public const string ExportReport = "Permissions.Results.ExportReport";          // Xuất biên bản kết quả (PDF/Excel)
-        }
-
-        // 11. Đơn vị trực thuộc (Delegations - Sở/Xã/Đoàn)
-        public static class Delegations
-        {
-            public const string ManageAthletes = "Permissions.Delegations.ManageAthletes";  // Quản lý & đăng ký danh sách VĐV, đội thi đấu
-            public const string ViewTeams = "Permissions.Delegations.ViewTeams";
-        }
-
-        // 12. Phân loại danh mục (Categories)
-        public static class Categories
-        {
-            public const string View = "Permissions.Categories.View";
-            public const string Create = "Permissions.Categories.Create";
-            public const string Edit = "Permissions.Categories.Edit";
-            public const string Delete = "Permissions.Categories.Delete";
-        }
-
-        // Các quyền hệ thống chung (Users, Menus, SystemSettings, Repairs)
-        public static class Repairs
-        {
-            public const string View = "Permissions.Repairs.View";
-            public const string Create = "Permissions.Repairs.Create";
-            public const string Edit = "Permissions.Repairs.Edit";
-            public const string Delete = "Permissions.Repairs.Delete";
+            public const string ManageUsers = "Permissions.System.ManageUsers";
+            public const string ConfigSettings = "Permissions.System.ConfigSettings";
+            public const string BackupData = "Permissions.System.BackupData";
         }
 
         public static class Users
@@ -137,11 +40,158 @@ namespace Dms.Application.Common
             public const string Edit = "Permissions.SystemSettings.Edit";
         }
 
-        public static class RepairBookings
+        // ==========================================
+        // 2. CÁC MODULE QUẢN LÝ THỂ THAO TIẾNG VIỆT
+        // ==========================================
+
+        // Khối tham gia (Khoi)
+        public static class Khoi
         {
-            public const string View = "Permissions.RepairBookings.View";
-            public const string Edit = "Permissions.RepairBookings.Edit";
-            public const string Delete = "Permissions.RepairBookings.Delete";
+            public const string View = "Permissions.Khoi.View";
+            public const string Create = "Permissions.Khoi.Create";
+            public const string Edit = "Permissions.Khoi.Edit";
+            public const string Delete = "Permissions.Khoi.Delete";
+        }
+
+        // Đơn vị / Đoàn tham gia (DonVi)
+        public static class DonVi
+        {
+            public const string View = "Permissions.DonVi.View";
+            public const string Create = "Permissions.DonVi.Create";
+            public const string Edit = "Permissions.DonVi.Edit";
+            public const string Delete = "Permissions.DonVi.Delete";
+            public const string ManageAthletes = "Permissions.DonVi.ManageAthletes"; // Quản lý VĐV trực thuộc
+        }
+
+        // Giải đấu (GiaiDau)
+        public static class GiaiDau
+        {
+            public const string View = "Permissions.GiaiDau.View";
+            public const string Create = "Permissions.GiaiDau.Create";
+            public const string Edit = "Permissions.GiaiDau.Edit";
+            public const string Delete = "Permissions.GiaiDau.Delete";
+            public const string AssignManager = "Permissions.GiaiDau.AssignManager"; // Phân công người quản lý giải
+        }
+
+        // Danh mục môn & Môn thể thao (DanhMucMonTheThao, MonTheThao)
+        public static class DanhMucMonTheThao
+        {
+            public const string View = "Permissions.DanhMucMonTheThao.View";
+            public const string Create = "Permissions.DanhMucMonTheThao.Create";
+            public const string Edit = "Permissions.DanhMucMonTheThao.Edit";
+            public const string Delete = "Permissions.DanhMucMonTheThao.Delete";
+        }
+
+        public static class MonTheThao
+        {
+            public const string View = "Permissions.MonTheThao.View";
+            public const string Create = "Permissions.MonTheThao.Create";
+            public const string Edit = "Permissions.MonTheThao.Edit";
+            public const string Delete = "Permissions.MonTheThao.Delete";
+        }
+
+        // Môn thi thuộc giải (GiaiDauMonTheThao)
+        public static class GiaiDauMonTheThao
+        {
+            public const string View = "Permissions.GiaiDauMonTheThao.View";
+            public const string Create = "Permissions.GiaiDauMonTheThao.Create";
+            public const string Edit = "Permissions.GiaiDauMonTheThao.Edit";
+            public const string Delete = "Permissions.GiaiDauMonTheThao.Delete";
+        }
+
+        // Nội dung thi đấu (NoiDungThiDau)
+        public static class NoiDungThiDau
+        {
+            public const string View = "Permissions.NoiDungThiDau.View";
+            public const string Create = "Permissions.NoiDungThiDau.Create";
+            public const string Edit = "Permissions.NoiDungThiDau.Edit";
+            public const string Delete = "Permissions.NoiDungThiDau.Delete";
+        }
+
+        // Vận động viên (VanDongVien)
+        public static class VanDongVien
+        {
+            public const string View = "Permissions.VanDongVien.View";
+            public const string Create = "Permissions.VanDongVien.Create";
+            public const string Edit = "Permissions.VanDongVien.Edit";
+            public const string Delete = "Permissions.VanDongVien.Delete";
+        }
+
+        // Đội thi đấu & Thành viên (Doi, ThanhVienDoi)
+        public static class Doi
+        {
+            public const string View = "Permissions.Doi.View";
+            public const string Create = "Permissions.Doi.Create";
+            public const string Edit = "Permissions.Doi.Edit";
+            public const string Delete = "Permissions.Doi.Delete";
+        }
+
+        // Đăng ký thi đấu (DangKyThiDau)
+        public static class DangKyThiDau
+        {
+            public const string View = "Permissions.DangKyThiDau.View";
+            public const string Create = "Permissions.DangKyThiDau.Create";
+            public const string Edit = "Permissions.DangKyThiDau.Edit";
+            public const string Delete = "Permissions.DangKyThiDau.Delete";
+            public const string Approve = "Permissions.DangKyThiDau.Approve"; // Duyệt đơn đăng ký
+        }
+
+        // Bảng đấu & Vòng đấu (BangDau, VongDau)
+        public static class BangDau
+        {
+            public const string View = "Permissions.BangDau.View";
+            public const string Create = "Permissions.BangDau.Create";
+            public const string Edit = "Permissions.BangDau.Edit";
+            public const string Delete = "Permissions.BangDau.Delete";
+        }
+
+        public static class VongDau
+        {
+            public const string View = "Permissions.VongDau.View";
+            public const string Create = "Permissions.VongDau.Create";
+            public const string Edit = "Permissions.VongDau.Edit";
+            public const string Delete = "Permissions.VongDau.Delete";
+        }
+
+        // Cụm sân & Sân đấu (CumSan, SanDau)
+        public static class SanDau
+        {
+            public const string View = "Permissions.SanDau.View";
+            public const string Create = "Permissions.SanDau.Create";
+            public const string Edit = "Permissions.SanDau.Edit";
+            public const string Delete = "Permissions.SanDau.Delete";
+        }
+
+        // Trọng tài & Phân công (TrongTai, PhanCongTrongTai)
+        public static class TrongTai
+        {
+            public const string View = "Permissions.TrongTai.View";
+            public const string Create = "Permissions.TrongTai.Create";
+            public const string Edit = "Permissions.TrongTai.Edit";
+            public const string Delete = "Permissions.TrongTai.Delete";
+            public const string Assign = "Permissions.TrongTai.Assign";       // Phân công trọng tài
+            public const string Supervise = "Permissions.TrongTai.Supervise"; // Giám sát trọng tài
+        }
+
+        // Trận đấu & Kết quả (TranDau, HiepDau, KetQuaTranDau)
+        public static class TranDau
+        {
+            public const string View = "Permissions.TranDau.View";
+            public const string Create = "Permissions.TranDau.Create";
+            public const string Edit = "Permissions.TranDau.Edit";
+            public const string Delete = "Permissions.TranDau.Delete";
+            public const string UpdateScore = "Permissions.TranDau.UpdateScore"; // Nhập / cập nhật điểm số
+            public const string VerifyReport = "Permissions.TranDau.VerifyReport"; // Xác nhận biên bản
+            public const string ExportReport = "Permissions.TranDau.ExportReport"; // Xuất biên bản kết quả
+        }
+
+        // Huy chương (HuyChuong, LoaiHuyChuong)
+        public static class HuyChuong
+        {
+            public const string View = "Permissions.HuyChuong.View";
+            public const string Create = "Permissions.HuyChuong.Create";
+            public const string Edit = "Permissions.HuyChuong.Edit";
+            public const string Delete = "Permissions.HuyChuong.Delete";
         }
 
         private static readonly List<string> _allPermissions = typeof(Permissions)

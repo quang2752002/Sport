@@ -4,20 +4,37 @@ namespace Dms.Domain.Interfaces
 {
     public interface IUnitOfWork : IDisposable
     {
-        IGenericRepository<Category> Categories { get; }
         IGenericRepository<Menu> Menus { get; }
         IGenericRepository<SystemSetting> SystemSettings { get; }
-        IGenericRepository<Repair> Repairs { get; }
-        IGenericRepository<RepairBooking> RepairBookings { get; }
 
-        IGenericRepository<Tournament> Tournaments { get; }
-        IGenericRepository<Sport> Sports { get; }
-        IGenericRepository<TournamentSport> TournamentSports { get; }
-        IGenericRepository<Team> Teams { get; }
-        IGenericRepository<Athlete> Athletes { get; }
-        IGenericRepository<Group> Groups { get; }
-        IGenericRepository<Match> Matches { get; }
-        IGenericRepository<MatchResult> MatchResults { get; }
+        // Vietnamese Sport Tournament Repositories
+        IGenericRepository<Khoi> Khois { get; }
+        IGenericRepository<DonVi> DonVis { get; }
+        IGenericRepository<GiaiDau> GiaiDaus { get; }
+        IGenericRepository<GiaiDauKhoi> GiaiDauKhois { get; }
+        IGenericRepository<DanhMucMonTheThao> DanhMucMonTheThaos { get; }
+        IGenericRepository<MonTheThao> MonTheThaos { get; }
+        IGenericRepository<GiaiDauMonTheThao> GiaiDauMonTheThaos { get; }
+        IGenericRepository<NoiDungThiDau> NoiDungThiDaus { get; }
+        IGenericRepository<VanDongVien> VanDongViens { get; }
+        IGenericRepository<Doi> Dois { get; }
+        IGenericRepository<ThanhVienDoi> ThanhVienDois { get; }
+        IGenericRepository<DangKyThiDau> DangKyThiDaus { get; }
+        IGenericRepository<ChiTietDangKyThiDau> ChiTietDangKyThiDaus { get; }
+        IGenericRepository<BangDau> BangDaus { get; }
+        IGenericRepository<ThanhVienBang> ThanhVienBangs { get; }
+        IGenericRepository<VongDau> VongDaus { get; }
+        IGenericRepository<CumSan> CumSans { get; }
+        IGenericRepository<SanDau> SanDaus { get; }
+        IGenericRepository<TrongTai> TrongTais { get; }
+        IGenericRepository<TranDau> TranDaus { get; }
+        IGenericRepository<ThanhPhanTranDau> ThanhPhanTranDaus { get; }
+        IGenericRepository<HiepDau> HiepDaus { get; }
+        IGenericRepository<KetQuaHiepDau> KetQuaHiepDaus { get; }
+        IGenericRepository<KetQuaTranDau> KetQuaTranDaus { get; }
+        IGenericRepository<PhanCongTrongTai> PhanCongTrongTais { get; }
+        IGenericRepository<LoaiHuyChuong> LoaiHuyChuongs { get; }
+        IGenericRepository<HuyChuong> HuyChuongs { get; }
 
         Task<int> CompleteAsync();
     }

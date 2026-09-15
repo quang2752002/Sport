@@ -8,40 +8,6 @@ namespace Dms.Application.Mappings
     {
         public MappingProfile()
         {
-            #region Repair Mappings
-            CreateMap<Repair, RepairDto>()
-                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null));
-
-            CreateMap<RepairDto, Repair>()
-                .ForMember(dest => dest.Category, opt => opt.Ignore())
-                .ForMember(dest => dest.Created, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.LastModified, opt => opt.Ignore())
-                .ForMember(dest => dest.LastModifiedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore());
-
-            CreateMap<RepairBooking, RepairBookingDto>()
-                .ForMember(dest => dest.RepairName, opt => opt.MapFrom(src => src.Repair != null ? src.Repair.Name : null))
-                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User != null ? src.User.UserName : null))
-                .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? src.User.FullName : null));
-
-            CreateMap<RepairBookingDto, RepairBooking>()
-                .ForMember(dest => dest.Repair, opt => opt.Ignore())
-                .ForMember(dest => dest.User, opt => opt.Ignore())
-                .ForMember(dest => dest.Created, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.LastModified, opt => opt.Ignore())
-                .ForMember(dest => dest.LastModifiedBy, opt => opt.Ignore())
-                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore());
-            #endregion
-
-            #region Category Mappings
-            CreateMap<Category, CategoryDto>()
-                .ForMember(dest => dest.SportsCount, opt => opt.MapFrom(src => src.Sports != null ? src.Sports.Count(s => s.IsDeleted != true) : 0));
-            CreateMap<CategoryDto, Category>();
-            CreateMap<CreateUpdateCategoryDto, Category>();
-            #endregion
-
             #region Menu Mappings
             CreateMap<Menu, MenuDto>()
                 .ForMember(dest => dest.ParentTitle, opt => opt.MapFrom(src => src.Parent != null ? src.Parent.Title : null));
@@ -60,55 +26,53 @@ namespace Dms.Application.Mappings
             CreateMap<SystemSetting, SystemSettingDto>().ReverseMap();
             #endregion
 
-            #region Sport & Tournament Mappings
-            // Tournament
-            CreateMap<Tournament, TournamentDto>();
-            CreateMap<CreateUpdateTournamentDto, Tournament>();
+            #region Vietnamese Sport Mappings
+            // GiaiDau
+            CreateMap<GiaiDau, GiaiDauDto>()
+                .ForMember(dest => dest.KhoiIds, opt => opt.MapFrom(src => src.GiaiDauKhois.Select(k => k.KhoiId).ToList()));
+            CreateMap<CreateUpdateGiaiDauDto, GiaiDau>();
 
-            // Sport
-            CreateMap<Sport, SportDto>()
-                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null));
-            CreateMap<CreateUpdateSportDto, Sport>();
+            // Khoi
+            CreateMap<Khoi, KhoiDto>()
+                .ForMember(dest => dest.SoDonVi, opt => opt.MapFrom(src => src.DonVis.Count(d => d.IsDeleted != true)));
+            CreateMap<CreateUpdateKhoiDto, Khoi>();
 
-            // TournamentSport
-            CreateMap<TournamentSport, TournamentSportDto>()
-                .ForMember(dest => dest.TournamentName, opt => opt.MapFrom(src => src.Tournament != null ? src.Tournament.Name : null))
-                .ForMember(dest => dest.SportName, opt => opt.MapFrom(src => src.Sport != null ? src.Sport.Name : null));
-            CreateMap<CreateTournamentSportDto, TournamentSport>();
+            // DonVi
+            CreateMap<DonVi, DonViDto>()
+                .ForMember(dest => dest.TenKhoi, opt => opt.MapFrom(src => src.Khoi != null ? src.Khoi.Ten : null))
+                .ForMember(dest => dest.TenDonViCha, opt => opt.MapFrom(src => src.DonViCha != null ? src.DonViCha.Ten : null))
+                .ForMember(dest => dest.SoVanDongVien, opt => opt.MapFrom(src => src.VanDongViens.Count(v => v.IsDeleted != true)))
+                .ForMember(dest => dest.SoDoi, opt => opt.MapFrom(src => src.Dois.Count(t => t.IsDeleted != true)));
+            CreateMap<CreateUpdateDonViDto, DonVi>();
 
-            // Group
-            CreateMap<Group, GroupDto>()
-                .ForMember(dest => dest.SportName, opt => opt.MapFrom(src => src.TournamentSport != null && src.TournamentSport.Sport != null ? src.TournamentSport.Sport.Name : null))
-                .ForMember(dest => dest.TournamentName, opt => opt.MapFrom(src => src.TournamentSport != null && src.TournamentSport.Tournament != null ? src.TournamentSport.Tournament.Name : null));
-            CreateMap<CreateUpdateGroupDto, Group>();
+            // DanhMucMonTheThao
+            CreateMap<DanhMucMonTheThao, DanhMucMonTheThaoDto>()
+                .ForMember(dest => dest.SoMonTheThao, opt => opt.MapFrom(src => src.MonTheThaos.Count(m => m.IsDeleted != true)));
+            CreateMap<CreateUpdateDanhMucMonTheThaoDto, DanhMucMonTheThao>();
 
-            // Team
-            CreateMap<Team, TeamDto>()
-                .ForMember(dest => dest.GroupName, opt => opt.MapFrom(src => src.Group != null ? src.Group.Name : null))
-                .ForMember(dest => dest.SportName, opt => opt.MapFrom(src => src.TournamentSport != null && src.TournamentSport.Sport != null ? src.TournamentSport.Sport.Name : null))
-                .ForMember(dest => dest.TournamentName, opt => opt.MapFrom(src => src.TournamentSport != null && src.TournamentSport.Tournament != null ? src.TournamentSport.Tournament.Name : null));
-            CreateMap<CreateUpdateTeamDto, Team>();
+            // MonTheThao
+            CreateMap<MonTheThao, MonTheThaoDto>()
+                .ForMember(dest => dest.TenDanhMuc, opt => opt.MapFrom(src => src.DanhMuc != null ? src.DanhMuc.Ten : null));
+            CreateMap<CreateUpdateMonTheThaoDto, MonTheThao>();
 
-            // Athlete
-            CreateMap<Athlete, AthleteDto>()
-                .ForMember(dest => dest.TeamName, opt => opt.MapFrom(src => src.Team != null ? src.Team.Name : null))
-                .ForMember(dest => dest.SportName, opt => opt.MapFrom(src => src.TournamentSport != null && src.TournamentSport.Sport != null ? src.TournamentSport.Sport.Name : null))
-                .ForMember(dest => dest.TournamentName, opt => opt.MapFrom(src => src.TournamentSport != null && src.TournamentSport.Tournament != null ? src.TournamentSport.Tournament.Name : null));
-            CreateMap<CreateUpdateAthleteDto, Athlete>();
+            // TrongTai
+            CreateMap<TrongTai, TrongTaiDto>();
+            CreateMap<CreateUpdateTrongTaiDto, TrongTai>();
 
-            // Match
-            CreateMap<Match, MatchDto>()
-                .ForMember(dest => dest.GroupName, opt => opt.MapFrom(src => src.Group != null ? src.Group.Name : null))
-                .ForMember(dest => dest.HomeTeamName, opt => opt.MapFrom(src => src.HomeTeam != null ? src.HomeTeam.Name : null))
-                .ForMember(dest => dest.AwayTeamName, opt => opt.MapFrom(src => src.AwayTeam != null ? src.AwayTeam.Name : null))
-                .ForMember(dest => dest.SportName, opt => opt.MapFrom(src => src.TournamentSport != null && src.TournamentSport.Sport != null ? src.TournamentSport.Sport.Name : null))
-                .ForMember(dest => dest.TournamentName, opt => opt.MapFrom(src => src.TournamentSport != null && src.TournamentSport.Tournament != null ? src.TournamentSport.Tournament.Name : null));
-            CreateMap<CreateUpdateMatchDto, Match>();
+            // CumSan
+            CreateMap<CumSan, CumSanDto>()
+                .ForMember(dest => dest.SoSanHienCo, opt => opt.MapFrom(src => src.SanDaus.Count(s => s.IsDeleted != true)));
+            CreateMap<CreateUpdateCumSanDto, CumSan>();
 
-            // MatchResult
-            CreateMap<MatchResult, MatchResultDto>()
-                .ForMember(dest => dest.WinningTeamName, opt => opt.MapFrom(src => src.WinningTeam != null ? src.WinningTeam.Name : null));
-            CreateMap<CreateUpdateMatchResultDto, MatchResult>();
+            // SanDau
+            CreateMap<SanDau, SanDauDto>()
+                .ForMember(dest => dest.TenCumSan, opt => opt.MapFrom(src => src.CumSan != null ? src.CumSan.Ten : null));
+            CreateMap<CreateUpdateSanDauDto, SanDau>();
+
+            // LoaiHuyChuong
+            CreateMap<LoaiHuyChuong, LoaiHuyChuongDto>()
+                .ForMember(dest => dest.SoLuongDaTrao, opt => opt.MapFrom(src => src.HuyChuongs.Count(h => h.IsDeleted != true)));
+            CreateMap<CreateUpdateLoaiHuyChuongDto, LoaiHuyChuong>();
             #endregion
         }
     }

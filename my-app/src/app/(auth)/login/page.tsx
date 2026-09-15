@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../../context/AuthContext';
+import { ROLE_DEFAULT_REDIRECT, AppRoles } from '../../../constants/roles';
 import {
   Card,
   CardBody,
@@ -18,7 +19,7 @@ import {
   Alert,
 } from 'reactstrap';
 
-export default function LoginPage() {
+function LoginForm() {
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -29,6 +30,16 @@ export default function LoginPage() {
 
   const { login, register } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get('redirect');
+
+  const getRedirectPath = (roles: string[]) => {
+    if (redirectParam) return redirectParam;
+    for (const [role, path] of Object.entries(ROLE_DEFAULT_REDIRECT)) {
+      if (roles.includes(role)) return path;
+    }
+    return '/admin';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,12 +47,16 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      let loggedInUser;
       if (isRegister) {
-        await register({ username, password, email, fullName });
+        loggedInUser = await register({ username, password, email, fullName });
       } else {
-        await login({ username, password });
+        loggedInUser = await login({ username, password });
       }
-      router.push('/admin');
+
+      const roles = loggedInUser?.roles || [];
+      const targetPath = getRedirectPath(roles);
+      router.push(targetPath);
     } catch (err: any) {
       setError(err?.message || (Array.isArray(err) ? err.join(', ') : 'Đã có lỗi xảy ra khi xác thực.'));
     } finally {
@@ -321,5 +336,13 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="d-flex justify-content-center align-items-center vh-100"><Spinner color="primary" /></div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

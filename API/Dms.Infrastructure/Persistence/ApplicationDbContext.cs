@@ -13,22 +13,38 @@ namespace Dms.Infrastructure.Persistence
         {
         }
 
-        public DbSet<Category> Categories => Set<Category>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<Menu> Menus => Set<Menu>();
         public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
-        public DbSet<Repair> Repairs => Set<Repair>();
-        public DbSet<RepairBooking> RepairBookings => Set<RepairBooking>();
 
-        // Sport & Tournament Entities
-        public DbSet<Tournament> Tournaments => Set<Tournament>();
-        public DbSet<Sport> Sports => Set<Sport>();
-        public DbSet<TournamentSport> TournamentSports => Set<TournamentSport>();
-        public DbSet<Team> Teams => Set<Team>();
-        public DbSet<Athlete> Athletes => Set<Athlete>();
-        public DbSet<Group> Groups => Set<Group>();
-        public DbSet<Match> Matches => Set<Match>();
-        public DbSet<MatchResult> MatchResults => Set<MatchResult>();
+        // New Vietnamese Sport Tournament Schema Entities
+        public DbSet<Khoi> Khois => Set<Khoi>();
+        public DbSet<DonVi> DonVis => Set<DonVi>();
+        public DbSet<GiaiDau> GiaiDaus => Set<GiaiDau>();
+        public DbSet<GiaiDauKhoi> GiaiDauKhois => Set<GiaiDauKhoi>();
+        public DbSet<DanhMucMonTheThao> DanhMucMonTheThaos => Set<DanhMucMonTheThao>();
+        public DbSet<MonTheThao> MonTheThaos => Set<MonTheThao>();
+        public DbSet<GiaiDauMonTheThao> GiaiDauMonTheThaos => Set<GiaiDauMonTheThao>();
+        public DbSet<NoiDungThiDau> NoiDungThiDaus => Set<NoiDungThiDau>();
+        public DbSet<VanDongVien> VanDongViens => Set<VanDongVien>();
+        public DbSet<Doi> Dois => Set<Doi>();
+        public DbSet<ThanhVienDoi> ThanhVienDois => Set<ThanhVienDoi>();
+        public DbSet<DangKyThiDau> DangKyThiDaus => Set<DangKyThiDau>();
+        public DbSet<ChiTietDangKyThiDau> ChiTietDangKyThiDaus => Set<ChiTietDangKyThiDau>();
+        public DbSet<BangDau> BangDaus => Set<BangDau>();
+        public DbSet<ThanhVienBang> ThanhVienBangs => Set<ThanhVienBang>();
+        public DbSet<VongDau> VongDaus => Set<VongDau>();
+        public DbSet<CumSan> CumSans => Set<CumSan>();
+        public DbSet<SanDau> SanDaus => Set<SanDau>();
+        public DbSet<TrongTai> TrongTais => Set<TrongTai>();
+        public DbSet<TranDau> TranDaus => Set<TranDau>();
+        public DbSet<ThanhPhanTranDau> ThanhPhanTranDaus => Set<ThanhPhanTranDau>();
+        public DbSet<HiepDau> HiepDaus => Set<HiepDau>();
+        public DbSet<KetQuaHiepDau> KetQuaHiepDaus => Set<KetQuaHiepDau>();
+        public DbSet<KetQuaTranDau> KetQuaTranDaus => Set<KetQuaTranDau>();
+        public DbSet<PhanCongTrongTai> PhanCongTrongTais => Set<PhanCongTrongTai>();
+        public DbSet<LoaiHuyChuong> LoaiHuyChuongs => Set<LoaiHuyChuong>();
+        public DbSet<HuyChuong> HuyChuongs => Set<HuyChuong>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -44,6 +60,23 @@ namespace Dms.Infrastructure.Persistence
             modelBuilder.Entity<Microsoft.AspNetCore.Identity.IdentityUserLogin<int>>().ToTable("UserLogins");
             modelBuilder.Entity<Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>>().ToTable("RoleClaims");
             modelBuilder.Entity<Microsoft.AspNetCore.Identity.IdentityUserToken<int>>().ToTable("UserTokens");
+
+            // Cấu hình lưu Enum của GiaiDau dưới dạng chuỗi (VARCHAR) trong DB để tương thích SQL Server
+            modelBuilder.Entity<GiaiDau>()
+                .Property(g => g.PhamVi)
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
+            modelBuilder.Entity<GiaiDau>()
+                .Property(g => g.TrangThai)
+                .HasConversion<string>()
+                .HasMaxLength(30);
+
+            // Tắt Cascade Delete cho toàn bộ Foreign Keys để tránh lỗi chu trình SQL Server (Error 1785: multiple cascade paths)
+            foreach (var relationship in modelBuilder.Model.GetEntityTypes().SelectMany(e => e.GetForeignKeys()))
+            {
+                relationship.DeleteBehavior = DeleteBehavior.Restrict;
+            }
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

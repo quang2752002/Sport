@@ -13,19 +13,16 @@ namespace Dms.Application
             services.AddMediatR(Assembly.GetExecutingAssembly());
             services.AddAutoMapper(Assembly.GetExecutingAssembly());
 
-            services.AddScoped<Dms.Application.Interfaces.IRepairService, Dms.Application.Services.RepairService>();
             services.AddScoped<Dms.Application.Interfaces.IMenuService, Dms.Application.Services.MenuService>();
-            services.AddScoped<Dms.Application.Interfaces.IRepairBookingService, Dms.Application.Services.RepairBookingService>();
-
-            // Sport Services
-            services.AddScoped<Dms.Application.Interfaces.ICategoryService, Dms.Application.Services.CategoryService>();
-            services.AddScoped<Dms.Application.Interfaces.ITournamentService, Dms.Application.Services.TournamentService>();
-            services.AddScoped<Dms.Application.Interfaces.ISportService, Dms.Application.Services.SportService>();
-            services.AddScoped<Dms.Application.Interfaces.ITournamentSportService, Dms.Application.Services.TournamentSportService>();
-            services.AddScoped<Dms.Application.Interfaces.IGroupService, Dms.Application.Services.GroupService>();
-            services.AddScoped<Dms.Application.Interfaces.ITeamService, Dms.Application.Services.TeamService>();
-            services.AddScoped<Dms.Application.Interfaces.IAthleteService, Dms.Application.Services.AthleteService>();
-            services.AddScoped<Dms.Application.Interfaces.IMatchService, Dms.Application.Services.MatchService>();
+            services.AddScoped<Dms.Application.Interfaces.IGiaiDauService, Dms.Application.Services.GiaiDauService>();
+            services.AddScoped<Dms.Application.Interfaces.IKhoiService, Dms.Application.Services.KhoiService>();
+            services.AddScoped<Dms.Application.Interfaces.IDonViService, Dms.Application.Services.DonViService>();
+            services.AddScoped<Dms.Application.Interfaces.IDanhMucMonTheThaoService, Dms.Application.Services.DanhMucMonTheThaoService>();
+            services.AddScoped<Dms.Application.Interfaces.IMonTheThaoService, Dms.Application.Services.MonTheThaoService>();
+            services.AddScoped<Dms.Application.Interfaces.ITrongTaiService, Dms.Application.Services.TrongTaiService>();
+            services.AddScoped<Dms.Application.Interfaces.ICumSanService, Dms.Application.Services.CumSanService>();
+            services.AddScoped<Dms.Application.Interfaces.ISanDauService, Dms.Application.Services.SanDauService>();
+            services.AddScoped<Dms.Application.Interfaces.ILoaiHuyChuongService, Dms.Application.Services.LoaiHuyChuongService>();
             
             return services;
         }

@@ -4,6 +4,18 @@ import { AuthResponse } from '../types/auth';
 const TOKEN_KEY = 'dms_access_token';
 const REFRESH_KEY = 'dms_refresh_token';
 
+// Helper lưu cookie để Next.js Middleware (chạy ở Edge/Server) có thể đọc được
+const setCookie = (name: string, value: string, days: number = 7) => {
+  if (typeof document === 'undefined') return;
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+};
+
+const deleteCookie = (name: string) => {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
+};
+
 export const tokenStorage = {
   getAccessToken: (): string | null =>
     typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null,
@@ -13,11 +25,17 @@ export const tokenStorage = {
     if (typeof window === 'undefined') return;
     localStorage.setItem(TOKEN_KEY, accessToken);
     localStorage.setItem(REFRESH_KEY, refreshToken);
+    // Đồng bộ vào cookie cho Next.js middleware
+    setCookie(TOKEN_KEY, accessToken);
+    setCookie(REFRESH_KEY, refreshToken);
   },
   clearTokens: () => {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);
+    // Xóa cookie
+    deleteCookie(TOKEN_KEY);
+    deleteCookie(REFRESH_KEY);
   },
 };
 
@@ -61,26 +79,19 @@ const processQueue = (error: any, token: string | null = null) => {
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      const refreshToken = tokenStorage.getRefreshToken();
-      const accessToken = tokenStorage.getAccessToken();
-
-      if (!refreshToken || !accessToken) {
-        tokenStorage.clearTokens();
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('auth:unauthorized'));
-        }
-        return Promise.reject(error);
-      }
-
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+            }
             return api(originalRequest);
           })
           .catch((err) => Promise.reject(err));
@@ -89,29 +100,45 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
+      const refreshToken = tokenStorage.getRefreshToken();
+      const accessToken = tokenStorage.getAccessToken();
+
+      if (!refreshToken || !accessToken) {
+        tokenStorage.clearTokens();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+        }
+        return Promise.reject(error);
+      }
+
       try {
-        const { data } = await axios.post<AuthResponse>(`${API_BASE_URL}/api/auth/refresh`, {
-          accessToken,
-          refreshToken,
-        });
+        const { data } = await axios.post<AuthResponse>(
+          `${API_BASE_URL}/api/auth/refresh-token`,
+          {
+            accessToken,
+            refreshToken,
+          }
+        );
 
         tokenStorage.setTokens(data.accessToken, data.refreshToken);
         processQueue(null, data.accessToken);
 
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        }
         return api(originalRequest);
-      } catch (refreshErr) {
-        processQueue(refreshErr, null);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
         tokenStorage.clearTokens();
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('auth:unauthorized'));
+          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
         }
-        return Promise.reject(refreshErr);
+        return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
 
-    return Promise.reject(error.response?.data || error);
+    return Promise.reject(error);
   }
 );

@@ -25,8 +25,9 @@ const FullLayout = ({ children }: { children: React.ReactNode }) => {
       <div className="pageWrapper d-md-block d-lg-flex">
         {/******** Sidebar **********/}
         <aside
-          className={`sidebarArea shadow bg-white ${!open ? "" : "showSidebar"
+          className={`sidebarArea shadow ${!open ? "" : "showSidebar"
             }`}
+          style={{ backgroundColor: "#4e73df" }}
         >
           <Sidebar showMobilemenu={() => showMobilemenu()} />
         </aside>
