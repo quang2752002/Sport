@@ -1,18 +1,42 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import {Row,Col,Table,Card,CardBody,Button,Input,Spinner,Modal,ModalHeader,ModalBody,ModalFooter,Form,FormGroup,Label,Badge,} from 'reactstrap';
-import { giaiDauService, khoiService } from '@/services';
-import { GiaiDau,CreateUpdateGiaiDau,PhamViGiaiDau,PhamViGiaiDauLabels,TrangThaiGiaiDau,TrangThaiGiaiDauLabels,} from '@/types';
+import Link from 'next/link';
+import {
+  Row,
+  Col,
+  Table,
+  Card,
+  CardBody,
+  Button,
+  Input,
+  Spinner,
+  Form,
+  Badge,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from 'reactstrap';
+import { giaiDauService } from '@/services';
+import {
+  GiaiDau,
+  PhamViGiaiDau,
+  PhamViGiaiDauLabels,
+  TrangThaiGiaiDau,
+  TrangThaiGiaiDauLabels,
+} from '@/types';
 import { PaginationComponent } from '@/components/common/PaginationComponent';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, useToast } from '@/context/AuthContext';
 import { Permissions } from '@/constants/permissions';
 
 export default function AdminGiaiDauPage() {
-  const { hasPermission } = useAuth();
-  const canCreate = hasPermission(Permissions.GiaiDau.Create);
-  const canEdit = hasPermission(Permissions.GiaiDau.Edit);
-  const canDelete = hasPermission(Permissions.GiaiDau.Delete);
+  const { hasPermission, user } = useAuth();
+  const toast = useToast();
+  const isAdmin = (user?.roles || []).some((r) => String(r).toLowerCase() === 'admin');
+  const canCreate = isAdmin || hasPermission(Permissions.GiaiDau.Create);
+  const canEdit = isAdmin || hasPermission(Permissions.GiaiDau.Edit);
+  const canDelete = isAdmin || hasPermission(Permissions.GiaiDau.Delete);
 
   const [giaiDaus, setGiaiDaus] = useState<GiaiDau[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -25,30 +49,10 @@ export default function AdminGiaiDauPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Modal Thêm / Sửa
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<CreateUpdateGiaiDau>({
-    ma: '',
-    ten: '',
-    moTa: '',
-    ngayBatDau: '',
-    ngayKetThuc: '',
-    diaDiem: '',
-    phamVi: PhamViGiaiDau.TatCa,
-    trangThai: TrangThaiGiaiDau.Nhap,
-    khoiIds: [],
-  });
-  const [submitting, setSubmitting] = useState(false);
-
-  // Danh sách Khối tải từ backend
-  const [availableKhois, setAvailableKhois] = useState<{ id: number; ma: string; ten: string }[]>([]);
-
-  useEffect(() => {
-    khoiService.getAll()
-      .then((data) => setAvailableKhois(data || []))
-      .catch((err) => console.error('Lỗi khi tải danh sách khối:', err));
-  }, []);
+  // Modal Xóa
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingItem, setDeletingItem] = useState<GiaiDau | null>(null);
+  const [submittingDelete, setSubmittingDelete] = useState(false);
 
   // Fetch dữ liệu từ backend
   const loadGiaiDaus = useCallback(async () => {
@@ -83,77 +87,26 @@ export default function AdminGiaiDauPage() {
     loadGiaiDaus();
   };
 
-  const handleOpenCreateModal = () => {
-    setEditingId(null);
-    setFormData({
-      ma: '',
-      ten: '',
-      moTa: '',
-      ngayBatDau: '',
-      ngayKetThuc: '',
-      diaDiem: '',
-      phamVi: PhamViGiaiDau.TatCa,
-      trangThai: TrangThaiGiaiDau.Nhap,
-      khoiIds: [],
-    });
-    setModalOpen(true);
+  // Mở modal xác nhận xóa
+  const handleOpenDeleteModal = (item: GiaiDau) => {
+    setDeletingItem(item);
+    setDeleteModalOpen(true);
   };
 
-  const handleOpenEditModal = (item: GiaiDau) => {
-    setEditingId(item.id);
-    setFormData({
-      ma: item.ma,
-      ten: item.ten,
-      moTa: item.moTa || '',
-      ngayBatDau: item.ngayBatDau ? item.ngayBatDau.split('T')[0] : '',
-      ngayKetThuc: item.ngayKetThuc ? item.ngayKetThuc.split('T')[0] : '',
-      diaDiem: item.diaDiem || '',
-      phamVi: item.phamVi ?? PhamViGiaiDau.TatCa,
-      trangThai: item.trangThai ?? TrangThaiGiaiDau.Nhap,
-      khoiIds: item.khoiIds || [],
-    });
-    setModalOpen(true);
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa giải đấu này?')) return;
+  // Xác nhận xóa giải đấu
+  const handleConfirmDelete = async () => {
+    if (!deletingItem) return;
+    setSubmittingDelete(true);
     try {
-      await giaiDauService.delete(id);
+      await giaiDauService.delete(deletingItem.id);
+      toast.success(`Đã xóa giải đấu "${deletingItem.ten}" thành công!`);
+      setDeleteModalOpen(false);
+      setDeletingItem(null);
       loadGiaiDaus();
     } catch (err: any) {
-      alert('Không thể xóa giải đấu: ' + (err?.message || 'Lỗi server'));
-    }
-  };
-
-  const handleKhoiToggle = (khoiId: number) => {
-    const current = formData.khoiIds || [];
-    if (current.includes(khoiId)) {
-      setFormData({ ...formData, khoiIds: current.filter((id) => id !== khoiId) });
-    } else {
-      setFormData({ ...formData, khoiIds: [...current, khoiId] });
-    }
-  };
-
-  const handleSubmitForm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.ngayBatDau && formData.ngayKetThuc && formData.ngayKetThuc < formData.ngayBatDau) {
-      alert('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      if (editingId) {
-        await giaiDauService.update(editingId, formData);
-      } else {
-        await giaiDauService.create(formData);
-      }
-      setModalOpen(false);
-      loadGiaiDaus();
-    } catch (err: any) {
-      alert('Lỗi lưu thông tin: ' + (err?.message || 'Lỗi server'));
+      toast.error('Không thể xóa giải đấu: ' + (err?.response?.data?.message || err?.message || 'Lỗi server'));
     } finally {
-      setSubmitting(false);
+      setSubmittingDelete(false);
     }
   };
 
@@ -213,22 +166,21 @@ export default function AdminGiaiDauPage() {
                     <i className="bi bi-trophy-fill fs-4"></i>
                   </div>
                   <div>
-                    <h4 className="fw-bold mb-0 text-dark">Quản lý Giải đấu (GiaiDau)</h4>
+                    <h4 className="fw-bold mb-0 text-dark">Quản lý Giải đấu </h4>
                     <p className="text-muted small mb-0">
-                      Danh mục giải đấu thể thao theo sơ đồ CSDL mới ({totalCount} giải đấu)
+                      Danh mục giải đấu thể thao, điều lệ &amp; các môn thi đấu ({totalCount} giải đấu)
                     </p>
                   </div>
                 </div>
               </div>
               {canCreate && (
                 <div>
-                  <Button
-                    color="primary"
-                    onClick={handleOpenCreateModal}
-                    className="px-3 py-2 fw-semibold rounded-3 d-inline-flex align-items-center gap-2 shadow-sm"
+                  <Link
+                    href="/admin/giai-dau/create"
+                    className="btn btn-primary px-3 py-2 fw-semibold rounded-3 d-inline-flex align-items-center gap-2 shadow-sm"
                   >
                     <i className="bi bi-plus-lg"></i> Thêm giải đấu mới
-                  </Button>
+                  </Link>
                 </div>
               )}
             </div>
@@ -255,6 +207,21 @@ export default function AdminGiaiDauPage() {
                     <Input
                       type="select"
                       className="bg-white border rounded-3 shadow-none"
+                      value={phamViFilter}
+                      onChange={(e) => {
+                        setPhamViFilter(e.target.value);
+                        setPageIndex(1);
+                      }}
+                    >
+                      <option value="">-- Tất cả phạm vi --</option>
+                      <option value={PhamViGiaiDau.TatCa}>{PhamViGiaiDauLabels[PhamViGiaiDau.TatCa]}</option>
+                      <option value={PhamViGiaiDau.TheoKhoi}>{PhamViGiaiDauLabels[PhamViGiaiDau.TheoKhoi]}</option>
+                    </Input>
+                  </Col>
+                  <Col md={3} lg={3}>
+                    <Input
+                      type="select"
+                      className="bg-white border rounded-3 shadow-none"
                       value={trangThaiFilter}
                       onChange={(e) => {
                         setTrangThaiFilter(e.target.value);
@@ -269,22 +236,7 @@ export default function AdminGiaiDauPage() {
                       <option value={TrangThaiGiaiDau.Huy}>{TrangThaiGiaiDauLabels[TrangThaiGiaiDau.Huy]}</option>
                     </Input>
                   </Col>
-                  <Col md={2} lg={3}>
-                    <Input
-                      type="select"
-                      className="bg-white border rounded-3 shadow-none"
-                      value={phamViFilter}
-                      onChange={(e) => {
-                        setPhamViFilter(e.target.value);
-                        setPageIndex(1);
-                      }}
-                    >
-                      <option value="">-- Tất cả phạm vi --</option>
-                      <option value={PhamViGiaiDau.TatCa}>{PhamViGiaiDauLabels[PhamViGiaiDau.TatCa]}</option>
-                      <option value={PhamViGiaiDau.TheoKhoi}>{PhamViGiaiDauLabels[PhamViGiaiDau.TheoKhoi]}</option>
-                    </Input>
-                  </Col>
-                  <Col md={2} lg={2}>
+                  <Col md={1} lg={2}>
                     <Button color="dark" type="submit" className="w-100 rounded-3">
                       Tìm kiếm
                     </Button>
@@ -293,7 +245,7 @@ export default function AdminGiaiDauPage() {
               </div>
             </Form>
 
-            {/* Thông báo lỗi nếu có */}
+            {/* Thông báo lỗi */}
             {error && (
               <div className="alert alert-danger d-flex align-items-center mb-4" role="alert">
                 <i className="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
@@ -339,8 +291,51 @@ export default function AdminGiaiDauPage() {
                           </span>
                         </td>
                         <td>
-                          <div className="fw-semibold text-dark">{item.ten}</div>
-                          {item.moTa && (
+                          <div className="d-flex align-items-center gap-2.5">
+                            {item.hinhAnh ? (
+                              <div
+                                className="rounded-2 overflow-hidden border flex-shrink-0"
+                                style={{ width: '48px', height: '36px', backgroundColor: '#f8f9fa' }}
+                              >
+                                <img
+                                  src={
+                                    item.hinhAnh.startsWith('http')
+                                      ? item.hinhAnh
+                                      : `${process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7085'}${item.hinhAnh}`
+                                  }
+                                  alt={item.ten}
+                                  className="w-100 h-100 object-fit-cover"
+                                />
+                              </div>
+                            ) : (
+                              <div
+                                className="rounded-2 border flex-shrink-0 d-flex align-items-center justify-content-center bg-light text-muted"
+                                style={{ width: '48px', height: '36px' }}
+                              >
+                                <i className="bi bi-image" style={{ fontSize: '14px' }}></i>
+                              </div>
+                            )}
+                            <div>
+                              <div className="fw-semibold text-dark">{item.ten}</div>
+                              {item.slug && (
+                                <div className="mt-0.5">
+                                  <Link
+                                    href={`/giai-dau/${item.slug}`}
+                                    target="_blank"
+                                    className="text-decoration-none small d-inline-flex align-items-center gap-1 text-primary"
+                                    title="Xem trang giải đấu chuẩn SEO"
+                                  >
+                                    <i className="bi bi-link-45deg"></i>
+                                    <span className="font-monospace text-muted" style={{ fontSize: '11px' }}>
+                                      /giai-dau/{item.slug}
+                                    </span>
+                                    <i className="bi bi-box-arrow-up-right" style={{ fontSize: '10px' }}></i>
+                                  </Link>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {item.moTa && !item.slug && (
                             <small className="text-muted text-truncate d-block" style={{ maxWidth: '280px' }}>
                               {item.moTa}
                             </small>
@@ -379,15 +374,13 @@ export default function AdminGiaiDauPage() {
                         <td className="text-end">
                           <div className="d-flex justify-content-end gap-1">
                             {canEdit && (
-                              <Button
-                                size="sm"
-                                color="light"
-                                className="btn-icon text-primary"
+                              <Link
+                                href={`/admin/giai-dau/${item.id}`}
+                                className="btn btn-sm btn-light btn-icon text-primary d-inline-flex align-items-center justify-content-center"
                                 title="Chỉnh sửa giải đấu"
-                                onClick={() => handleOpenEditModal(item)}
                               >
                                 <i className="bi bi-pencil-square"></i>
-                              </Button>
+                              </Link>
                             )}
                             {canDelete && (
                               <Button
@@ -395,7 +388,7 @@ export default function AdminGiaiDauPage() {
                                 color="light"
                                 className="btn-icon text-danger"
                                 title="Xóa giải đấu"
-                                onClick={() => handleDelete(item.id)}
+                                onClick={() => handleOpenDeleteModal(item)}
                               >
                                 <i className="bi bi-trash"></i>
                               </Button>
@@ -427,168 +420,57 @@ export default function AdminGiaiDauPage() {
             )}
           </CardBody>
         </Card>
-      </Col>
 
-      {/* Modal Thêm/Sửa Giải Đấu */}
-      <Modal isOpen={modalOpen} toggle={() => setModalOpen(!modalOpen)} size="lg" centered>
-        <ModalHeader toggle={() => setModalOpen(!modalOpen)} className="border-bottom">
-          <div className="d-flex align-items-center gap-2">
-            <i className={`bi ${editingId ? 'bi-pencil-square text-primary' : 'bi-plus-circle-fill text-success'}`}></i>
-            <span className="fw-bold">{editingId ? 'Cập Nhật Giải Đấu' : 'Thêm Giải Đấu Mới'}</span>
-          </div>
-        </ModalHeader>
-        <Form onSubmit={handleSubmitForm}>
-          <ModalBody className="p-4">
-            <Row className="g-3">
-              <Col md={4}>
-                <FormGroup>
-                  <Label className="fw-semibold small">
-                    Mã giải đấu <span className="text-danger">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    required
-                    placeholder="VD: GD_2026_01"
-                    value={formData.ma}
-                    onChange={(e) => setFormData({ ...formData, ma: e.target.value })}
-                  />
-                </FormGroup>
-              </Col>
-              <Col md={8}>
-                <FormGroup>
-                  <Label className="fw-semibold small">
-                    Tên giải đấu <span className="text-danger">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    required
-                    placeholder="VD: Hội khỏe Phù Đổng Toàn Tỉnh 2026"
-                    value={formData.ten}
-                    onChange={(e) => setFormData({ ...formData, ten: e.target.value })}
-                  />
-                </FormGroup>
-              </Col>
-
-              <Col md={6}>
-                <FormGroup>
-                  <Label className="fw-semibold small">
-                    Ngày bắt đầu <span className="text-danger">*</span>
-                  </Label>
-                  <Input
-                    type="date"
-                    required
-                    value={formData.ngayBatDau}
-                    onChange={(e) => setFormData({ ...formData, ngayBatDau: e.target.value })}
-                  />
-                </FormGroup>
-              </Col>
-              <Col md={6}>
-                <FormGroup>
-                  <Label className="fw-semibold small">
-                    Ngày kết thúc <span className="text-danger">*</span>
-                  </Label>
-                  <Input
-                    type="date"
-                    required
-                    value={formData.ngayKetThuc}
-                    onChange={(e) => setFormData({ ...formData, ngayKetThuc: e.target.value })}
-                  />
-                </FormGroup>
-              </Col>
-
-              <Col md={6}>
-                <FormGroup>
-                  <Label className="fw-semibold small">Phạm vi tham gia</Label>
-                  <Input
-                    type="select"
-                    value={formData.phamVi}
-                    onChange={(e) => setFormData({ ...formData, phamVi: Number(e.target.value) as PhamViGiaiDau })}
-                  >
-                    <option value={PhamViGiaiDau.TatCa}>{PhamViGiaiDauLabels[PhamViGiaiDau.TatCa]}</option>
-                    <option value={PhamViGiaiDau.TheoKhoi}>{PhamViGiaiDauLabels[PhamViGiaiDau.TheoKhoi]}</option>
-                  </Input>
-                </FormGroup>
-              </Col>
-              <Col md={6}>
-                <FormGroup>
-                  <Label className="fw-semibold small">Trạng thái giải đấu</Label>
-                  <Input
-                    type="select"
-                    value={formData.trangThai}
-                    onChange={(e) => setFormData({ ...formData, trangThai: Number(e.target.value) as TrangThaiGiaiDau })}
-                  >
-                    <option value={TrangThaiGiaiDau.Nhap}>{TrangThaiGiaiDauLabels[TrangThaiGiaiDau.Nhap]}</option>
-                    <option value={TrangThaiGiaiDau.SapDienRa}>{TrangThaiGiaiDauLabels[TrangThaiGiaiDau.SapDienRa]}</option>
-                    <option value={TrangThaiGiaiDau.DangDienRa}>{TrangThaiGiaiDauLabels[TrangThaiGiaiDau.DangDienRa]}</option>
-                    <option value={TrangThaiGiaiDau.KetThuc}>{TrangThaiGiaiDauLabels[TrangThaiGiaiDau.KetThuc]}</option>
-                    <option value={TrangThaiGiaiDau.Huy}>{TrangThaiGiaiDauLabels[TrangThaiGiaiDau.Huy]}</option>
-                  </Input>
-                </FormGroup>
-              </Col>
-
-              {/* Chọn khối nếu phạm vi là TheoKhoi */}
-              {formData.phamVi === PhamViGiaiDau.TheoKhoi && (
-                <Col md={12}>
-                  <FormGroup className="p-3 bg-light rounded-3 border">
-                    <Label className="fw-semibold small mb-2 d-block">
-                      Chọn các Khối được phép tham gia:
-                    </Label>
-                    <div className="d-flex flex-wrap gap-3">
-                      {availableKhois.map((k) => (
-                        <div key={k.id} className="form-check">
-                          <Input
-                            type="checkbox"
-                            id={`khoi_${k.id}`}
-                            checked={(formData.khoiIds || []).includes(k.id)}
-                            onChange={() => handleKhoiToggle(k.id)}
-                          />
-                          <Label check htmlFor={`khoi_${k.id}`} className="small">
-                            {k.ten}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </FormGroup>
-                </Col>
-              )}
-
-              <Col md={12}>
-                <FormGroup>
-                  <Label className="fw-semibold small">Địa điểm tổ chức</Label>
-                  <Input
-                    type="text"
-                    placeholder="VD: Nhà thi đấu Đa năng Tỉnh..."
-                    value={formData.diaDiem}
-                    onChange={(e) => setFormData({ ...formData, diaDiem: e.target.value })}
-                  />
-                </FormGroup>
-              </Col>
-
-              <Col md={12}>
-                <FormGroup>
-                  <Label className="fw-semibold small">Mô tả / Thể lệ giải đấu</Label>
-                  <Input
-                    type="textarea"
-                    rows={3}
-                    placeholder="Nhập ghi chú, điều lệ giải đấu..."
-                    value={formData.moTa}
-                    onChange={(e) => setFormData({ ...formData, moTa: e.target.value })}
-                  />
-                </FormGroup>
-              </Col>
-            </Row>
+        {/* MODAL XÁC NHẬN XÓA GIẢI ĐẤU (GIỐNG TRANG KHỐI) */}
+        <Modal
+          isOpen={deleteModalOpen}
+          toggle={() => setDeleteModalOpen(!deleteModalOpen)}
+          centered
+          size="sm"
+        >
+          <ModalHeader
+            toggle={() => setDeleteModalOpen(!deleteModalOpen)}
+            className="text-danger border-bottom-0 pb-0"
+          >
+            <div className="d-flex align-items-center gap-2">
+              <div className="p-2 bg-danger-subtle text-danger rounded-circle d-inline-flex">
+                <i className="bi bi-exclamation-triangle-fill fs-5"></i>
+              </div>
+              <span className="fw-bold">Xác nhận xóa</span>
+            </div>
+          </ModalHeader>
+          <ModalBody className="py-3">
+            Bạn có chắc chắn muốn xóa giải đấu:
+            <div className="p-2.5 my-2 bg-light rounded-3 border">
+              <div className="fw-bold text-dark">{deletingItem?.ten}</div>
+              <div className="text-muted small font-monospace">Mã giải: #{deletingItem?.ma}</div>
+            </div>
+            <p className="text-muted small mb-0">
+              Hành động này sẽ chuyển trạng thái giải đấu sang đã xóa và ẩn khỏi hệ thống.
+            </p>
           </ModalBody>
-          <ModalFooter className="border-top">
-            <Button color="light" onClick={() => setModalOpen(false)} disabled={submitting}>
-              Hủy
+          <ModalFooter className="border-top-0 pt-0">
+            <Button
+              color="secondary"
+              outline
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={submittingDelete}
+              className="rounded-3 px-3"
+            >
+              Hủy bỏ
             </Button>
-            <Button color="primary" type="submit" disabled={submitting} className="d-inline-flex align-items-center gap-2">
-              {submitting && <Spinner size="sm" />}
-              {editingId ? 'Cập nhật' : 'Tạo giải đấu'}
+            <Button
+              color="danger"
+              onClick={handleConfirmDelete}
+              disabled={submittingDelete}
+              className="rounded-3 px-3 fw-semibold d-inline-flex align-items-center gap-1.5"
+            >
+              {submittingDelete ? <Spinner size="sm" /> : <i className="bi bi-trash-fill"></i>}
+              Đồng Ý Xóa
             </Button>
           </ModalFooter>
-        </Form>
-      </Modal>
+        </Modal>
+      </Col>
     </Row>
   );
 }

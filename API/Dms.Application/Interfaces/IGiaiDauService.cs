@@ -11,6 +11,7 @@ namespace Dms.Application.Interfaces
         Task<PagedResult<GiaiDauDto>> GetPagedAsync(int pageIndex, int pageSize, string? keyword = null, TrangThaiGiaiDau? trangThai = null, PhamViGiaiDau? phamVi = null);
         Task<IEnumerable<GiaiDauDto>> GetAllAsync();
         Task<GiaiDauDto?> GetByIdAsync(int id);
+        Task<GiaiDauDto?> GetBySlugAsync(string slug);
         Task<GiaiDauDto> CreateAsync(CreateUpdateGiaiDauDto dto, string? createdBy = null);
         Task<GiaiDauDto?> UpdateAsync(int id, CreateUpdateGiaiDauDto dto, string? updatedBy = null);
         Task<bool> DeleteAsync(int id);

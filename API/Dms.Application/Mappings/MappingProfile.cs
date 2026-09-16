@@ -27,9 +27,14 @@ namespace Dms.Application.Mappings
             #endregion
 
             #region Vietnamese Sport Mappings
-            // GiaiDau
+            // GiaiDau & DieuLe
+            CreateMap<DieuLeGiaiDau, DieuLeGiaiDauDto>();
+            CreateMap<CreateUpdateDieuLeGiaiDauDto, DieuLeGiaiDau>();
+
             CreateMap<GiaiDau, GiaiDauDto>()
-                .ForMember(dest => dest.KhoiIds, opt => opt.MapFrom(src => src.GiaiDauKhois.Select(k => k.KhoiId).ToList()));
+                .ForMember(dest => dest.KhoiIds, opt => opt.MapFrom(src => src.GiaiDauKhois.Select(k => k.KhoiId).ToList()))
+                .ForMember(dest => dest.MonTheThaoIds, opt => opt.MapFrom(src => src.GiaiDauMonTheThaos.Select(m => m.MonTheThaoId).ToList()))
+                .ForMember(dest => dest.DieuLeGiaiDaus, opt => opt.MapFrom(src => src.DieuLeGiaiDaus.Where(d => d.IsDeleted != true).OrderBy(d => d.ThuTu).ToList()));
             CreateMap<CreateUpdateGiaiDauDto, GiaiDau>();
 
             // Khoi
@@ -59,6 +64,10 @@ namespace Dms.Application.Mappings
             CreateMap<TrongTai, TrongTaiDto>();
             CreateMap<CreateUpdateTrongTaiDto, TrongTai>();
 
+            // ThuKy
+            CreateMap<ThuKy, ThuKyDto>();
+            CreateMap<CreateUpdateThuKyDto, ThuKy>();
+
             // CumSan
             CreateMap<CumSan, CumSanDto>()
                 .ForMember(dest => dest.SoSanHienCo, opt => opt.MapFrom(src => src.SanDaus.Count(s => s.IsDeleted != true)));
@@ -73,6 +82,17 @@ namespace Dms.Application.Mappings
             CreateMap<LoaiHuyChuong, LoaiHuyChuongDto>()
                 .ForMember(dest => dest.SoLuongDaTrao, opt => opt.MapFrom(src => src.HuyChuongs.Count(h => h.IsDeleted != true)));
             CreateMap<CreateUpdateLoaiHuyChuongDto, LoaiHuyChuong>();
+
+            // VanDongVien
+            CreateMap<VanDongVien, VanDongVienDto>()
+                .ForMember(dest => dest.TenDonVi, opt => opt.MapFrom(src => src.DonVi != null ? src.DonVi.Ten : null));
+            CreateMap<CreateUpdateVanDongVienDto, VanDongVien>();
+
+            // Doi
+            CreateMap<Doi, DoiDto>()
+                .ForMember(dest => dest.TenDonVi, opt => opt.MapFrom(src => src.DonVi != null ? src.DonVi.Ten : null))
+                .ForMember(dest => dest.SoThanhVien, opt => opt.MapFrom(src => src.ThanhVienDois.Count(tv => tv.IsDeleted != true)));
+            CreateMap<CreateUpdateDoiDto, Doi>();
             #endregion
         }
     }

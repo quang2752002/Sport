@@ -99,6 +99,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 // Sử dụng CORS policy trước khi map controllers và authorization
 app.UseCors("CorsPolicy");

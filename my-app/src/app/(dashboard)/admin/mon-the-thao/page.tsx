@@ -216,7 +216,7 @@ export default function AdminMonTheThaoPage() {
                     <i className="bi bi-dribbble fs-4"></i>
                   </div>
                   <div>
-                    <h4 className="fw-bold mb-0 text-dark">Quản lý Môn Thể Thao (MonTheThao)</h4>
+                    <h4 className="fw-bold mb-0 text-dark">Quản lý Môn Thể Thao </h4>
                     <p className="text-muted small mb-0">
                       Danh sách các môn thi đấu, hình thức cá nhân / đồng đội, danh mục phân loại ({totalCount} môn)
                     </p>

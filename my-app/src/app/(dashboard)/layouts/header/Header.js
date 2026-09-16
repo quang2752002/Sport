@@ -15,7 +15,7 @@ import {
   Button,
 } from "reactstrap";
 
-const Header = ({ showMobmenu }) => {
+const Header = ({ showMobmenu, isCollapsed, toggleCollapse }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
 
@@ -27,6 +27,17 @@ const Header = ({ showMobmenu }) => {
   return (
     <Navbar color="primary" dark expand="md">
       <div className="d-flex align-items-center">
+        {/* Nút thu gọn/mở rộng sidebar trên desktop */}
+        <Button
+          color="primary"
+          className="d-none d-lg-inline-flex align-items-center justify-content-center me-3 border-0 bg-transparent"
+          onClick={toggleCollapse}
+          title={isCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
+          style={{ width: "38px", height: "38px" }}
+        >
+          <i className={`bi ${isCollapsed ? 'bi-text-indent-left' : 'bi-text-indent-right'} fs-4 text-white`}></i>
+        </Button>
+
         <NavbarBrand href="/" className="d-lg-none">
           <Image src="/images/logos/logo.png" alt="logo" width={150} height={40} />
         </NavbarBrand>

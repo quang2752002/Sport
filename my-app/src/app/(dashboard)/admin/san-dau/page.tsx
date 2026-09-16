@@ -183,7 +183,7 @@ function AdminSanDauContent() {
                     <i className="bi bi-grid-3x3-gap-fill fs-4"></i>
                   </div>
                   <div>
-                    <h4 className="fw-bold mb-0 text-dark">Quản lý Sân Đấu (SanDau)</h4>
+                    <h4 className="fw-bold mb-0 text-dark">Quản lý Sân Đấu </h4>
                     <p className="text-muted small mb-0">
                       Danh mục các sân đấu cụ thể thuộc từng cụm sân ({totalCount} sân đấu)
                     </p>

@@ -1,131 +1,191 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '../../../context/AuthContext';
-import { Users, UserCheck, Shield, CheckCircle, Clock } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { Users, UserCheck, ShieldCheck, CheckCircle2, Clock, Calendar } from 'lucide-react';
+import { Row, Col, Card, CardBody, Badge, Button, Input, Form, FormGroup, Label, Table } from 'reactstrap';
 
 export default function RefereesPage() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const [mainRef, setMainRef] = useState('Trần Trọng Tài FIFA 1');
   const [assistantRef, setAssistantRef] = useState('Nguyễn Trợ Lý 1');
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
 
   const handleSaveAssignment = (e: React.FormEvent) => {
     e.preventDefault();
-    setSavedNotice(`Đã phân công [${mainRef}] (Chính) và [${assistantRef}] (Phụ) cho trận Bán Kết 1!`);
+    setSavedNotice(`Đã phân công [${mainRef}] (Chính) và [${assistantRef}] (Phụ) cho trận Bán Kết 1 thành công!`);
+    setTimeout(() => setSavedNotice(null), 4000);
   };
 
   return (
-    <div className="p-6 md:p-10 space-y-6 max-w-6xl">
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-          <Users className="w-6 h-6" />
+    <div className="d-flex flex-column gap-4">
+      {/* Banner Trọng Tài */}
+      <div
+        className="rounded-4 p-4 p-md-5 text-white position-relative overflow-hidden shadow-sm"
+        style={{
+          background: 'linear-gradient(135deg, #047857 0%, #0f766e 50%, #0f172a 100%)',
+        }}
+      >
+        <div
+          className="position-absolute end-0 top-0 bottom-0 d-none d-md-flex align-items-center justify-content-end pe-5 opacity-10"
+          style={{ pointerEvents: 'none' }}
+        >
+          <Calendar size={240} />
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-white">Trưởng Ban Trọng Tài</h1>
-          <p className="text-xs text-slate-400">
-            Phân công trọng tài chính, trọng tài phụ cho từng môn và từng trận đấu cụ thể; giám sát tiến độ thi đấu.
+
+        <div className="position-relative" style={{ zIndex: 2 }}>
+          <div
+            className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-3 border"
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', borderColor: 'rgba(255, 255, 255, 0.2)', fontSize: '12px' }}
+          >
+            <ShieldCheck size={15} className="text-warning" />
+            <span className="fw-semibold text-white">Nhiệm Vụ Điều Hành Trận Đấu</span>
+          </div>
+
+          <h2 className="fw-bold mb-2 fs-3 fs-md-2">
+            Phân Hệ Trọng Tài Điều Hành Giải Đấu
+          </h2>
+          <p className="text-white-50 mb-0 small" style={{ maxWidth: '680px', lineHeight: 1.6 }}>
+            Xem lịch phân công trọng tài các trận đấu cụ thể, ghi nhận diễn biến tỷ số, thẻ phạt và ký xác nhận biên bản thi đấu sau mỗi lượt trận.
           </p>
         </div>
       </div>
 
       {savedNotice && (
-        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/50 text-xs text-emerald-300 flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{savedNotice}</span>
+        <div className="alert alert-success rounded-4 d-flex align-items-center justify-content-between mb-0 shadow-sm border-0 py-3">
+          <div className="d-flex align-items-center gap-2">
+            <CheckCircle2 size={18} className="text-success" />
+            <span className="fw-medium text-success-emphasis">{savedNotice}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSavedNotice(null)}
+            className="btn-close"
+            style={{ fontSize: '10px' }}
+          />
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Form phân công */}
-        <div className="lg:col-span-2 p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <h2 className="text-sm font-bold text-white">Phân Công Trọng Tài Trận Đấu Cụ Thể</h2>
-            <span className="text-[11px] text-emerald-400 flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" /> Trận Bán Kết 1 - 15:30 Hôm nay
-            </span>
-          </div>
+      <Row className="g-4">
+        {/* Form phân công trọng tài */}
+        <Col lg={7}>
+          <Card className="border-0 shadow-sm rounded-4">
+            <CardBody className="p-4">
+              <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+                <div>
+                  <h6 className="fw-bold text-dark mb-1">Phân Công & Xác Nhận Trọng Tài</h6>
+                  <small className="text-muted" style={{ fontSize: '12px' }}>
+                    Trận Bán Kết 1 - 15:30 Hôm nay
+                  </small>
+                </div>
+                <Badge color="info" pill className="px-2.5 py-1">
+                  <Clock size={12} className="me-1" />
+                  Sắp diễn ra
+                </Badge>
+              </div>
 
-          <form onSubmit={handleSaveAssignment} className="space-y-4 text-xs">
-            <div>
-              <label className="block font-medium text-slate-300 mb-1.5">Môn thi đấu & Trận:</label>
-              <input
-                type="text"
-                disabled
-                value="Bóng đá nam 11 người - Trận: Sở GD-ĐT vs Sở VH-TT (Sân số 1)"
-                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-400"
-              />
-            </div>
+              <Form onSubmit={handleSaveAssignment} className="d-flex flex-column gap-3">
+                <FormGroup className="mb-0">
+                  <Label className="fw-semibold text-dark small mb-1">Môn thi đấu & Trận</Label>
+                  <Input
+                    disabled
+                    className="rounded-3 py-2 text-sm bg-light text-muted"
+                    value="Bóng đá nam 7 người - Trận: Đoàn Sở GD-ĐT vs Đoàn Sở VH-TT (Sân số 1)"
+                  />
+                </FormGroup>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block font-medium text-slate-300 mb-1.5">Trọng tài chính:</label>
-                <select
-                  value={mainRef}
-                  onChange={(e) => setMainRef(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                <Row className="g-3">
+                  <Col sm={6}>
+                    <FormGroup className="mb-0">
+                      <Label className="fw-semibold text-dark small mb-1">Trọng tài chính *</Label>
+                      <Input
+                        type="select"
+                        className="rounded-3 py-2 text-sm"
+                        value={mainRef}
+                        onChange={(e) => setMainRef(e.target.value)}
+                      >
+                        <option value="Trần Trọng Tài FIFA 1">Trần Trọng Tài FIFA 1 (Quốc Gia)</option>
+                        <option value="Lê Văn Trọng Tài">Lê Văn Trọng Tài (Cấp tỉnh)</option>
+                        <option value="Phạm Quốc Anh">Phạm Quốc Anh (Cấp tỉnh)</option>
+                      </Input>
+                    </FormGroup>
+                  </Col>
+
+                  <Col sm={6}>
+                    <FormGroup className="mb-0">
+                      <Label className="fw-semibold text-dark small mb-1">Trợ lý trọng tài *</Label>
+                      <Input
+                        type="select"
+                        className="rounded-3 py-2 text-sm"
+                        value={assistantRef}
+                        onChange={(e) => setAssistantRef(e.target.value)}
+                      >
+                        <option value="Nguyễn Trợ Lý 1">Nguyễn Trợ Lý 1 (Trợ lý biên)</option>
+                        <option value="Hoàng Trợ Lý 2">Hoàng Trợ Lý 2 (Trợ lý biên)</option>
+                        <option value="Vũ Bàn Trọng Tài">Vũ Bàn Trọng Tài (Bàn)</option>
+                      </Input>
+                    </FormGroup>
+                  </Col>
+                </Row>
+
+                <Button
+                  type="submit"
+                  color="success"
+                  className="w-100 py-2.5 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 mt-2"
                 >
-                  <option value="Trần Trọng Tài FIFA 1">Trần Trọng Tài FIFA 1 (Cấp Quốc Gia)</option>
-                  <option value="Lê Văn Trọng Tài">Lê Văn Trọng Tài (Trọng tài cấp tỉnh)</option>
-                  <option value="Phạm Quốc Anh">Phạm Quốc Anh (Trọng tài cấp tỉnh)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-300 mb-1.5">Trọng tài phụ (Trợ lý biên):</label>
-                <select
-                  value={assistantRef}
-                  onChange={(e) => setAssistantRef(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="Nguyễn Trợ Lý 1">Nguyễn Trợ Lý 1 (Trợ lý trọng tài)</option>
-                  <option value="Hoàng Trợ Lý 2">Hoàng Trợ Lý 2 (Trợ lý trọng tài)</option>
-                  <option value="Vũ Bàn Trọng Tài">Vũ Bàn Trọng Tài (Trọng tài thứ 4)</option>
-                </select>
-              </div>
-            </div>
-
-            {hasPermission('Permissions.Referees.Assign') ? (
-              <button
-                type="submit"
-                className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition cursor-pointer flex items-center gap-2"
-              >
-                <UserCheck className="w-4 h-4" />
-                <span>Lưu Phân Công Trọng Tài</span>
-              </button>
-            ) : (
-              <div className="p-3 bg-slate-950 rounded-xl text-slate-500">
-                Chỉ Trưởng ban trọng tài mới có quyền phân công.
-              </div>
-            )}
-          </form>
-        </div>
+                  <UserCheck size={16} />
+                  <span>Lưu Phân Công Điều Hành</span>
+                </Button>
+              </Form>
+            </CardBody>
+          </Card>
+        </Col>
 
         {/* Giám sát tiến độ */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-          <h3 className="text-sm font-bold text-white">Giám Sát Tiến Độ Thi Đấu</h3>
-          <p className="text-xs text-slate-400">
-            Theo dõi phân công và trạng thái các trận đấu trên các sân:
-          </p>
-          <div className="space-y-3 text-xs">
-            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
-              <div className="flex justify-between font-semibold text-white mb-1">
-                <span>Cầu Lông Đơn Nam</span>
-                <span className="text-emerald-400">Đã đủ trọng tài</span>
-              </div>
-              <p className="text-slate-400 text-[11px]">Sân thi đấu số 2 - TT: Lê Văn B</p>
-            </div>
+        <Col lg={5}>
+          <Card className="border-0 shadow-sm rounded-4">
+            <CardBody className="p-4">
+              <h6 className="fw-bold text-dark mb-1">Giám Sát Sân Đấu</h6>
+              <small className="text-muted d-block mb-3" style={{ fontSize: '12px' }}>
+                Tiến độ bố trí trọng tài theo từng địa điểm thi đấu
+              </small>
 
-            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
-              <div className="flex justify-between font-semibold text-white mb-1">
-                <span>Bóng Chuyền Nữ</span>
-                <span className="text-amber-400">Cần phân công phụ</span>
+              <div className="d-flex flex-column gap-2.5">
+                <div className="p-3 rounded-3 border bg-light">
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>Cầu Lông Đơn Nam</span>
+                    <Badge color="success" pill>Đã đủ trọng tài</Badge>
+                  </div>
+                  <small className="text-muted d-block" style={{ fontSize: '11px' }}>
+                    Sân số 2 - Nhà thi đấu A • TT: Lê Văn B
+                  </small>
+                </div>
+
+                <div className="p-3 rounded-3 border bg-light">
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>Bóng Chuyền Nữ</span>
+                    <Badge color="warning" pill className="text-dark">Cần thêm trợ lý</Badge>
+                  </div>
+                  <small className="text-muted d-block" style={{ fontSize: '11px' }}>
+                    Sân đa năng • TT chính: Phạm Quốc Anh
+                  </small>
+                </div>
+
+                <div className="p-3 rounded-3 border bg-light">
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <span className="fw-bold text-dark" style={{ fontSize: '13px' }}>Pickleball Đôi Nam</span>
+                    <Badge color="info" pill>Đang thi đấu (Sân 3)</Badge>
+                  </div>
+                  <small className="text-muted d-block" style={{ fontSize: '11px' }}>
+                    Cụm sân Pickleball Hưng Yên • TT: Trần Văn C
+                  </small>
+                </div>
               </div>
-              <p className="text-slate-400 text-[11px]">Sân nhà thi đấu đa năng</p>
-            </div>
-          </div>
-        </div>
-      </div>
+            </CardBody>
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 }
+

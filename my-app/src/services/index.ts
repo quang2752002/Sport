@@ -7,3 +7,6 @@ export * from './monTheThaoService';
 export * from './trongTaiService';
 export * from './cumSanService';
 export * from './sanDauService';
+export * from './thuKyService';
+export * from './vanDongVienService';
+export * from './dangKyThiDauService';

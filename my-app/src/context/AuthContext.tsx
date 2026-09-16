@@ -39,29 +39,43 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Hàm giải mã trực tiếp từ chuỗi Access Token JWT
 function parseUserFromToken(token: string): User | null {
   try {
-    const decoded = jwtDecode<JwtPayload>(token);
+    const rawDecoded = jwtDecode<Record<string, any>>(token);
 
-    // Chuẩn hóa roles từ jwt
+    // Chuẩn hóa roles từ jwt (hỗ trợ cả claim 'role' thông thường và claim URI của .NET Identity)
+    const rawRole =
+      rawDecoded['role'] ||
+      rawDecoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
+      rawDecoded['roles'];
+
     const roles: string[] = [];
-    if (decoded.role) {
-      if (Array.isArray(decoded.role)) roles.push(...decoded.role);
-      else roles.push(decoded.role);
+    if (rawRole) {
+      if (Array.isArray(rawRole)) roles.push(...rawRole.map(String));
+      else roles.push(String(rawRole));
     }
 
     // Chuẩn hóa permissions từ jwt
+    const rawPerms = rawDecoded['permission'] || rawDecoded['permissions'];
     const permissions: string[] = [];
-    if (decoded.permission) {
-      if (Array.isArray(decoded.permission)) permissions.push(...decoded.permission);
-      else permissions.push(decoded.permission);
+    if (rawPerms) {
+      if (Array.isArray(rawPerms)) permissions.push(...rawPerms.map(String));
+      else permissions.push(String(rawPerms));
     }
 
-    const userId = Number(decoded.sub || decoded.nameid || 0);
+    const userId = Number(
+      rawDecoded.sub ||
+      rawDecoded.nameid ||
+      rawDecoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
+      0
+    );
 
     return {
       id: userId,
-      username: decoded.username || '',
-      fullName: decoded.fullName || '',
-      email: decoded.email || '',
+      username:
+        rawDecoded.username ||
+        rawDecoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ||
+        '',
+      fullName: rawDecoded.fullName || '',
+      email: rawDecoded.email || '',
       roles,
       permissions,
     };
@@ -103,7 +117,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const handleUnauthorized = () => {
       setUser(null);
-      router.push('/login');
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname;
+        const isPublicRoute = path === '/' || path.startsWith('/login') || path.startsWith('/giai-dau');
+        if (!isPublicRoute) {
+          router.push('/login');
+        }
+      }
     };
 
     window.addEventListener('auth:unauthorized', handleUnauthorized);
@@ -145,7 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await api.post('/api/auth/logout').catch(() => {});
+      await api.post('/api/auth/logout').catch(() => { });
     } finally {
       tokenStorage.clearTokens();
       setUser(null);
@@ -188,7 +208,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loadPermissionTree,
       }}
     >
-      {children}
+      <ToastProvider>
+        {children}
+      </ToastProvider>
     </AuthContext.Provider>
   );
 }
@@ -197,6 +219,157 @@ export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+
+// ==================== TOAST POPUP NOTIFICATION SYSTEM ====================
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+export interface ToastItem {
+  id: string;
+  type: ToastType;
+  title?: string;
+  message: string;
+  duration?: number;
+}
+
+interface ToastContextType {
+  toast: (message: string, type?: ToastType, title?: string, duration?: number) => void;
+  success: (message: string, title?: string) => void;
+  error: (message: string, title?: string) => void;
+  warning: (message: string, title?: string) => void;
+  info: (message: string, title?: string) => void;
+}
+
+const ToastContext = createContext<ToastContextType | undefined>(undefined);
+
+export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const toast = useCallback(
+    (message: string, type: ToastType = 'info', title?: string, duration = 3800) => {
+      const id = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const newToast: ToastItem = { id, type, title, message, duration };
+
+      setToasts((prev) => [...prev, newToast]);
+
+      if (duration > 0) {
+        setTimeout(() => {
+          removeToast(id);
+        }, duration);
+      }
+    },
+    [removeToast]
+  );
+
+  const success = useCallback(
+    (message: string, title: string = 'Thành công') => toast(message, 'success', title),
+    [toast]
+  );
+  const error = useCallback(
+    (message: string, title: string = 'Lỗi bắt buộc') => toast(message, 'error', title, 4500),
+    [toast]
+  );
+  const warning = useCallback(
+    (message: string, title: string = 'Cảnh báo') => toast(message, 'warning', title),
+    [toast]
+  );
+  const info = useCallback(
+    (message: string, title: string = 'Thông báo') => toast(message, 'info', title),
+    [toast]
+  );
+
+  return (
+    <ToastContext.Provider value={{ toast, success, error, warning, info }}>
+      {children}
+      {/* Toast Popup Container - Nổi góc trên bên phải */}
+      <div
+        className="toast-container position-fixed top-0 end-0 p-3"
+        style={{ zIndex: 999999, pointerEvents: 'none' }}
+      >
+        {toasts.map((t) => {
+          const bgStyle = {
+            success: { bg: '#ffffff', border: '#bbf7d0', iconBg: '#dcfce7', iconColor: '#16a34a', barBg: '#16a34a' },
+            error: { bg: '#ffffff', border: '#fecaca', iconBg: '#fee2e2', iconColor: '#dc2626', barBg: '#dc2626' },
+            warning: { bg: '#ffffff', border: '#fef08a', iconBg: '#fef9c3', iconColor: '#ca8a04', barBg: '#ca8a04' },
+            info: { bg: '#ffffff', border: '#bfdbfe', iconBg: '#dbeafe', iconColor: '#2563eb', barBg: '#2563eb' },
+          }[t.type];
+
+          const iconClass = {
+            success: 'bi-check-circle-fill',
+            error: 'bi-exclamation-octagon-fill',
+            warning: 'bi-exclamation-triangle-fill',
+            info: 'bi-info-circle-fill',
+          }[t.type];
+
+          return (
+            <div
+              key={t.id}
+              className="toast show border shadow-lg rounded-4 mb-3 overflow-hidden position-relative"
+              role="alert"
+              aria-live="assertive"
+              aria-atomic="true"
+              style={{
+                pointerEvents: 'auto',
+                minWidth: '320px',
+                maxWidth: '420px',
+                backgroundColor: bgStyle.bg,
+                borderColor: bgStyle.border,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {/* Top Accent Color Line */}
+              <div style={{ height: '4px', backgroundColor: bgStyle.barBg }} />
+              
+              <div className="d-flex align-items-start p-3">
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    backgroundColor: bgStyle.iconBg,
+                    color: bgStyle.iconColor,
+                  }}
+                >
+                  <i className={`bi ${iconClass} fs-5`}></i>
+                </div>
+
+                <div className="flex-grow-1">
+                  {t.title && (
+                    <div className="fw-bold small text-dark mb-0.5" style={{ fontSize: '0.9rem' }}>
+                      {t.title}
+                    </div>
+                  )}
+                  <div className="small text-secondary" style={{ lineHeight: '1.45', fontSize: '0.83rem' }}>
+                    {t.message}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn-close ms-2 mt-0.5"
+                  style={{ fontSize: '0.75rem' }}
+                  onClick={() => removeToast(t.id)}
+                  aria-label="Close"
+                ></button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </ToastContext.Provider>
+  );
+}
+
+export function useToast() {
+  const context = useContext(ToastContext);
+  if (!context) {
+    throw new Error('useToast must be used within an AuthProvider/ToastProvider');
   }
   return context;
 }

@@ -1,4 +1,5 @@
 using Dms.Domain.Common;
+using Dms.Domain.Enums;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -25,8 +26,11 @@ namespace Dms.Domain.Entities
 
         public bool LaMonDongDoi { get; set; } = false;
 
+        public HinhThucThiDau HinhThucThiDau { get; set; } = HinhThucThiDau.LoaiTrucTiep;
+
         public bool TrangThai { get; set; } = true;
 
         public virtual ICollection<GiaiDauMonTheThao> GiaiDauMonTheThaos { get; set; } = new List<GiaiDauMonTheThao>();
+        public virtual ICollection<DieuLeMonTheThao> DieuLeMonTheThaos { get; set; } = new List<DieuLeMonTheThao>();
     }
 }

@@ -33,36 +33,109 @@ export default function AdminDashboardPage() {
   }, []);
 
   return (
-    <div className="container-fluid p-0">
-      {/* Tiêu đề */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h3 className="fw-bold mb-1">Bảng điều khiển Quản trị (Admin Overview)</h3>
-          <p className="text-muted mb-0">Hệ thống quản trị giải đấu thể thao, kết quả thi đấu và dữ liệu theo thời gian thực.</p>
+    <div className="d-flex flex-column gap-4">
+      {/* Banner Chào mừng Quản trị viên */}
+      <div
+        className="rounded-4 p-4 p-md-5 text-white position-relative overflow-hidden shadow-sm"
+        style={{
+          background: 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 50%, #0f172a 100%)',
+        }}
+      >
+        <div
+          className="position-absolute end-0 top-0 bottom-0 d-none d-md-flex align-items-center justify-content-end pe-5 opacity-10"
+          style={{ pointerEvents: 'none' }}
+        >
+          <i className="bi bi-shield-shaded" style={{ fontSize: '240px' }}></i>
         </div>
-        <div>
-          <Link href="/admin/giai-dau" className="btn btn-primary d-inline-flex align-items-center gap-1">
-            <i className="bi bi-trophy-fill"></i> Quản lý Giải đấu
-          </Link>
+
+        <div className="position-relative" style={{ zIndex: 2 }}>
+          <div
+            className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-3 border"
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', borderColor: 'rgba(255, 255, 255, 0.2)', fontSize: '12px' }}
+          >
+            <i className="bi bi-shield-check text-warning"></i>
+            <span className="fw-semibold text-white">Bảng Điều Khiển Trung Tâm Hệ Thống</span>
+          </div>
+
+          <h2 className="fw-bold mb-2 fs-3 fs-md-2">
+            Hệ Thống Quản Trị Thể Thao DMS
+          </h2>
+          <p className="text-white-50 mb-0 small" style={{ maxWidth: '680px', lineHeight: 1.6 }}>
+            Tổng quan toàn bộ dữ liệu giải đấu, phân quyền tài khoản đa vai trò (Admin, Ban tổ chức, Trọng tài, Thư ký, Đoàn tham gia) và theo dõi dữ liệu thể thao thời gian thực.
+          </p>
         </div>
       </div>
 
-      {/* Thẻ thống kê */}
-      <Row className="g-3 mb-4">
-        <Col sm={6} lg={4}>
-          <Card className="border-0 shadow-sm">
-            <CardBody className="p-4 d-flex align-items-center">
-              <div className="rounded-circle p-3 bg-primary-subtle text-primary me-3">
-                <i className="bi bi-trophy-fill fs-3"></i>
-              </div>
-              <div>
-                <h6 className="text-muted mb-1 text-uppercase fw-semibold" style={{ fontSize: '0.75rem' }}>Tổng số Giải đấu</h6>
-                <h3 className="fw-bold mb-0 text-dark">
-                  {loading ? <Spinner size="sm" /> : stats.totalGiaiDau}
-                </h3>
-              </div>
-            </CardBody>
-          </Card>
+      {/* 4 Thẻ Thống Kê Tổng Quan */}
+      <Row className="g-3">
+        <Col xs={6} md={3}>
+          <div className="bg-white rounded-4 p-3.5 border shadow-sm d-flex align-items-center gap-3">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: '48px', height: '48px', backgroundColor: '#eff6ff', color: '#2563eb' }}
+            >
+              <i className="bi bi-trophy-fill fs-4"></i>
+            </div>
+            <div>
+              <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                Tổng Giải đấu
+              </span>
+              <span className="fw-bold fs-4 text-dark">
+                {loading ? <Spinner size="sm" /> : stats.totalGiaiDau}
+              </span>
+            </div>
+          </div>
+        </Col>
+
+        <Col xs={6} md={3}>
+          <div className="bg-white rounded-4 p-3.5 border shadow-sm d-flex align-items-center gap-3">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: '48px', height: '48px', backgroundColor: '#ecfdf5', color: '#059669' }}
+            >
+              <i className="bi bi-building fs-4"></i>
+            </div>
+            <div>
+              <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                Đoàn tham gia
+              </span>
+              <span className="fw-bold fs-4 text-success">18</span>
+            </div>
+          </div>
+        </Col>
+
+        <Col xs={6} md={3}>
+          <div className="bg-white rounded-4 p-3.5 border shadow-sm d-flex align-items-center gap-3">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: '48px', height: '48px', backgroundColor: '#faf5ff', color: '#9333ea' }}
+            >
+              <i className="bi bi-people-fill fs-4"></i>
+            </div>
+            <div>
+              <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                Vận động viên
+              </span>
+              <span className="fw-bold fs-4 text-dark">264</span>
+            </div>
+          </div>
+        </Col>
+
+        <Col xs={6} md={3}>
+          <div className="bg-white rounded-4 p-3.5 border shadow-sm d-flex align-items-center gap-3">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: '48px', height: '48px', backgroundColor: '#fffbeb', color: '#d97706' }}
+            >
+              <i className="bi bi-whistle-fill fs-4"></i>
+            </div>
+            <div>
+              <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                Lực lượng Trọng tài
+              </span>
+              <span className="fw-bold fs-4 text-warning">32</span>
+            </div>
+          </div>
         </Col>
       </Row>
 

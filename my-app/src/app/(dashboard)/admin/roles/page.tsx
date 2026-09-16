@@ -113,7 +113,6 @@ export default function AdminRolesPermissionsPage() {
         setRoles(rolesData);
         setPermissionGroups(treeData);
 
-        // Mặc định chọn vai trò Manager nếu có, hoặc vai trò đầu tiên
         if (rolesData.length > 0) {
           const defaultRole = rolesData.find((r) => r.name === 'Manager') || rolesData[0];
           selectRole(defaultRole);
@@ -138,7 +137,7 @@ export default function AdminRolesPermissionsPage() {
 
   // Toggle 1 quyền đơn lẻ qua checkbox
   const handleTogglePermission = (permValue: string) => {
-    if (selectedRole?.name === 'Admin') return; // Admin luôn giữ full quyền
+    if (selectedRole?.name === 'Admin') return;
 
     const next = new Set(selectedPermissions);
     if (next.has(permValue)) {
@@ -158,10 +157,8 @@ export default function AdminRolesPermissionsPage() {
 
     const next = new Set(selectedPermissions);
     if (isAllChecked) {
-      // Bỏ chọn toàn bộ trong nhóm
       groupPermValues.forEach((val) => next.delete(val));
     } else {
-      // Chọn toàn bộ trong nhóm
       groupPermValues.forEach((val) => next.add(val));
     }
     setSelectedPermissions(next);
@@ -196,7 +193,6 @@ export default function AdminRolesPermissionsPage() {
         permissions: Array.from(selectedPermissions),
       });
 
-      // Cập nhật lại state danh sách vai trò
       setRoles((prev) =>
         prev.map((r) =>
           r.name === selectedRole.name ? { ...r, permissions: Array.from(selectedPermissions) } : r
@@ -230,7 +226,7 @@ export default function AdminRolesPermissionsPage() {
                   <i className="bi bi-shield-check fs-4"></i>
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">Phân Quyền Theo Vai Trò (Roles &amp; Permissions)</h4>
+                  <h4 className="fw-bold mb-0 text-dark">Phân Quyền Theo Vai Trò </h4>
                   <p className="text-muted small mb-0">
                     Cấu hình và cấp các quyền thao tác cho từng vai trò người dùng trong hệ thống bằng hộp kiểm (Checkbox)
                   </p>
@@ -284,94 +280,80 @@ export default function AdminRolesPermissionsPage() {
                       <span>Danh Sách Vai Trò</span>
                     </h6>
                     <div className="d-flex flex-column gap-2">
-                      {roles.map((role) => {
-                        const isSelected = selectedRole?.name === role.name;
-                        const permCount = role.permissions?.length || 0;
-                        const viInfo = ROLE_VIETNAMESE_INFO[role.name];
+                      {roles.map((r) => {
+                        const isSelected = selectedRole?.name === r.name;
+                        const roleVi = ROLE_VIETNAMESE_INFO[r.name];
 
                         return (
-                          <button
-                            key={role.id}
-                            type="button"
-                            onClick={() => selectRole(role)}
-                            className={`btn text-start rounded-3 p-2.5 transition-all border ${
-                              isSelected
-                                ? 'btn-primary text-white shadow-sm border-primary'
-                                : 'btn-white bg-white text-dark hover-bg-light'
-                            }`}
+                          <div
+                            key={r.name}
+                            onClick={() => selectRole(r)}
+                            className={`p-3 rounded-3 cursor-pointer transition-all border ${isSelected
+                                ? 'bg-white border-primary shadow-sm'
+                                : 'bg-white-50 border-transparent hover-bg-light'
+                              }`}
                           >
-                            <div className="d-flex align-items-start justify-content-between gap-1">
-                              <div className="d-flex align-items-start gap-2">
-                                <i className={`mt-0.5 ${viInfo?.icon || 'bi bi-person-fill'}`}></i>
-                                <div>
-                                  <div className="fw-semibold small leading-tight">
-                                    {viInfo?.title || role.name}
-                                  </div>
-                                  <div
-                                    className={`small font-monospace ${isSelected ? 'text-white-50' : 'text-muted'}`}
-                                    style={{ fontSize: '11px' }}
-                                  >
-                                    Mã vai trò: {role.name}
-                                  </div>
-                                </div>
+                            <div className="d-flex align-items-center justify-content-between mb-1">
+                              <div className="fw-bold text-dark d-flex align-items-center gap-2">
+                                <i className={roleVi?.icon || 'bi bi-person text-secondary'}></i>
+                                <span>{roleVi?.title || r.name}</span>
                               </div>
-                              <Badge
-                                color={isSelected ? 'light' : 'secondary'}
-                                className={`flex-shrink-0 ${isSelected ? 'text-primary' : 'bg-light text-secondary border'}`}
-                                pill
-                              >
-                                {role.name === 'Admin' ? 'TẤT CẢ' : `${permCount} quyền`}
-                              </Badge>
+                              {r.name === 'Admin' && (
+                                <Badge color="warning" pill>
+                                  Full
+                                </Badge>
+                              )}
                             </div>
-                          </button>
+                            <div className="small text-muted font-monospace">{r.name}</div>
+                            <div className="mt-2 d-flex align-items-center justify-content-between text-muted" style={{ fontSize: '12px' }}>
+                              <span>{r.name === 'Admin' ? 'Toàn quyền' : `${r.permissions.length} quyền`}</span>
+                              {isSelected && <i className="bi bi-arrow-right-short fs-5 text-primary"></i>}
+                            </div>
+                          </div>
                         );
                       })}
                     </div>
                   </div>
                 </Col>
 
-                {/* Cột phải: Cây phân quyền Checkbox */}
+                {/* Cột phải: Cấu hình Checkbox Permissions */}
                 <Col md={8} lg={9}>
                   {selectedRole ? (
-                    <div className="p-3 bg-white rounded-3 border">
-                      {/* Tiêu đề vai trò đang chọn & thao tác nhanh */}
-                      <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
+                    <div className="border rounded-3 p-4 bg-white shadow-sm">
+                      {/* Tiêu đề vai trò được chọn */}
+                      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 pb-3 mb-3 border-bottom">
                         <div>
                           <div className="d-flex align-items-center gap-2">
-                            <h5 className="fw-bold text-dark mb-0">
-                              Cấu hình quyền cho vai trò:{' '}
-                              <span className="text-primary">
-                                {selectedRoleVi?.title || selectedRole.name}
-                              </span>
+                            <h5 className="fw-bold mb-0 text-dark">
+                              {selectedRoleVi?.title || selectedRole.name}
                             </h5>
-                            {isAdminRole && (
-                              <Badge color="warning" className="text-dark">
-                                Quản trị viên tối cao (Luôn có tất cả quyền)
-                              </Badge>
-                            )}
+                            <Badge color="info" className="font-monospace">
+                              {selectedRole.name}
+                            </Badge>
                           </div>
                           <p className="text-muted small mb-0 mt-1">
-                            Đã kích hoạt <strong>{selectedPermissions.size}</strong> quyền trong toàn bộ hệ thống
+                            {selectedRoleVi?.subtitle || 'Tùy chỉnh các quyền thao tác cho vai trò này'}
                           </p>
                         </div>
 
+                        {/* Nút Chọn tất cả / Bỏ chọn */}
                         {!isAdminRole && (
                           <div className="d-flex align-items-center gap-2">
                             <Button
-                              color="light"
                               size="sm"
-                              className="border text-dark rounded-2 px-3 fw-medium"
+                              color="light"
+                              className="border text-dark"
                               onClick={() => handleSelectAll(true)}
                             >
-                              <i className="bi bi-check-all me-1 text-primary"></i> Chọn tất cả quyền
+                              Chọn tất cả
                             </Button>
                             <Button
-                              color="light"
                               size="sm"
-                              className="border text-danger rounded-2 px-3 fw-medium"
+                              color="light"
+                              className="border text-dark"
                               onClick={() => handleSelectAll(false)}
                             >
-                              <i className="bi bi-x-lg me-1"></i> Bỏ chọn tất cả
+                              Bỏ chọn
                             </Button>
                           </div>
                         )}
@@ -431,11 +413,10 @@ export default function AdminRolesPermissionsPage() {
                                   return (
                                     <Col md={6} lg={4} key={perm.value}>
                                       <div
-                                        className={`p-2 rounded-2 border d-flex align-items-start gap-2 h-100 transition-all ${
-                                          isChecked
+                                        className={`p-2 rounded-2 border d-flex align-items-start gap-2 h-100 transition-all ${isChecked
                                             ? 'bg-primary-subtle border-primary-subtle'
                                             : 'bg-white border-light-subtle'
-                                        }`}
+                                          }`}
                                       >
                                         <Input
                                           type="checkbox"

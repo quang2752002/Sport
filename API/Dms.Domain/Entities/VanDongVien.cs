@@ -39,9 +39,13 @@ namespace Dms.Domain.Entities
         [MaxLength(500)]
         public string? DiaChi { get; set; }
 
+        [MaxLength(1000)]
+        public string? HinhAnh { get; set; }
+
         public bool TrangThai { get; set; } = true;
 
         public virtual ICollection<ThanhVienDoi> ThanhVienDois { get; set; } = new List<ThanhVienDoi>();
         public virtual ICollection<ChiTietDangKyThiDau> ChiTietDangKyThiDaus { get; set; } = new List<ChiTietDangKyThiDau>();
+        public virtual ICollection<LichSuChuyenDoi> LichSuChuyenDois { get; set; } = new List<LichSuChuyenDoi>();
     }
 }

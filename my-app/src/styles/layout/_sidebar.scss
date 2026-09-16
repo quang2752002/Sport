@@ -46,6 +46,34 @@
   .border-start {
     border-color: rgba(255, 255, 255, 0.2) !important;
   }
+
+  // Sidebar thu gọn
+  &.collapsed {
+    width: 76px !important;
+    transition: width 0.25s ease-in-out;
+
+    .sidebar-brand-text,
+    .menu-title,
+    .menu-chevron {
+      display: none !important;
+    }
+
+    .nav-link {
+      justify-content: center !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      text-align: center;
+
+      i {
+        font-size: 1.25rem !important;
+        margin: 0 !important;
+      }
+    }
+  }
+
+  &:not(.collapsed) {
+    transition: width 0.25s ease-in-out;
+  }
 }
 
 @media (max-width: 991.98px) {

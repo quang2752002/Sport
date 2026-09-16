@@ -19,4 +19,28 @@ export const roleService = {
     const res = await api.post<{ message: string }>('/api/roles/update-permissions', data);
     return res.data;
   },
+
+  // Lấy danh sách toàn bộ người dùng
+  getUsers: async () => {
+    const res = await api.get<import('@/types').UserManagement[]>('/api/roles/users');
+    return res.data;
+  },
+
+  // Cấp mới tài khoản và gán role
+  createUserWithRole: async (data: import('@/types').CreateUserPayload) => {
+    const res = await api.post<{ message: string }>('/api/roles/create-user', data);
+    return res.data;
+  },
+
+  // Cập nhật đổi vai trò cho tài khoản
+  updateUserRole: async (data: import('@/types').UpdateUserRolePayload) => {
+    const res = await api.post<{ message: string }>('/api/roles/update-user-role', data);
+    return res.data;
+  },
+
+  // Lấy danh sách ánh xạ Đơn vị & Trọng tài để cấp tài khoản
+  getMapSources: async () => {
+    const res = await api.get<import('@/types').MapSources>('/api/roles/map-sources');
+    return res.data;
+  },
 };

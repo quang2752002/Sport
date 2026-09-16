@@ -42,6 +42,9 @@ namespace Dms.Domain.Entities
         [MaxLength(1000)]
         public string? MoTa { get; set; }
 
+        [MaxLength(1000)]
+        public string? HinhAnh { get; set; }
+
         public bool TrangThai { get; set; } = true;
 
         public virtual ICollection<DonVi> DonViCon { get; set; } = new List<DonVi>();

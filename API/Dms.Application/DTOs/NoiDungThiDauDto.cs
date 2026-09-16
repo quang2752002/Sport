@@ -51,6 +51,7 @@ namespace Dms.Application.DTOs
         public string? Email { get; set; }
         public string? SoCCCD { get; set; }
         public string? DiaChi { get; set; }
+        public string? HinhAnh { get; set; }
         public bool TrangThai { get; set; } = true;
         public DateTime? Created { get; set; }
         public DateTime? LastModified { get; set; }
@@ -67,6 +68,7 @@ namespace Dms.Application.DTOs
         public string? Email { get; set; }
         public string? SoCCCD { get; set; }
         public string? DiaChi { get; set; }
+        public string? HinhAnh { get; set; }
         public bool TrangThai { get; set; } = true;
     }
 
@@ -106,14 +108,22 @@ namespace Dms.Application.DTOs
         public int Id { get; set; }
         public int NoiDungThiDauId { get; set; }
         public string? TenNoiDung { get; set; }
+        public int? GiaiDauId { get; set; }
+        public string? TenGiaiDau { get; set; }
+        public int? MonTheThaoId { get; set; }
+        public string? TenMonTheThao { get; set; }
         public int? DoiId { get; set; }
         public string? TenDoi { get; set; }
+        public int? DonViId { get; set; }
+        public string? TenDonVi { get; set; }
         public string SoDangKy { get; set; } = string.Empty;
         public string? TenDangKy { get; set; }
         public string TrangThai { get; set; } = "ChoDuyet";
         public DateTime NgayDangKy { get; set; }
         public string? GhiChu { get; set; }
         public int SoVdv { get; set; }
+        public List<int> VanDongVienIds { get; set; } = new();
+        public List<string> VanDongVienNames { get; set; } = new();
         public DateTime? Created { get; set; }
         public DateTime? LastModified { get; set; }
     }
@@ -122,7 +132,7 @@ namespace Dms.Application.DTOs
     {
         public int NoiDungThiDauId { get; set; }
         public int? DoiId { get; set; }
-        public string SoDangKy { get; set; } = string.Empty;
+        public string? SoDangKy { get; set; }
         public string? TenDangKy { get; set; }
         public string TrangThai { get; set; } = "ChoDuyet";
         public DateTime NgayDangKy { get; set; } = DateTime.Now;

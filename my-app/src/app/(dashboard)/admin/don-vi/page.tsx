@@ -40,9 +40,28 @@ export default function AdminDonViPage() {
     soDienThoai: '',
     email: '',
     moTa: '',
+    hinhAnh: '',
     trangThai: true,
   });
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const res = await donViService.uploadImage(file);
+      if (res?.url) {
+        setFormData((prev) => ({ ...prev, hinhAnh: res.url }));
+      }
+    } catch (err: any) {
+      alert('Không thể tải lên hình ảnh đơn vị: ' + (err?.response?.data?.message || err?.message || 'Lỗi server'));
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   // Modal Xóa
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -108,6 +127,7 @@ export default function AdminDonViPage() {
       soDienThoai: '',
       email: '',
       moTa: '',
+      hinhAnh: '',
       trangThai: true,
     });
     setModalOpen(true);
@@ -127,6 +147,7 @@ export default function AdminDonViPage() {
       soDienThoai: item.soDienThoai || '',
       email: item.email || '',
       moTa: item.moTa || '',
+      hinhAnh: item.hinhAnh || '',
       trangThai: item.trangThai,
     });
     setModalOpen(true);
@@ -210,7 +231,7 @@ export default function AdminDonViPage() {
                     <i className="bi bi-building fs-4"></i>
                   </div>
                   <div>
-                    <h4 className="fw-bold mb-0 text-dark">Quản lý Đơn vị / Đoàn tham gia (DonVi)</h4>
+                    <h4 className="fw-bold mb-0 text-dark">Quản lý Đơn vị / Đoàn tham gia </h4>
                     <p className="text-muted small mb-0">
                       Danh sách cơ quan, câu lạc bộ, trường học, đoàn thể thao trực thuộc các khối ({totalCount} đơn vị)
                     </p>
@@ -336,10 +357,37 @@ export default function AdminDonViPage() {
                           </span>
                         </td>
                         <td>
-                          <div className="fw-semibold text-dark">{item.ten}</div>
-                          {item.loaiDonVi && (
-                            <small className="text-muted d-block">Loại: {item.loaiDonVi}</small>
-                          )}
+                          <div className="d-flex align-items-center gap-2.5">
+                            {item.hinhAnh ? (
+                              <div
+                                className="rounded-2 overflow-hidden border flex-shrink-0"
+                                style={{ width: '40px', height: '40px', backgroundColor: '#f8f9fa' }}
+                              >
+                                <img
+                                  src={
+                                    item.hinhAnh.startsWith('http')
+                                      ? item.hinhAnh
+                                      : `${process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7085'}${item.hinhAnh}`
+                                  }
+                                  alt={item.ten}
+                                  className="w-100 h-100 object-fit-cover"
+                                />
+                              </div>
+                            ) : (
+                              <div
+                                className="rounded-2 border flex-shrink-0 d-flex align-items-center justify-content-center bg-light text-muted"
+                                style={{ width: '40px', height: '40px' }}
+                              >
+                                <i className="bi bi-building" style={{ fontSize: '16px' }}></i>
+                              </div>
+                            )}
+                            <div>
+                              <div className="fw-semibold text-dark">{item.ten}</div>
+                              {item.loaiDonVi && (
+                                <small className="text-muted d-block">Loại: {item.loaiDonVi}</small>
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td>
                           {item.tenKhoi ? (
@@ -556,6 +604,72 @@ export default function AdminDonViPage() {
                       value={formData.diaChi || ''}
                       onChange={(e) => setFormData({ ...formData, diaChi: e.target.value })}
                     />
+                  </FormGroup>
+                </Col>
+
+                <Col md={12}>
+                  <FormGroup>
+                    <Label className="fw-semibold">Hình Ảnh / Logo Đơn Vị</Label>
+                    <div className="d-flex align-items-center gap-3">
+                      {formData.hinhAnh ? (
+                        <div className="position-relative">
+                          <div
+                            className="rounded-3 border overflow-hidden shadow-sm"
+                            style={{ width: '80px', height: '80px', backgroundColor: '#f8f9fa' }}
+                          >
+                            <img
+                              src={
+                                formData.hinhAnh.startsWith('http')
+                                  ? formData.hinhAnh
+                                  : `${process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7085'}${formData.hinhAnh}`
+                              }
+                              alt="Logo"
+                              className="w-100 h-100 object-fit-cover"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-danger rounded-circle position-absolute top-0 start-100 translate-middle p-1 lh-1"
+                            title="Xóa ảnh"
+                            onClick={() => setFormData((prev) => ({ ...prev, hinhAnh: '' }))}
+                          >
+                            <i className="bi bi-x fs-6"></i>
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          className="rounded-3 border border-dashed d-flex flex-column align-items-center justify-content-center bg-light text-muted"
+                          style={{ width: '80px', height: '80px' }}
+                        >
+                          <i className="bi bi-image fs-4"></i>
+                        </div>
+                      )}
+                      <div>
+                        <label className="btn btn-outline-primary btn-sm rounded-3 mb-1 cursor-pointer d-inline-flex align-items-center gap-2">
+                          {uploadingImage ? (
+                            <>
+                              <Spinner size="sm" />
+                              <span>Đang tải lên...</span>
+                            </>
+                          ) : (
+                            <>
+                              <i className="bi bi-upload"></i>
+                              <span>{formData.hinhAnh ? 'Đổi ảnh khác' : 'Chọn tệp ảnh logo'}</span>
+                            </>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="d-none"
+                            disabled={uploadingImage}
+                            onChange={handleImageUpload}
+                          />
+                        </label>
+                        <div className="text-muted small" style={{ fontSize: '11px' }}>
+                          Lưu vào root <code>/don-vi/</code> (JPG, PNG, WEBP)
+                        </div>
+                      </div>
+                    </div>
                   </FormGroup>
                 </Col>
 

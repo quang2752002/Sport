@@ -17,6 +17,7 @@ namespace Dms.Application.DTOs
         public string? SoDienThoai { get; set; }
         public string? Email { get; set; }
         public string? MoTa { get; set; }
+        public string? HinhAnh { get; set; }
         public bool TrangThai { get; set; } = true;
         public int SoVanDongVien { get; set; }
         public int SoDoi { get; set; }
@@ -36,6 +37,7 @@ namespace Dms.Application.DTOs
         public string? SoDienThoai { get; set; }
         public string? Email { get; set; }
         public string? MoTa { get; set; }
+        public string? HinhAnh { get; set; }
         public bool TrangThai { get; set; } = true;
     }
 }

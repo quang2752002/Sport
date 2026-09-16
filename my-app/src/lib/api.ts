@@ -41,11 +41,25 @@ export const tokenStorage = {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7085';
 
+// Bỏ qua kiểm tra chứng chỉ SSL tự ký trên server Node.js khi gọi https localhost trong môi trường dev
+let httpsAgent: any = undefined;
+if (typeof window === 'undefined') {
+  try {
+    const https = require('https');
+    httpsAgent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+  } catch {
+    // Không thể khởi tạo https agent
+  }
+}
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  httpsAgent,
 });
 
 // Request Interceptor: Tự động gắn Bearer Token
@@ -113,7 +127,7 @@ api.interceptors.response.use(
 
       try {
         const { data } = await axios.post<AuthResponse>(
-          `${API_BASE_URL}/api/auth/refresh-token`,
+          `${API_BASE_URL}/api/auth/refresh`,
           {
             accessToken,
             refreshToken,

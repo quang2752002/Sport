@@ -27,6 +27,7 @@ namespace Dms.Domain.Interfaces
         IGenericRepository<CumSan> CumSans { get; }
         IGenericRepository<SanDau> SanDaus { get; }
         IGenericRepository<TrongTai> TrongTais { get; }
+        IGenericRepository<ThuKy> ThuKys { get; }
         IGenericRepository<TranDau> TranDaus { get; }
         IGenericRepository<ThanhPhanTranDau> ThanhPhanTranDaus { get; }
         IGenericRepository<HiepDau> HiepDaus { get; }
@@ -35,6 +36,9 @@ namespace Dms.Domain.Interfaces
         IGenericRepository<PhanCongTrongTai> PhanCongTrongTais { get; }
         IGenericRepository<LoaiHuyChuong> LoaiHuyChuongs { get; }
         IGenericRepository<HuyChuong> HuyChuongs { get; }
+        IGenericRepository<LichSuChuyenDoi> LichSuChuyenDois { get; }
+        IGenericRepository<DieuLeGiaiDau> DieuLeGiaiDaus { get; }
+        IGenericRepository<DieuLeMonTheThao> DieuLeMonTheThaos { get; }
 
         Task<int> CompleteAsync();
     }

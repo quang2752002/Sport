@@ -15,10 +15,17 @@ namespace API.Controllers
     public class RolesController : ControllerBase
     {
         private readonly RoleManager<IdentityRole<int>> _roleManager;
+        private readonly UserManager<Dms.Domain.Entities.ApplicationUser> _userManager;
+        private readonly Dms.Infrastructure.Persistence.ApplicationDbContext _dbContext;
 
-        public RolesController(RoleManager<IdentityRole<int>> roleManager)
+        public RolesController(
+            RoleManager<IdentityRole<int>> roleManager,
+            UserManager<Dms.Domain.Entities.ApplicationUser> userManager,
+            Dms.Infrastructure.Persistence.ApplicationDbContext dbContext)
         {
             _roleManager = roleManager;
+            _userManager = userManager;
+            _dbContext = dbContext;
         }
 
         /// <summary>
@@ -124,6 +131,183 @@ namespace API.Controllers
             return Ok(new { message = $"Đã cập nhật quyền thành công cho vai trò '{dto.RoleName}'." });
         }
 
+        /// <summary>
+        /// Lấy danh sách nguồn ánh xạ cho tài khoản: Đơn vị (Đoàn) và Trọng tài
+        /// </summary>
+        [HttpGet("map-sources")]
+        [Authorize]
+        public async Task<IActionResult> GetMapSources()
+        {
+            var donVis = await _dbContext.DonVis
+                .AsNoTracking()
+                .OrderBy(d => d.Ten)
+                .Select(d => new LookupItemDto
+                {
+                    Id = d.Id,
+                    Name = d.Ten,
+                    Code = d.Ma
+                })
+                .ToListAsync();
+
+            var trongTais = await _dbContext.TrongTais
+                .AsNoTracking()
+                .OrderBy(t => t.HoTen)
+                .Select(t => new LookupItemDto
+                {
+                    Id = t.Id,
+                    Name = t.HoTen,
+                    Code = t.Ma
+                })
+                .ToListAsync();
+
+            var thuKys = await _dbContext.ThuKys
+                .AsNoTracking()
+                .OrderBy(k => k.HoTen)
+                .Select(k => new LookupItemDto
+                {
+                    Id = k.Id,
+                    Name = k.HoTen,
+                    Code = k.Ma
+                })
+                .ToListAsync();
+
+            return Ok(new MapSourcesDto
+            {
+                DonVis = donVis,
+                TrongTais = trongTais,
+                ThuKys = thuKys
+            });
+        }
+
+        /// <summary>
+        /// Lấy danh sách toàn bộ tài khoản người dùng kèm vai trò
+        /// </summary>
+        [HttpGet("users")]
+        public async Task<IActionResult> GetUsers()
+        {
+            var users = await _userManager.Users
+                .Include(u => u.DonVi)
+                .Include(u => u.TrongTai)
+                .Include(u => u.ThuKy)
+                .OrderByDescending(u => u.Id)
+                .ToListAsync();
+
+            var list = new List<UserManagementDto>();
+
+            foreach (var u in users)
+            {
+                var roles = await _userManager.GetRolesAsync(u);
+                list.Add(new UserManagementDto
+                {
+                    Id = u.Id,
+                    Username = u.UserName ?? string.Empty,
+                    Email = u.Email ?? string.Empty,
+                    FullName = u.FullName ?? string.Empty,
+                    PhoneNumber = u.PhoneNumber,
+                    Roles = roles.ToList(),
+                    DonViId = u.DonViId,
+                    TenDonVi = u.DonVi?.Ten,
+                    TrongTaiId = u.TrongTaiId,
+                    TenTrongTai = u.TrongTai?.HoTen,
+                    ThuKyId = u.ThuKyId,
+                    TenThuKy = u.ThuKy?.HoTen,
+                    CreatedAt = u.CreatedAt
+                });
+            }
+
+            return Ok(list);
+        }
+
+        /// <summary>
+        /// Tạo mới tài khoản và gán trực tiếp vai trò (Role)
+        /// </summary>
+        [HttpPost("create-user")]
+        public async Task<IActionResult> CreateUserWithRole([FromBody] CreateUserWithRoleDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
+            {
+                return BadRequest(new { message = "Tên đăng nhập và mật khẩu không được để trống." });
+            }
+
+            var existing = await _userManager.FindByNameAsync(dto.Username);
+            if (existing != null)
+            {
+                return BadRequest(new { message = $"Tên đăng nhập '{dto.Username}' đã tồn tại." });
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Email))
+            {
+                var existingEmail = await _userManager.FindByEmailAsync(dto.Email);
+                if (existingEmail != null)
+                {
+                    return BadRequest(new { message = $"Email '{dto.Email}' đã được sử dụng." });
+                }
+            }
+
+            var user = new Dms.Domain.Entities.ApplicationUser
+            {
+                UserName = dto.Username,
+                Email = dto.Email,
+                FullName = string.IsNullOrWhiteSpace(dto.FullName) ? dto.Username : dto.FullName,
+                PhoneNumber = dto.PhoneNumber,
+                DonViId = dto.DonViId,
+                TrongTaiId = dto.TrongTaiId,
+                ThuKyId = dto.ThuKyId,
+                EmailConfirmed = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var createRes = await _userManager.CreateAsync(user, dto.Password);
+            if (!createRes.Succeeded)
+            {
+                var errors = string.Join("; ", createRes.Errors.Select(e => e.Description));
+                return BadRequest(new { message = errors });
+            }
+
+            // Gán Role nếu được chỉ định
+            if (!string.IsNullOrWhiteSpace(dto.Role))
+            {
+                if (await _roleManager.RoleExistsAsync(dto.Role))
+                {
+                    await _userManager.AddToRoleAsync(user, dto.Role);
+                }
+            }
+
+            return Ok(new { message = $"Đã tạo tài khoản '{dto.Username}' và phân vai trò thành công!" });
+        }
+
+        /// <summary>
+        /// Cập nhật / Đổi vai trò (Role) cho tài khoản người dùng
+        /// </summary>
+        [HttpPost("update-user-role")]
+        public async Task<IActionResult> UpdateUserRole([FromBody] UpdateUserRoleDto dto)
+        {
+            var user = await _userManager.FindByIdAsync(dto.UserId.ToString());
+            if (user == null)
+            {
+                return NotFound(new { message = "Không tìm thấy người dùng." });
+            }
+
+            // Cập nhật liên kết Đơn vị, Trọng tài, hoặc Thư ký
+            user.DonViId = dto.DonViId;
+            user.TrongTaiId = dto.TrongTaiId;
+            user.ThuKyId = dto.ThuKyId;
+            await _userManager.UpdateAsync(user);
+
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+
+            if (!string.IsNullOrWhiteSpace(dto.Role))
+            {
+                if (await _roleManager.RoleExistsAsync(dto.Role))
+                {
+                    await _userManager.AddToRoleAsync(user, dto.Role);
+                }
+            }
+
+            return Ok(new { message = $"Đã cập nhật vai trò mới cho tài khoản '{user.UserName}'." });
+        }
+
         private static string GetGroupDescription(string groupName)
         {
             return groupName switch
@@ -142,6 +326,7 @@ namespace API.Controllers
                 "Categories" => "Quản lý danh mục, nhóm môn thể thao",
                 "Users" => "Quản trị người dùng và phân quyền vai trò",
                 "Menus" => "Quản lý hệ thống menu điều hướng",
+                "ThuKy" => "Quản lý thông tin và hồ sơ thư ký bàn, thư ký giải",
                 _ => $"Quản lý quyền {groupName}"
             };
         }

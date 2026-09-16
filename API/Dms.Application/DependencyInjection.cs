@@ -20,9 +20,12 @@ namespace Dms.Application
             services.AddScoped<Dms.Application.Interfaces.IDanhMucMonTheThaoService, Dms.Application.Services.DanhMucMonTheThaoService>();
             services.AddScoped<Dms.Application.Interfaces.IMonTheThaoService, Dms.Application.Services.MonTheThaoService>();
             services.AddScoped<Dms.Application.Interfaces.ITrongTaiService, Dms.Application.Services.TrongTaiService>();
+            services.AddScoped<Dms.Application.Interfaces.IThuKyService, Dms.Application.Services.ThuKyService>();
             services.AddScoped<Dms.Application.Interfaces.ICumSanService, Dms.Application.Services.CumSanService>();
             services.AddScoped<Dms.Application.Interfaces.ISanDauService, Dms.Application.Services.SanDauService>();
             services.AddScoped<Dms.Application.Interfaces.ILoaiHuyChuongService, Dms.Application.Services.LoaiHuyChuongService>();
+            services.AddScoped<Dms.Application.Interfaces.IVanDongVienService, Dms.Application.Services.VanDongVienService>();
+            services.AddScoped<Dms.Application.Interfaces.IDangKyThiDauService, Dms.Application.Services.DangKyThiDauService>();
             
             return services;
         }

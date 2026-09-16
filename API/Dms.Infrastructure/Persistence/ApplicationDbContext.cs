@@ -37,6 +37,7 @@ namespace Dms.Infrastructure.Persistence
         public DbSet<CumSan> CumSans => Set<CumSan>();
         public DbSet<SanDau> SanDaus => Set<SanDau>();
         public DbSet<TrongTai> TrongTais => Set<TrongTai>();
+        public DbSet<ThuKy> ThuKys => Set<ThuKy>();
         public DbSet<TranDau> TranDaus => Set<TranDau>();
         public DbSet<ThanhPhanTranDau> ThanhPhanTranDaus => Set<ThanhPhanTranDau>();
         public DbSet<HiepDau> HiepDaus => Set<HiepDau>();
@@ -45,6 +46,9 @@ namespace Dms.Infrastructure.Persistence
         public DbSet<PhanCongTrongTai> PhanCongTrongTais => Set<PhanCongTrongTai>();
         public DbSet<LoaiHuyChuong> LoaiHuyChuongs => Set<LoaiHuyChuong>();
         public DbSet<HuyChuong> HuyChuongs => Set<HuyChuong>();
+        public DbSet<LichSuChuyenDoi> LichSuChuyenDois => Set<LichSuChuyenDoi>();
+        public DbSet<DieuLeGiaiDau> DieuLeGiaiDaus => Set<DieuLeGiaiDau>();
+        public DbSet<DieuLeMonTheThao> DieuLeMonTheThaos => Set<DieuLeMonTheThao>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -71,6 +75,20 @@ namespace Dms.Infrastructure.Persistence
                 .Property(g => g.TrangThai)
                 .HasConversion<string>()
                 .HasMaxLength(30);
+
+            modelBuilder.Entity<GiaiDau>()
+                .HasIndex(g => g.Slug);
+
+            // Cấu hình lưu Enum của MonTheThao & NoiDungThiDau dưới dạng chuỗi (VARCHAR) trong DB
+            modelBuilder.Entity<MonTheThao>()
+                .Property(m => m.HinhThucThiDau)
+                .HasConversion<string>()
+                .HasMaxLength(50);
+
+            modelBuilder.Entity<NoiDungThiDau>()
+                .Property(n => n.HinhThucThiDau)
+                .HasConversion<string>()
+                .HasMaxLength(50);
 
             // Tắt Cascade Delete cho toàn bộ Foreign Keys để tránh lỗi chu trình SQL Server (Error 1785: multiple cascade paths)
             foreach (var relationship in modelBuilder.Model.GetEntityTypes().SelectMany(e => e.GetForeignKeys()))

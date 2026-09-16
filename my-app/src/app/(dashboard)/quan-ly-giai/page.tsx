@@ -1,154 +1,210 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '../../../context/AuthContext';
-import { Building2, UserPlus, Users, CheckCircle, ShieldCheck } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import {
+  Trophy,
+  Calendar,
+  Layers,
+  Users,
+  CheckCircle2,
+  ShieldCheck,
+  PlusCircle,
+  PlayCircle,
+  Clock,
+  MapPin,
+} from 'lucide-react';
+import { Row, Col, Card, CardBody, Badge, Button, Table } from 'reactstrap';
 
-export default function DelegationPage() {
-  const { hasPermission } = useAuth();
-  const [athletes, setAthletes] = useState([
-    { id: 1, name: 'Nguyễn Văn Hoàng', sport: 'Bóng Đá Nam', dob: '1998', unit: 'Đoàn Sở VH-TT Tỉnh' },
-    { id: 2, name: 'Trần Thị Thu Hà', sport: 'Cầu Lông Đơn Nữ', dob: '2001', unit: 'Đoàn Sở VH-TT Tỉnh' },
-    { id: 3, name: 'Lê Minh Tuấn', sport: 'Điền Kinh 100m', dob: '2002', unit: 'Đoàn Sở VH-TT Tỉnh' },
+export default function QuanLyGiaiPage() {
+  const { user } = useAuth();
+  const [tournaments] = useState([
+    { id: 1, name: 'Giải Thể Thao Mở Rộng 2026', sport: 'Nhiều môn', date: '15/09 - 30/09/2026', status: 'Đang diễn ra', teams: 18, matches: 42 },
+    { id: 2, name: 'Giải Bóng Đá Cúp Tỉnh 2026', sport: 'Bóng Đá Nam Sân 7', date: '01/10 - 15/10/2026', status: 'Sắp diễn ra', teams: 12, matches: 24 },
+    { id: 3, name: 'Giải Pickleball & Cầu Lông Đôi', sport: 'Pickleball, Cầu Lông', date: '10/08 - 15/08/2026', status: 'Đã bế mạc', teams: 24, matches: 58 },
   ]);
-  const [name, setName] = useState('');
-  const [sport, setSport] = useState('Bóng Đá Nam');
-  const [dob, setDob] = useState('2000');
-  const [notice, setNotice] = useState<string | null>(null);
-
-  const handleAddAthlete = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-
-    const newA = {
-      id: Date.now(),
-      name,
-      sport,
-      dob,
-      unit: 'Đoàn Sở VH-TT Tỉnh',
-    };
-
-    setAthletes([...athletes, newA]);
-    setName('');
-    setNotice(`Đã đăng ký VĐV [${name}] thành công vào danh sách thi đấu giải!`);
-  };
 
   return (
-    <div className="p-6 md:p-10 space-y-6 max-w-6xl">
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-pink-500/10 text-pink-400 flex items-center justify-center border border-pink-500/20">
-          <Building2 className="w-6 h-6" />
+    <div className="d-flex flex-column gap-4">
+      {/* Banner Ban Tổ Chức */}
+      <div
+        className="rounded-4 p-4 p-md-5 text-white position-relative overflow-hidden shadow-sm"
+        style={{
+          background: 'linear-gradient(135deg, #1e3a8a 0%, #312e81 50%, #0f172a 100%)',
+        }}
+      >
+        <div
+          className="position-absolute end-0 top-0 bottom-0 d-none d-md-flex align-items-center justify-content-end pe-5 opacity-10"
+          style={{ pointerEvents: 'none' }}
+        >
+          <Trophy size={240} />
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-white">Đơn Vị Trực Thuộc (Sở / Xã / Đơn Vị)</h1>
-          <p className="text-xs text-slate-400">
-            Quản lý và đăng ký danh sách vận động viên (VĐV), đội thi đấu của đơn vị mình.
+
+        <div className="position-relative" style={{ zIndex: 2 }}>
+          <div
+            className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-3 border"
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', borderColor: 'rgba(255, 255, 255, 0.2)', fontSize: '12px' }}
+          >
+            <ShieldCheck size={15} className="text-warning" />
+            <span className="fw-semibold text-white">Trung Tâm Điều Hành Ban Tổ Chức Giải</span>
+          </div>
+
+          <h2 className="fw-bold mb-2 fs-3 fs-md-2">
+            Hệ Thống Quản Lý & Điều Hành Giải Đấu
+          </h2>
+          <p className="text-white-50 mb-0 small" style={{ maxWidth: '680px', lineHeight: 1.6 }}>
+            Điều hành toàn bộ tiến độ tổ chức giải, quản lý bốc thăm chia bảng thi đấu, sắp xếp lịch trình sân bãi và tiếp nhận hồ sơ các đoàn thể thao tham gia.
           </p>
         </div>
       </div>
 
-      {notice && (
-        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/50 text-xs text-emerald-300 flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{notice}</span>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Form đăng ký VĐV mới */}
-        {hasPermission('Permissions.Delegations.ManageAthletes') && (
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <UserPlus className="w-4 h-4 text-pink-400" />
-              <span>Đăng Ký VĐV / Đội Mới</span>
-            </h2>
-
-            <form onSubmit={handleAddAthlete} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-medium text-slate-300 mb-1">Họ và tên VĐV:</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ví dụ: Nguyễn Văn C"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white placeholder:text-slate-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-300 mb-1">Môn đăng ký thi đấu:</label>
-                <select
-                  value={sport}
-                  onChange={(e) => setSport(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white cursor-pointer"
-                >
-                  <option value="Bóng Đá Nam">Bóng Đá Nam (11 người)</option>
-                  <option value="Bóng Chuyền Nữ">Bóng Chuyền Nữ</option>
-                  <option value="Cầu Lông Đơn Nam">Cầu Lông Đơn Nam</option>
-                  <option value="Cầu Lông Đơn Nữ">Cầu Lông Đơn Nữ</option>
-                  <option value="Điền Kinh 100m">Điền Kinh 100m</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-300 mb-1">Năm sinh:</label>
-                <input
-                  type="number"
-                  value={dob}
-                  onChange={(e) => setDob(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-2.5 px-4 bg-pink-600 hover:bg-pink-500 text-white font-bold rounded-xl transition cursor-pointer"
-              >
-                Gửi Hồ Sơ Đăng Ký
-              </button>
-            </form>
+      {/* 4 Thẻ KPI Điều Hành */}
+      <Row className="g-3">
+        <Col xs={6} md={3}>
+          <div className="bg-white rounded-4 p-3.5 border shadow-sm d-flex align-items-center gap-3">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: '48px', height: '48px', backgroundColor: '#eef2ff', color: '#4f46e5' }}
+            >
+              <Trophy size={24} />
+            </div>
+            <div>
+              <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                Giải đấu điều hành
+              </span>
+              <span className="fw-bold fs-4 text-dark">3</span>
+            </div>
           </div>
-        )}
+        </Col>
 
-        {/* Danh sách VĐV đã đăng ký */}
-        <div className={`p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 ${!hasPermission('Permissions.Delegations.ManageAthletes') ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Users className="w-4 h-4 text-pink-400" />
-              <span>Danh Sách VĐV Của Đơn Vị Đã Đăng Ký</span>
-            </h3>
-            <span className="text-xs text-slate-400">{athletes.length} VĐV</span>
+        <Col xs={6} md={3}>
+          <div className="bg-white rounded-4 p-3.5 border shadow-sm d-flex align-items-center gap-3">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: '48px', height: '48px', backgroundColor: '#ecfdf5', color: '#059669' }}
+            >
+              <Users size={24} />
+            </div>
+            <div>
+              <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                Đoàn tham gia
+              </span>
+              <span className="fw-bold fs-4 text-success">54</span>
+            </div>
+          </div>
+        </Col>
+
+        <Col xs={6} md={3}>
+          <div className="bg-white rounded-4 p-3.5 border shadow-sm d-flex align-items-center gap-3">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: '48px', height: '48px', backgroundColor: '#fffbeb', color: '#d97706' }}
+            >
+              <PlayCircle size={24} />
+            </div>
+            <div>
+              <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                Trận đang diễn ra
+              </span>
+              <span className="fw-bold fs-4 text-warning">8</span>
+            </div>
+          </div>
+        </Col>
+
+        <Col xs={6} md={3}>
+          <div className="bg-white rounded-4 p-3.5 border shadow-sm d-flex align-items-center gap-3">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: '48px', height: '48px', backgroundColor: '#f0fdfa', color: '#0d9488' }}
+            >
+              <MapPin size={24} />
+            </div>
+            <div>
+              <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                Cụm sân thi đấu
+              </span>
+              <span className="fw-bold fs-4 text-dark">6</span>
+            </div>
+          </div>
+        </Col>
+      </Row>
+
+      {/* Danh sách giải đấu quản lý */}
+      <Card className="border-0 shadow-sm rounded-4">
+        <CardBody className="p-4">
+          <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mb-4 pb-3 border-bottom">
+            <div>
+              <h6 className="fw-bold text-dark mb-1">Danh Sách Các Giải Đấu Đang Điều Hành</h6>
+              <small className="text-muted" style={{ fontSize: '12px' }}>
+                Tổng quan trạng thái, quy mô và tiến độ của các giải
+              </small>
+            </div>
+
+            <Button
+              color="primary"
+              size="sm"
+              className="rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-1.5 shadow-sm"
+              style={{ fontSize: '12px' }}
+            >
+              <PlusCircle size={15} />
+              <span>Thêm Giải Mới</span>
+            </Button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="pb-3 font-semibold">Họ Và Tên</th>
-                  <th className="pb-3 font-semibold">Môn Thi Đấu</th>
-                  <th className="pb-3 font-semibold">Năm Sinh</th>
-                  <th className="pb-3 font-semibold">Trạng Thái Hồ Sơ</th>
+          <div className="table-responsive">
+            <Table hover className="align-middle mb-0" style={{ fontSize: '13px' }}>
+              <thead className="table-light">
+                <tr>
+                  <th className="py-2.5 px-3">Tên Giải Đấu</th>
+                  <th className="py-2.5 px-3">Nội Dung / Môn</th>
+                  <th className="py-2.5 px-3">Thời Gian Diễn Ra</th>
+                  <th className="py-2.5 px-3 text-center">Số Đoàn</th>
+                  <th className="py-2.5 px-3 text-center">Số Trận</th>
+                  <th className="py-2.5 px-3 text-center">Trạng Thái</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-200">
-                {athletes.map((a) => (
-                  <tr key={a.id}>
-                    <td className="py-3 font-medium text-white">{a.name}</td>
-                    <td className="py-3 text-pink-300">{a.sport}</td>
-                    <td className="py-3 font-mono text-slate-400">{a.dob}</td>
-                    <td className="py-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                        Đủ điều kiện thi đấu
-                      </span>
+              <tbody>
+                {tournaments.map((t) => (
+                  <tr key={t.id}>
+                    <td className="py-3 px-3">
+                      <div className="fw-semibold text-dark">{t.name}</div>
+                    </td>
+                    <td className="py-3 px-3 text-primary fw-medium">
+                      {t.sport}
+                    </td>
+                    <td className="py-3 px-3 text-muted">
+                      <Clock size={12} className="me-1" />
+                      {t.date}
+                    </td>
+                    <td className="py-3 px-3 text-center fw-semibold text-dark">
+                      {t.teams}
+                    </td>
+                    <td className="py-3 px-3 text-center font-monospace">
+                      {t.matches}
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <Badge
+                        color={
+                          t.status === 'Đang diễn ra'
+                            ? 'success'
+                            : t.status === 'Sắp diễn ra'
+                            ? 'warning'
+                            : 'secondary'
+                        }
+                        pill
+                        className="px-2.5 py-1 fw-semibold"
+                      >
+                        {t.status}
+                      </Badge>
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           </div>
-        </div>
-      </div>
+        </CardBody>
+      </Card>
     </div>
   );
 }
+

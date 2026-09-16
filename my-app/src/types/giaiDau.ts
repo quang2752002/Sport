@@ -30,10 +30,31 @@ export const TrangThaiGiaiDauLabels: Record<TrangThaiGiaiDau, string> = {
   [TrangThaiGiaiDau.Huy]: 'Đã hủy',
 };
 
+export interface DieuLeGiaiDau {
+  id: number;
+  giaiDauId: number;
+  tieuDe: string;
+  noiDung: string;
+  tepDinhKem?: string;
+  thuTu: number;
+  trangThai: boolean;
+}
+
+export interface CreateUpdateDieuLeGiaiDau {
+  id?: number;
+  tieuDe: string;
+  noiDung: string;
+  tepDinhKem?: string;
+  thuTu: number;
+  trangThai: boolean;
+}
+
 export interface GiaiDau {
   id: number;
   ma: string;
   ten: string;
+  slug?: string;
+  hinhAnh?: string;
   moTa?: string;
   ngayBatDau: string;
   ngayKetThuc: string;
@@ -45,11 +66,27 @@ export interface GiaiDau {
   created?: string;
   lastModified?: string;
   khoiIds?: number[];
+  monTheThaoIds?: number[];
+  monTheThaos?: GiaiDauMonTheThao[];
+  dieuLeGiaiDaus?: DieuLeGiaiDau[];
+}
+
+export interface GiaiDauMonTheThao {
+  id: number;
+  monTheThaoId: number;
+  ma: string;
+  ten: string;
+  moTa?: string;
+  laMonDongDoi: boolean;
+  tenDanhMuc?: string;
+  hinhThucThiDau?: string;
 }
 
 export interface CreateUpdateGiaiDau {
   ma: string;
   ten: string;
+  slug?: string;
+  hinhAnh?: string;
   moTa?: string;
   ngayBatDau: string;
   ngayKetThuc: string;
@@ -57,4 +94,6 @@ export interface CreateUpdateGiaiDau {
   phamVi: PhamViGiaiDau;
   trangThai: TrangThaiGiaiDau;
   khoiIds?: number[];
+  monTheThaoIds?: number[];
+  dieuLes?: CreateUpdateDieuLeGiaiDau[];
 }

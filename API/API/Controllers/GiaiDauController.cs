@@ -21,7 +21,7 @@ namespace API.Controllers
         }
 
         [HttpGet("paged")]
-        [Authorize(Policy = Permissions.GiaiDau.View)]
+        [AllowAnonymous]
         public async Task<IActionResult> GetPaged(
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10,
@@ -41,12 +41,21 @@ namespace API.Controllers
             return Ok(result);
         }
 
-        [HttpGet("{id}")]
-        [Authorize(Policy = Permissions.GiaiDau.View)]
+        [HttpGet("{id:int}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetById(int id)
         {
             var result = await _giaiDauService.GetByIdAsync(id);
             if (result == null) return NotFound(new { message = "Không tìm thấy giải đấu." });
+            return Ok(result);
+        }
+
+        [HttpGet("slug/{slug}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetBySlug(string slug)
+        {
+            var result = await _giaiDauService.GetBySlugAsync(slug);
+            if (result == null) return NotFound(new { message = "Không tìm thấy giải đấu với đường dẫn này." });
             return Ok(result);
         }
 
@@ -67,6 +76,88 @@ namespace API.Controllers
             var result = await _giaiDauService.UpdateAsync(id, dto, username);
             if (result == null) return NotFound(new { message = "Không tìm thấy giải đấu để cập nhật." });
             return Ok(result);
+        }
+
+        [HttpPost("upload-banner")]
+        [Authorize]
+        public async Task<IActionResult> UploadBanner([FromForm] Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { message = "Vui lòng chọn tệp hình ảnh banner." });
+            }
+
+            // Kiểm tra định dạng ảnh
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+            var extension = System.IO.Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+            {
+                return BadRequest(new { message = "Chỉ chấp nhận các định dạng ảnh: .jpg, .jpeg, .png, .webp, .gif" });
+            }
+
+            // Tạo thư mục wwwroot/banner nếu chưa có
+            var webRoot = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot");
+            var bannerFolder = System.IO.Path.Combine(webRoot, "banner");
+            if (!System.IO.Directory.Exists(bannerFolder))
+            {
+                System.IO.Directory.CreateDirectory(bannerFolder);
+            }
+
+            // Tạo tên file duy nhất tránh trùng lặp
+            var fileName = $"{System.Guid.NewGuid():N}{extension}";
+            var fullPath = System.IO.Path.Combine(bannerFolder, fileName);
+
+            using (var stream = new System.IO.FileStream(fullPath, System.IO.FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            // Trả về đường dẫn lưu vào DB
+            var relativeUrl = $"/banner/{fileName}";
+            return Ok(new { url = relativeUrl });
+        }
+
+        [HttpPost("upload-dieule")]
+        [Authorize]
+        public async Task<IActionResult> UploadDieuLeFile([FromForm] Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { message = "Vui lòng chọn tệp tài liệu điều lệ." });
+            }
+
+            // Kiểm tra định dạng tệp (PDF, Word, Excel, hình ảnh)
+            var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".jpg", ".jpeg", ".png", ".webp" };
+            var extension = System.IO.Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+            {
+                return BadRequest(new { message = "Chỉ chấp nhận các tệp tài liệu: .pdf, .doc, .docx, .xls, .xlsx, hoặc file ảnh." });
+            }
+
+            // Giới hạn kích thước tối đa 50MB
+            if (file.Length > 50 * 1024 * 1024)
+            {
+                return BadRequest(new { message = "Kích thước tệp không được vượt quá 50MB." });
+            }
+
+            // Tạo thư mục wwwroot/dieu-le nếu chưa có
+            var webRoot = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot");
+            var targetFolder = System.IO.Path.Combine(webRoot, "dieu-le");
+            if (!System.IO.Directory.Exists(targetFolder))
+            {
+                System.IO.Directory.CreateDirectory(targetFolder);
+            }
+
+            var fileName = $"{System.Guid.NewGuid():N}{extension}";
+            var fullPath = System.IO.Path.Combine(targetFolder, fileName);
+
+            using (var stream = new System.IO.FileStream(fullPath, System.IO.FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var relativeUrl = $"/dieu-le/{fileName}";
+            return Ok(new { url = relativeUrl, fileName = file.FileName });
         }
 
         [HttpDelete("{id}")]

@@ -54,6 +54,21 @@ namespace Dms.Infrastructure.Services
                 new Claim("fullName",                    user.FullName),
             };
 
+            if (user.DonViId.HasValue)
+            {
+                claims.Add(new Claim("donViId", user.DonViId.Value.ToString()));
+            }
+
+            if (user.TrongTaiId.HasValue)
+            {
+                claims.Add(new Claim("trongTaiId", user.TrongTaiId.Value.ToString()));
+            }
+
+            if (user.ThuKyId.HasValue)
+            {
+                claims.Add(new Claim("thuKyId", user.ThuKyId.Value.ToString()));
+            }
+
             foreach (var role in roles)
                 claims.Add(new Claim(ClaimTypes.Role, role));
 
@@ -133,6 +148,9 @@ namespace Dms.Infrastructure.Services
                 Username          = user.UserName ?? string.Empty,
                 FullName          = user.FullName,
                 Role              = roles.FirstOrDefault() ?? "User",
+                DonViId           = user.DonViId,
+                TrongTaiId        = user.TrongTaiId,
+                ThuKyId           = user.ThuKyId,
                 Permissions       = permissions,
             };
         }

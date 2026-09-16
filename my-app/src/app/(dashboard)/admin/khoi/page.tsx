@@ -190,7 +190,7 @@ export default function AdminKhoiPage() {
                     <i className="bi bi-diagram-2-fill fs-4"></i>
                   </div>
                   <div>
-                    <h4 className="fw-bold mb-0 text-dark">Quản lý Khối tham gia (Khoi)</h4>
+                    <h4 className="fw-bold mb-0 text-dark">Quản lý Khối tham gia </h4>
                     <p className="text-muted small mb-0">
                       Phân loại khối cơ quan, trường học, doanh nghiệp, CLB tham gia ({totalCount} khối)
                     </p>

@@ -1,4 +1,5 @@
 using Dms.Domain.Common;
+using Dms.Domain.Enums;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -27,6 +28,8 @@ namespace Dms.Domain.Entities
         [Required]
         [MaxLength(30)]
         public string LoaiThiDau { get; set; } = "CaNhan";
+
+        public HinhThucThiDau? HinhThucThiDau { get; set; }
 
         public int? SoLuongToiThieu { get; set; }
 

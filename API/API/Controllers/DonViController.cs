@@ -68,6 +68,42 @@ namespace API.Controllers
             return Ok(result);
         }
 
+        [HttpPost("upload-image")]
+        [Authorize]
+        public async Task<IActionResult> UploadImage([FromForm] Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { message = "Vui lòng chọn tệp hình ảnh đơn vị." });
+            }
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+            var extension = System.IO.Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+            {
+                return BadRequest(new { message = "Chỉ chấp nhận các định dạng ảnh: .jpg, .jpeg, .png, .webp, .gif" });
+            }
+
+            // Tạo thư mục wwwroot/don-vi nếu chưa có
+            var webRoot = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot");
+            var targetFolder = System.IO.Path.Combine(webRoot, "don-vi");
+            if (!System.IO.Directory.Exists(targetFolder))
+            {
+                System.IO.Directory.CreateDirectory(targetFolder);
+            }
+
+            var fileName = $"{System.Guid.NewGuid():N}{extension}";
+            var fullPath = System.IO.Path.Combine(targetFolder, fileName);
+
+            using (var stream = new System.IO.FileStream(fullPath, System.IO.FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var relativeUrl = $"/don-vi/{fileName}";
+            return Ok(new { url = relativeUrl });
+        }
+
         [HttpDelete("{id}")]
         [Authorize(Policy = Permissions.DonVi.Delete)]
         public async Task<IActionResult> Delete(int id)

@@ -4,6 +4,8 @@ import { ROUTE_ROLE_PERMISSIONS, ROLE_DEFAULT_REDIRECT, AppRoles } from './const
 
 interface JwtPayload {
   role?: string | string[];
+  'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'?: string | string[];
+  roles?: string | string[];
   exp?: number;
 }
 
@@ -21,6 +23,20 @@ function decodeJwtPayload(token: string): JwtPayload | null {
   } catch {
     return null;
   }
+}
+
+function extractRoles(payload: JwtPayload | null): string[] {
+  if (!payload) return [];
+  const rawRole =
+    payload.role ||
+    payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
+    payload.roles;
+  const roles: string[] = [];
+  if (rawRole) {
+    if (Array.isArray(rawRole)) roles.push(...rawRole.map(String));
+    else roles.push(String(rawRole));
+  }
+  return roles;
 }
 
 export function middleware(request: NextRequest) {
@@ -41,16 +57,12 @@ export function middleware(request: NextRequest) {
       // Kiểm tra token còn hạn không
       const isExpired = payload.exp ? payload.exp * 1000 < Date.now() : false;
       if (!isExpired) {
-        const roles: string[] = [];
-        if (payload.role) {
-          if (Array.isArray(payload.role)) roles.push(...payload.role);
-          else roles.push(payload.role);
-        }
+        const roles = extractRoles(payload);
 
-        // Tìm redirect đích theo role ưu tiên
+        // Tìm redirect đích theo role ưu tiên (so khớp không phân biệt hoa thường)
         let targetUrl = '/admin';
         for (const [role, defaultPath] of Object.entries(ROLE_DEFAULT_REDIRECT)) {
-          if (roles.includes(role)) {
+          if (roles.some((r) => r.toLowerCase() === role.toLowerCase())) {
             targetUrl = defaultPath;
             break;
           }
@@ -88,16 +100,12 @@ export function middleware(request: NextRequest) {
       // và dùng Refresh Token lấy cặp token mới một cách êm đẹp, người dùng KHÔNG bị logout.
       if (refreshToken) {
         if (payload) {
-          const userRoles: string[] = [];
-          if (payload.role) {
-            if (Array.isArray(payload.role)) userRoles.push(...payload.role);
-            else userRoles.push(payload.role);
-          }
-          if (userRoles.includes(AppRoles.Admin)) {
+          const userRoles = extractRoles(payload);
+          if (userRoles.some((r) => r.toLowerCase() === AppRoles.Admin.toLowerCase())) {
             return NextResponse.next();
           }
           const hasAccess = matchingRule.allowedRoles.some((allowed) =>
-            userRoles.includes(allowed)
+            userRoles.some((r) => r.toLowerCase() === allowed.toLowerCase())
           );
           if (!hasAccess) {
             return NextResponse.redirect(new URL('/unauthorized', request.url));
@@ -117,20 +125,16 @@ export function middleware(request: NextRequest) {
     }
 
     // 2.3 Access Token còn hạn -> Kiểm tra roles bình thường
-    const userRoles: string[] = [];
-    if (payload?.role) {
-      if (Array.isArray(payload.role)) userRoles.push(...payload.role);
-      else userRoles.push(payload.role);
-    }
+    const userRoles = extractRoles(payload);
 
     // Role Admin luôn được phép truy cập tất cả
-    if (userRoles.includes(AppRoles.Admin)) {
+    if (userRoles.some((r) => r.toLowerCase() === AppRoles.Admin.toLowerCase())) {
       return NextResponse.next();
     }
 
     // Kiểm tra role người dùng có nằm trong allowedRoles của route không
     const hasAccess = matchingRule.allowedRoles.some((allowed) =>
-      userRoles.includes(allowed)
+      userRoles.some((r) => r.toLowerCase() === allowed.toLowerCase())
     );
 
     if (!hasAccess) {

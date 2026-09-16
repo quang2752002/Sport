@@ -30,6 +30,7 @@ namespace Dms.Infrastructure.Repositories
         private IGenericRepository<CumSan>? _cumSans;
         private IGenericRepository<SanDau>? _sanDaus;
         private IGenericRepository<TrongTai>? _trongTais;
+        private IGenericRepository<ThuKy>? _thuKys;
         private IGenericRepository<TranDau>? _tranDaus;
         private IGenericRepository<ThanhPhanTranDau>? _thanhPhanTranDaus;
         private IGenericRepository<HiepDau>? _hiepDaus;
@@ -38,6 +39,9 @@ namespace Dms.Infrastructure.Repositories
         private IGenericRepository<PhanCongTrongTai>? _phanCongTrongTais;
         private IGenericRepository<LoaiHuyChuong>? _loaiHuyChuongs;
         private IGenericRepository<HuyChuong>? _huyChuongs;
+        private IGenericRepository<LichSuChuyenDoi>? _lichSuChuyenDois;
+        private IGenericRepository<DieuLeGiaiDau>? _dieuLeGiaiDaus;
+        private IGenericRepository<DieuLeMonTheThao>? _dieuLeMonTheThaos;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -107,6 +111,9 @@ namespace Dms.Infrastructure.Repositories
         public IGenericRepository<TrongTai> TrongTais => 
             _trongTais ??= new GenericRepository<TrongTai>(_context);
 
+        public IGenericRepository<ThuKy> ThuKys => 
+            _thuKys ??= new GenericRepository<ThuKy>(_context);
+
         public IGenericRepository<TranDau> TranDaus => 
             _tranDaus ??= new GenericRepository<TranDau>(_context);
 
@@ -130,6 +137,15 @@ namespace Dms.Infrastructure.Repositories
 
         public IGenericRepository<HuyChuong> HuyChuongs => 
             _huyChuongs ??= new GenericRepository<HuyChuong>(_context);
+
+        public IGenericRepository<LichSuChuyenDoi> LichSuChuyenDois => 
+            _lichSuChuyenDois ??= new GenericRepository<LichSuChuyenDoi>(_context);
+
+        public IGenericRepository<DieuLeGiaiDau> DieuLeGiaiDaus => 
+            _dieuLeGiaiDaus ??= new GenericRepository<DieuLeGiaiDau>(_context);
+
+        public IGenericRepository<DieuLeMonTheThao> DieuLeMonTheThaos => 
+            _dieuLeMonTheThaos ??= new GenericRepository<DieuLeMonTheThao>(_context);
 
         public async Task<int> CompleteAsync()
         {

@@ -36,7 +36,7 @@ function LoginForm() {
   const getRedirectPath = (roles: string[]) => {
     if (redirectParam) return redirectParam;
     for (const [role, path] of Object.entries(ROLE_DEFAULT_REDIRECT)) {
-      if (roles.includes(role)) return path;
+      if (roles.some((r) => r.toLowerCase() === role.toLowerCase())) return path;
     }
     return '/admin';
   };

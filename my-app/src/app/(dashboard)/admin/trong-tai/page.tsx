@@ -156,7 +156,7 @@ export default function AdminTrongTaiPage() {
                     <i className="bi bi-whistle fs-4"></i>
                   </div>
                   <div>
-                    <h4 className="fw-bold mb-0 text-dark">Quản lý Trọng tài (TrongTai)</h4>
+                    <h4 className="fw-bold mb-0 text-dark">Quản lý Trọng tài </h4>
                     <p className="text-muted small mb-0">
                       Danh mục hồ sơ trọng tài, điều khiển các trận đấu ({totalCount} trọng tài)
                     </p>

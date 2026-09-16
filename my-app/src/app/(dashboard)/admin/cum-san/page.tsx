@@ -146,7 +146,7 @@ export default function AdminCumSanPage() {
                     <i className="bi bi-geo-alt-fill fs-4"></i>
                   </div>
                   <div>
-                    <h4 className="fw-bold mb-0 text-dark">Quản lý Cụm Sân (CumSan)</h4>
+                    <h4 className="fw-bold mb-0 text-dark">Quản lý Cụm Sân </h4>
                     <p className="text-muted small mb-0">
                       Khu liên hợp thể thao, nhà thi đấu, cụm sân bãi ({totalCount} cụm sân)
                     </p>

@@ -37,8 +37,16 @@ namespace Dms.Application.Interfaces
 
     public interface IDangKyThiDauService
     {
-        Task<PagedResult<DangKyThiDauDto>> GetPagedAsync(int pageIndex, int pageSize, string? keyword = null, int? noiDungThiDauId = null, string? trangThai = null);
-        Task<IEnumerable<DangKyThiDauDto>> GetAllAsync(int? noiDungThiDauId = null);
+        Task<PagedResult<DangKyThiDauDto>> GetPagedAsync(
+            int pageIndex,
+            int pageSize,
+            string? keyword = null,
+            int? giaiDauId = null,
+            int? noiDungThiDauId = null,
+            int? donViId = null,
+            string? trangThai = null);
+
+        Task<IEnumerable<DangKyThiDauDto>> GetAllAsync(int? giaiDauId = null, int? noiDungThiDauId = null, int? donViId = null);
         Task<DangKyThiDauDto?> GetByIdAsync(int id);
         Task<DangKyThiDauDto> CreateAsync(CreateUpdateDangKyThiDauDto dto, string? createdBy = null);
         Task<DangKyThiDauDto?> UpdateAsync(int id, CreateUpdateDangKyThiDauDto dto, string? updatedBy = null);

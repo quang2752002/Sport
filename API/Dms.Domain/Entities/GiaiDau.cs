@@ -18,6 +18,12 @@ namespace Dms.Domain.Entities
         [MaxLength(300)]
         public string Ten { get; set; } = string.Empty;
 
+        [MaxLength(350)]
+        public string? Slug { get; set; }
+
+        [MaxLength(1000)]
+        public string? HinhAnh { get; set; }
+
         [MaxLength(2000)]
         public string? MoTa { get; set; }
 
@@ -37,5 +43,6 @@ namespace Dms.Domain.Entities
         public virtual ICollection<GiaiDauKhoi> GiaiDauKhois { get; set; } = new List<GiaiDauKhoi>();
         public virtual ICollection<GiaiDauMonTheThao> GiaiDauMonTheThaos { get; set; } = new List<GiaiDauMonTheThao>();
         public virtual ICollection<HuyChuong> HuyChuongs { get; set; } = new List<HuyChuong>();
+        public virtual ICollection<DieuLeGiaiDau> DieuLeGiaiDaus { get; set; } = new List<DieuLeGiaiDau>();
     }
 }

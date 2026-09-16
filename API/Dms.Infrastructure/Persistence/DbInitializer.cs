@@ -251,18 +251,39 @@ namespace Dms.Infrastructure.Persistence
                 await context.DonVis.AddRangeAsync(dvBachKhoa, dvKinhTe, dvFpt, dvViettel);
                 await context.SaveChangesAsync();
 
-                // 4. Seed Danh Mục Môn Thể Thao & Môn Thể Thao
+                // 4. Seed Danh Mục Môn Thể Thao & Môn Thể Thao (10 môn thể thao)
                 var dmBong = new DanhMucMonTheThao { Ma = "DM_BONG", Ten = "Các môn bóng", MoTa = "Bóng đá, bóng chuyền, bóng rổ...", TrangThai = true };
                 var dmVot = new DanhMucMonTheThao { Ma = "DM_VOT", Ten = "Các môn dùng vợt", MoTa = "Cầu lông, bóng bàn, tennis, pickleball...", TrangThai = true };
-                var dmDienKinh = new DanhMucMonTheThao { Ma = "DM_DIENKINH", Ten = "Điền kinh & Bơi lội", MoTa = "Chạy cự ly, bơi tự do, bơi ếch...", TrangThai = true };
-                await context.DanhMucMonTheThaos.AddRangeAsync(dmBong, dmVot, dmDienKinh);
+                var dmDienKinh = new DanhMucMonTheThao { Ma = "DM_DIENKINH", Ten = "Điền kinh & Dưới nước", MoTa = "Chạy cự ly, bơi tự do, bơi ếch...", TrangThai = true };
+                var dmTriTue = new DanhMucMonTheThao { Ma = "DM_TRITUE", Ten = "Thể thao trí tuệ", MoTa = "Cờ vua, cờ tướng...", TrangThai = true };
+                var dmVoThuat = new DanhMucMonTheThao { Ma = "DM_VOTHUAT", Ten = "Võ thuật & Đối kháng", MoTa = "Taekwondo, Karate, Vovinam...", TrangThai = true };
+                await context.DanhMucMonTheThaos.AddRangeAsync(dmBong, dmVot, dmDienKinh, dmTriTue, dmVoThuat);
                 await context.SaveChangesAsync();
 
-                var monBongDa = new MonTheThao { DanhMucId = dmBong.Id, Ma = "BONG_DA", Ten = "Bóng đá sân 7", LaMonDongDoi = true, MoTa = "Bóng đá mini cỏ nhân tạo 7 người", TrangThai = true };
-                var monCauLong = new MonTheThao { DanhMucId = dmVot.Id, Ma = "CAU_LONG", Ten = "Cầu lông", LaMonDongDoi = false, MoTa = "Thi đấu đơn và đôi", TrangThai = true };
-                var monBongBan = new MonTheThao { DanhMucId = dmVot.Id, Ma = "BONG_BAN", Ten = "Bóng bàn", LaMonDongDoi = false, MoTa = "Thi đấu đơn và đôi", TrangThai = true };
-                var monBoi = new MonTheThao { DanhMucId = dmDienKinh.Id, Ma = "BOI_LOI", Ten = "Bơi lội 50m", LaMonDongDoi = false, MoTa = "Bơi tự do 50m cự ly ngắn", TrangThai = true };
-                await context.MonTheThaos.AddRangeAsync(monBongDa, monCauLong, monBongBan, monBoi);
+                // 10 môn thể thao phong phú
+                var monBongDa = new MonTheThao { DanhMucId = dmBong.Id, Ma = "BONG_DA", Ten = "Bóng đá sân 7", LaMonDongDoi = true, HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.KetHopVongBangVaLoaiTrucTiep, MoTa = "Bóng đá mini cỏ nhân tạo 7 người (vòng bảng + knockout)", TrangThai = true };
+                var monBongChuyen = new MonTheThao { DanhMucId = dmBong.Id, Ma = "BONG_CHUYEN", Ten = "Bóng chuyền da", LaMonDongDoi = true, HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.KetHopVongBangVaLoaiTrucTiep, MoTa = "Bóng chuyền 6 người tiêu chuẩn", TrangThai = true };
+                var monBongRo = new MonTheThao { DanhMucId = dmBong.Id, Ma = "BONG_RO", Ten = "Bóng rổ 3x3", LaMonDongDoi = true, HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.LoaiTrucTiep, MoTa = "Bóng rổ nửa sân 3x3 nhịp độ cao", TrangThai = true };
+                var monCauLong = new MonTheThao { DanhMucId = dmVot.Id, Ma = "CAU_LONG", Ten = "Cầu lông", LaMonDongDoi = false, HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.LoaiTrucTiep, MoTa = "Thi đấu đơn và đôi loại trực tiếp", TrangThai = true };
+                var monBongBan = new MonTheThao { DanhMucId = dmVot.Id, Ma = "BONG_BAN", Ten = "Bóng bàn", LaMonDongDoi = false, HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.VongBang, MoTa = "Thi đấu vòng tròn tính điểm", TrangThai = true };
+                var monTennis = new MonTheThao { DanhMucId = dmVot.Id, Ma = "QUAN_VOT", Ten = "Quần vợt (Tennis)", LaMonDongDoi = false, HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.LoaiTrucTiep, MoTa = "Thi đấu đơn nam, đôi nam phong trào", TrangThai = true };
+                var monPickleball = new MonTheThao { DanhMucId = dmVot.Id, Ma = "PICKLEBALL", Ten = "Pickleball", LaMonDongDoi = false, HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.KetHopVongBangVaLoaiTrucTiep, MoTa = "Thi đấu đôi nam nữ pickleball hiện đại", TrangThai = true };
+                var monBoi = new MonTheThao { DanhMucId = dmDienKinh.Id, Ma = "BOI_LOI", Ten = "Bơi lội 50m", LaMonDongDoi = false, HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.TinhDiemXepHang, MoTa = "Bơi tự do 50m bấm giờ xếp hạng", TrangThai = true };
+                var monChayDienKinh = new MonTheThao { DanhMucId = dmDienKinh.Id, Ma = "CHAY_100M", Ten = "Chạy cự ly ngắn 100m", LaMonDongDoi = false, HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.TinhDiemXepHang, MoTa = "Điền kinh chạy nước rút 100m tính giây xếp hạng", TrangThai = true };
+                var monCoVua = new MonTheThao { DanhMucId = dmTriTue.Id, Ma = "CO_VUA", Ten = "Cờ vua tiêu chuẩn", LaMonDongDoi = false, HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.HeThuySi, MoTa = "Thi đấu cờ vua hệ Thụy Sĩ 7 ván tính điểm", TrangThai = true };
+
+                await context.MonTheThaos.AddRangeAsync(
+                    monBongDa,
+                    monBongChuyen,
+                    monBongRo,
+                    monCauLong,
+                    monBongBan,
+                    monTennis,
+                    monPickleball,
+                    monBoi,
+                    monChayDienKinh,
+                    monCoVua
+                );
                 await context.SaveChangesAsync();
 
                 // 5. Seed Giải Đấu & Liên kết Khối (GiaiDauKhoi)
@@ -270,6 +291,7 @@ namespace Dms.Infrastructure.Persistence
                 {
                     Ma = "HSSV_2026",
                     Ten = "Đại Hội Thể Thao Học Sinh Sinh Viên Mở Rộng 2026",
+                    Slug = "dai-hoi-the-thao-hoc-sinh-sinh-vien-mo-rong-2026",
                     MoTa = "Giải đấu thường niên dành cho sinh viên và thanh niên các trường đại học, cao đẳng.",
                     NgayBatDau = now.AddDays(-10),
                     NgayKetThuc = now.AddDays(20),
@@ -282,6 +304,7 @@ namespace Dms.Infrastructure.Persistence
                 {
                     Ma = "CUP_DN_2026",
                     Ten = "Giải Thể Thao Doanh Nghiệp Trẻ Thành Phố 2026",
+                    Slug = "giai-the-thao-doanh-nghiep-tre-thanh-pho-2026",
                     MoTa = "Tranh cúp giao lưu giữa các doanh nghiệp và tập đoàn công nghệ hàng đầu.",
                     NgayBatDau = now.AddDays(15),
                     NgayKetThuc = now.AddDays(30),
@@ -312,6 +335,7 @@ namespace Dms.Infrastructure.Persistence
                     Ten = "Bóng đá nam 7 người",
                     GioiTinh = "Nam",
                     LoaiThiDau = "TapThe",
+                    HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.KetHopVongBangVaLoaiTrucTiep,
                     SoLuongToiThieu = 7,
                     SoLuongToiDa = 14,
                     TrangThai = true
@@ -323,6 +347,7 @@ namespace Dms.Infrastructure.Persistence
                     Ten = "Đơn nam Cầu lông",
                     GioiTinh = "Nam",
                     LoaiThiDau = "CaNhan",
+                    HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.LoaiTrucTiep,
                     SoLuongToiThieu = 1,
                     SoLuongToiDa = 1,
                     TrangThai = true
@@ -470,6 +495,60 @@ namespace Dms.Infrastructure.Persistence
                     GhiChu = "Á quân Bóng đá nam SV 2026"
                 };
                 await context.HuyChuongs.AddRangeAsync(huyChuongVang, huyChuongBac);
+                await context.SaveChangesAsync();
+
+                // 20. Lịch sử chuyển đội thi đấu (LichSuChuyenDoi)
+                var lsChuyenDoi1 = new LichSuChuyenDoi
+                {
+                    VanDongVienId = vdv2.Id,
+                    DoiCuId = doiBk.Id,
+                    DoiMoiId = doiUeh.Id,
+                    NgayChuyen = now.AddDays(-5),
+                    LyDo = "Chuyển đơn vị học tập và giao lưu thi đấu theo thỏa thuận",
+                    NguoiXacNhan = "Ban Tổ Chức Giải",
+                    GhiChu = "Đã hoàn tất hồ sơ và thủ tục chuyển nhượng hợp lệ"
+                };
+                await context.LichSuChuyenDois.AddAsync(lsChuyenDoi1);
+                await context.SaveChangesAsync();
+
+                // 21. Điều lệ giải đấu (DieuLeGiaiDau)
+                var dlGiai1 = new DieuLeGiaiDau
+                {
+                    GiaiDauId = giaiHoiThao.Id,
+                    TieuDe = "Quy định đối tượng và điều kiện tham gia",
+                    NoiDung = "Vận động viên phải là sinh viên đang theo học chính quy tại các trường đại học, cao đẳng trên địa bàn TP.HCM, có thẻ sinh viên hợp lệ và đủ điều kiện sức khỏe tham gia thi đấu.",
+                    ThuTu = 1,
+                    TrangThai = true
+                };
+                var dlGiai2 = new DieuLeGiaiDau
+                {
+                    GiaiDauId = giaiHoiThao.Id,
+                    TieuDe = "Quy định khen thưởng và kỷ luật",
+                    NoiDung = "Ban Tổ chức trao cờ, huy chương Vàng, Bạc, Đồng và tiền thưởng cho các đội đạt thứ hạng Nhất, Nhì, Ba. Vận động viên hoặc đội bóng vi phạm tinh thần thể thao sẽ bị xử lý kỷ luật theo quy định.",
+                    ThuTu = 2,
+                    TrangThai = true
+                };
+                await context.DieuLeGiaiDaus.AddRangeAsync(dlGiai1, dlGiai2);
+                await context.SaveChangesAsync();
+
+                // 22. Điều lệ môn thể thao (DieuLeMonTheThao)
+                var dlMonBongDa = new DieuLeMonTheThao
+                {
+                    MonTheThaoId = monBongDa.Id,
+                    TieuDe = "Luật thi đấu Bóng đá mini 7 người",
+                    NoiDung = "Áp dụng Luật thi đấu bóng đá 7 người do Liên đoàn Bóng đá Việt Nam (VFF) ban hành. Mỗi trận gồm 2 hiệp, mỗi hiệp 25 phút, nghỉ giữa hiệp 10 phút. Không áp dụng luật việt vị.",
+                    ThuTu = 1,
+                    TrangThai = true
+                };
+                var dlMonCauLong = new DieuLeMonTheThao
+                {
+                    MonTheThaoId = monCauLong.Id,
+                    TieuDe = "Luật thi đấu Cầu lông hiện hành",
+                    NoiDung = "Áp dụng theo Luật Cầu lông hiện hành của Liên đoàn Cầu lông Thế giới (BWF). Thi đấu theo thể thức 3 hiệp thắng 2, mỗi hiệp 21 điểm (rallies point scoring system).",
+                    ThuTu = 1,
+                    TrangThai = true
+                };
+                await context.DieuLeMonTheThaos.AddRangeAsync(dlMonBongDa, dlMonCauLong);
                 await context.SaveChangesAsync();
             }
         }

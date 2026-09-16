@@ -13,10 +13,22 @@ const navigation = [
     icon: "bi bi-speedometer2",
   },
   {
-    title: "Phân quyền vai trò ",
-    href: "/admin/roles",
-    icon: "bi bi-shield-check",
-    permission: Permissions.Users.ManageRoles,
+    title: "Phân quyền & Tài khoản",
+    icon: "bi bi-shield-lock",
+    children: [
+      {
+        title: "Phân quyền vai trò",
+        href: "/admin/roles",
+        icon: "bi bi-shield-check",
+        permission: Permissions.Users.ManageRoles,
+      },
+      {
+        title: "Cấp tài khoản & Role",
+        href: "/admin/users",
+        icon: "bi bi-person-badge-fill",
+        permission: Permissions.Users.ManageRoles,
+      },
+    ],
   },
   {
     title: "Quản trị Thể thao",
@@ -41,6 +53,12 @@ const navigation = [
         permission: Permissions.DonVi.View,
       },
       {
+        title: "Vận động viên",
+        href: "/admin/van-dong-vien",
+        icon: "bi bi-person-walking",
+        permission: Permissions.VanDongVien.View,
+      },
+      {
         title: "Danh mục môn",
         href: "/admin/danh-muc-mon-the-thao",
         icon: "bi bi-tags",
@@ -57,6 +75,11 @@ const navigation = [
         href: "/admin/trong-tai",
         icon: "bi bi-whistle",
         permission: Permissions.TrongTai.View,
+      },
+      {
+        title: "Thư ký giải đấu",
+        href: "/admin/thu-ky",
+        icon: "bi bi-file-earmark-person",
       },
       {
         title: "Cụm sân",
@@ -111,19 +134,20 @@ const navigation = [
 
 ];
 
-const Sidebar = ({ showMobilemenu }) => {
+const Sidebar = ({ showMobilemenu, isCollapsed, toggleCollapse }) => {
   const location = usePathname();
   const { hasPermission, user } = useAuth();
 
   // Lọc danh sách menu dựa theo quyền xem (permission view) hoặc vai trò (roles)
   const filteredNavigation = useMemo(() => {
-    const userRoles = user?.roles || [];
-    const isAdmin = userRoles.includes("Admin");
+    const userRoles = (user?.roles || []).map((r) => String(r).toLowerCase());
+    const isAdmin = userRoles.includes("admin");
 
     const checkAllowed = (navItem) => {
+      // Admin luôn có toàn quyền xem mọi menu
       if (isAdmin) return true;
       if (navItem.roles && navItem.roles.length > 0) {
-        return navItem.roles.some((r) => userRoles.includes(r));
+        return navItem.roles.some((r) => userRoles.includes(String(r).toLowerCase()));
       }
       if (navItem.permission) {
         return hasPermission(navItem.permission);
@@ -133,6 +157,23 @@ const Sidebar = ({ showMobilemenu }) => {
 
     return navigation
       .map((item) => {
+        // Nếu mục là Dashboard mà user không phải Admin, điều hướng về trang chủ của role đó
+        if (item.title === "Dashboard" && !isAdmin) {
+          const roleMapping = {
+            delegation: "/don-vi",
+            manager: "/quan-ly-giai",
+            headreferee: "/truong-ban-trong-tai",
+            referee: "/trong-tai",
+            secretary: "/thu-ky",
+          };
+          const matchedRole = userRoles.find((r) => roleMapping[r]);
+          const userHome = matchedRole ? roleMapping[matchedRole] : "/don-vi";
+          return {
+            ...item,
+            href: userHome,
+          };
+        }
+
         // Nếu mục đơn có điều kiện bảo vệ
         if (!checkAllowed(item)) {
           return null;
@@ -180,9 +221,17 @@ const Sidebar = ({ showMobilemenu }) => {
   };
 
   return (
-    <div className="p-3">
-      <div className="d-flex align-items-center">
-        <Logo />
+    <div className={`p-3 ${isCollapsed ? 'px-2' : ''}`}>
+      <div className="d-flex align-items-center justify-content-between">
+        {!isCollapsed ? (
+          <div className="sidebar-brand-text">
+            <Logo />
+          </div>
+        ) : (
+          <div className="text-center w-100 py-1">
+            <i className="bi bi-trophy-fill text-white fs-3"></i>
+          </div>
+        )}
         <span className="ms-auto d-lg-none">
           <Button
             close
@@ -191,7 +240,7 @@ const Sidebar = ({ showMobilemenu }) => {
           ></Button>
         </span>
       </div>
-      <div className="pt-4 mt-2">
+      <div className="pt-3 mt-1">
         <Nav vertical className="sidebarNav">
           {filteredNavigation.map((navi, index) => {
             const hasChildren = navi.children && navi.children.length > 0;
@@ -200,61 +249,67 @@ const Sidebar = ({ showMobilemenu }) => {
 
             if (hasChildren) {
               return (
-                <NavItem key={index} className="sidenav-bg mb-1">
+                <NavItem key={index} className="sidenav-bg mb-1" title={isCollapsed ? navi.title : undefined}>
                   <div
                     onClick={() => toggleMenu(index)}
                     role="button"
-                    className={`nav-link py-3 d-flex align-items-center cursor-pointer ${isChildActive ? "text-primary fw-bold" : "text-secondary"
+                    className={`nav-link py-2.5 d-flex align-items-center cursor-pointer ${isChildActive ? "text-primary fw-bold" : "text-secondary"
                       }`}
                     style={{ userSelect: "none" }}
                   >
-                    <i className={navi.icon}></i>
-                    <span className="ms-3 d-inline-block">{navi.title}</span>
-                    <i
-                      className={`bi ms-auto transition-all ${isOpen ? "bi-chevron-down" : "bi-chevron-right"
-                        }`}
-                      style={{ fontSize: "0.8rem" }}
-                    ></i>
+                    <i className={`${navi.icon} ${isCollapsed ? 'fs-5' : ''}`}></i>
+                    {!isCollapsed && (
+                      <>
+                        <span className="ms-3 d-inline-block menu-title">{navi.title}</span>
+                        <i
+                          className={`bi ms-auto transition-all menu-chevron ${isOpen ? "bi-chevron-down" : "bi-chevron-right"
+                            }`}
+                          style={{ fontSize: "0.8rem" }}
+                        ></i>
+                      </>
+                    )}
                   </div>
 
-                  <Collapse isOpen={isOpen}>
-                    <Nav vertical className="ps-3 border-start ms-3 my-1">
-                      {navi.children.map((child, cIndex) => {
-                        const isCurrent = location === child.href;
-                        return (
-                          <NavItem key={cIndex} className="sidenav-bg mb-1">
-                            <Link
-                              href={child.href}
-                              className={`nav-link py-2 d-flex align-items-center ${isCurrent
+                  {!isCollapsed && (
+                    <Collapse isOpen={isOpen}>
+                      <Nav vertical className="ps-3 border-start ms-3 my-1">
+                        {navi.children.map((child, cIndex) => {
+                          const isCurrent = location === child.href;
+                          return (
+                            <NavItem key={cIndex} className="sidenav-bg mb-1">
+                              <Link
+                                href={child.href}
+                                className={`nav-link py-2 d-flex align-items-center ${isCurrent
                                   ? "text-primary fw-bold"
                                   : "text-muted"
-                                }`}
-                              style={{ fontSize: "0.9rem" }}
-                            >
-                              <i className={`${child.icon} me-2`} style={{ fontSize: "0.85rem" }}></i>
-                              <span>{child.title}</span>
-                            </Link>
-                          </NavItem>
-                        );
-                      })}
-                    </Nav>
-                  </Collapse>
+                                  }`}
+                                style={{ fontSize: "0.9rem" }}
+                              >
+                                <i className={`${child.icon} me-2`} style={{ fontSize: "0.85rem" }}></i>
+                                <span>{child.title}</span>
+                              </Link>
+                            </NavItem>
+                          );
+                        })}
+                      </Nav>
+                    </Collapse>
+                  )}
                 </NavItem>
               );
             }
 
             return (
-              <NavItem key={index} className="sidenav-bg mb-1">
+              <NavItem key={index} className="sidenav-bg mb-1" title={isCollapsed ? navi.title : undefined}>
                 <Link
                   href={navi.href}
                   className={
                     location === navi.href
-                      ? "text-primary fw-bold nav-link py-3 d-flex align-items-center"
-                      : "nav-link text-secondary py-3 d-flex align-items-center"
+                      ? `text-primary fw-bold nav-link py-2.5 d-flex align-items-center ${isCollapsed ? 'justify-content-center' : ''}`
+                      : `nav-link text-secondary py-2.5 d-flex align-items-center ${isCollapsed ? 'justify-content-center' : ''}`
                   }
                 >
-                  <i className={navi.icon}></i>
-                  <span className="ms-3 d-inline-block">{navi.title}</span>
+                  <i className={`${navi.icon} ${isCollapsed ? 'fs-5' : ''}`}></i>
+                  {!isCollapsed && <span className="ms-3 d-inline-block menu-title">{navi.title}</span>}
                 </Link>
               </NavItem>
             );

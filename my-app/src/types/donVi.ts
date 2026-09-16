@@ -12,6 +12,7 @@ export interface DonVi {
   soDienThoai?: string;
   email?: string;
   moTa?: string;
+  hinhAnh?: string;
   trangThai: boolean;
   soVanDongVien?: number;
   soDoi?: number;
@@ -30,5 +31,6 @@ export interface CreateUpdateDonVi {
   soDienThoai?: string;
   email?: string;
   moTa?: string;
+  hinhAnh?: string;
   trangThai: boolean;
 }

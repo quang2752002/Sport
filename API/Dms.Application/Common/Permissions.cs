@@ -173,6 +173,15 @@ namespace Dms.Application.Common
             public const string Supervise = "Permissions.TrongTai.Supervise"; // Giám sát trọng tài
         }
 
+        // Thư ký bàn & Thư ký giải (ThuKy)
+        public static class ThuKy
+        {
+            public const string View = "Permissions.ThuKy.View";
+            public const string Create = "Permissions.ThuKy.Create";
+            public const string Edit = "Permissions.ThuKy.Edit";
+            public const string Delete = "Permissions.ThuKy.Delete";
+        }
+
         // Trận đấu & Kết quả (TranDau, HiepDau, KetQuaTranDau)
         public static class TranDau
         {

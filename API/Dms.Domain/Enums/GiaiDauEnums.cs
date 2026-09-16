@@ -36,6 +36,33 @@ namespace Dms.Domain.Enums
         Huy = 5
     }
 
+    /// <summary>
+    /// Hình thức / thể thức thi đấu của môn thể thao
+    /// </summary>
+    public enum HinhThucThiDau
+    {
+        [Description("Loại trực tiếp (Knockout)")]
+        LoaiTrucTiep = 1,
+
+        [Description("Vòng tròn tính điểm / Vòng bảng (Round Robin)")]
+        VongBang = 2,
+
+        [Description("Kết hợp vòng bảng và loại trực tiếp (Group Stage + Knockout)")]
+        KetHopVongBangVaLoaiTrucTiep = 3,
+
+        [Description("Nhánh thắng - Nhánh thua (Double Elimination)")]
+        NhanhThangNhanhThua = 4,
+
+        [Description("Hệ Thụy Sĩ (Swiss System)")]
+        HeThuySi = 5,
+
+        [Description("Tính điểm xếp hạng / Tính giờ - Thành tích (Leaderboard / Time Trial)")]
+        TinhDiemXepHang = 6,
+
+        [Description("Khác")]
+        Khac = 7
+    }
+
     public static class EnumExtensions
     {
         /// <summary>
