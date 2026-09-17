@@ -19,8 +19,8 @@ import {
   Label,
   Badge,
 } from 'reactstrap';
-import { sanDauService, cumSanService } from '@/services';
-import { SanDau, CreateUpdateSanDau, CumSan } from '@/types';
+import { sanDauService, cumSanService, monTheThaoService } from '@/services';
+import { SanDau, CreateUpdateSanDau, CumSan, MonTheThao } from '@/types';
 import { PaginationComponent } from '@/components/common/PaginationComponent';
 import { useAuth } from '@/context/AuthContext';
 import { Permissions } from '@/constants/permissions';
@@ -38,12 +38,14 @@ function AdminSanDauContent() {
 
   const [sanDaus, setSanDaus] = useState<SanDau[]>([]);
   const [cumSans, setCumSans] = useState<CumSan[]>([]);
+  const [monTheThaos, setMonTheThaos] = useState<MonTheThao[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [pageIndex, setPageIndex] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [keyword, setKeyword] = useState('');
   const [cumSanFilter, setCumSanFilter] = useState<string>(initialCumSanId);
+  const [monTheThaoFilter, setMonTheThaoFilter] = useState<string>('');
   const [trangThaiFilter, setTrangThaiFilter] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,9 +55,10 @@ function AdminSanDauContent() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<CreateUpdateSanDau>({
     cumSanId: initialCumSanId ? Number(initialCumSanId) : 0,
+    monTheThaoId: undefined,
     ma: '',
     ten: '',
-    loaiSan: 'Sân bóng đá 11 người',
+    loaiSan: 'Sân cỏ nhân tạo',
     soSan: 1,
     sucChua: 500,
     moTa: '',
@@ -63,7 +66,7 @@ function AdminSanDauContent() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // Tải danh sách cụm sân cho dropdown
+  // Tải danh sách cụm sân & môn thể thao cho dropdown
   useEffect(() => {
     cumSanService.getAll()
       .then((data) => {
@@ -73,6 +76,10 @@ function AdminSanDauContent() {
         }
       })
       .catch((err) => console.error('Lỗi khi tải danh sách cụm sân:', err));
+
+    monTheThaoService.getAll()
+      .then((data) => setMonTheThaos(data || []))
+      .catch((err) => console.error('Lỗi khi tải danh sách môn thể thao:', err));
   }, []);
 
   // Fetch dữ liệu từ backend
@@ -85,6 +92,7 @@ function AdminSanDauContent() {
         pageSize,
         keyword: keyword.trim() || undefined,
         cumSanId: cumSanFilter ? Number(cumSanFilter) : undefined,
+        monTheThaoId: monTheThaoFilter ? Number(monTheThaoFilter) : undefined,
         trangThai: trangThaiFilter !== '' ? trangThaiFilter === 'true' : undefined,
       });
       setSanDaus(data.items || []);
@@ -96,7 +104,7 @@ function AdminSanDauContent() {
     } finally {
       setLoading(false);
     }
-  }, [pageIndex, pageSize, keyword, cumSanFilter, trangThaiFilter]);
+  }, [pageIndex, pageSize, keyword, cumSanFilter, monTheThaoFilter, trangThaiFilter]);
 
   useEffect(() => {
     loadSanDaus();
@@ -112,6 +120,7 @@ function AdminSanDauContent() {
     setEditingId(null);
     setFormData({
       cumSanId: cumSanFilter ? Number(cumSanFilter) : (cumSans[0]?.id || 0),
+      monTheThaoId: monTheThaoFilter ? Number(monTheThaoFilter) : undefined,
       ma: '',
       ten: '',
       loaiSan: 'Sân cỏ nhân tạo',
@@ -127,6 +136,7 @@ function AdminSanDauContent() {
     setEditingId(item.id);
     setFormData({
       cumSanId: item.cumSanId,
+      monTheThaoId: item.monTheThaoId,
       ma: item.ma,
       ten: item.ten,
       loaiSan: item.loaiSan || '',
@@ -210,7 +220,7 @@ function AdminSanDauContent() {
             <Form onSubmit={handleSearchSubmit} className="mb-4">
               <div className="p-3 bg-light rounded-3">
                 <Row className="g-2 align-items-center">
-                  <Col md={5} lg={4}>
+                  <Col md={6} lg={3}>
                     <div className="input-group bg-white rounded-3 overflow-hidden border">
                       <span className="input-group-text bg-white border-0 text-muted ps-3">
                         <i className="bi bi-search"></i>
@@ -224,7 +234,7 @@ function AdminSanDauContent() {
                       />
                     </div>
                   </Col>
-                  <Col md={4} lg={3}>
+                  <Col md={6} lg={3}>
                     <Input
                       type="select"
                       className="bg-white border rounded-3 shadow-none"
@@ -242,7 +252,25 @@ function AdminSanDauContent() {
                       ))}
                     </Input>
                   </Col>
-                  <Col md={3} lg={3}>
+                  <Col md={6} lg={2}>
+                    <Input
+                      type="select"
+                      className="bg-white border rounded-3 shadow-none"
+                      value={monTheThaoFilter}
+                      onChange={(e) => {
+                        setMonTheThaoFilter(e.target.value);
+                        setPageIndex(1);
+                      }}
+                    >
+                      <option value="">-- Tất cả môn thi đấu --</option>
+                      {monTheThaos.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.ten}
+                        </option>
+                      ))}
+                    </Input>
+                  </Col>
+                  <Col md={6} lg={2}>
                     <Input
                       type="select"
                       className="bg-white border rounded-3 shadow-none"
@@ -293,6 +321,7 @@ function AdminSanDauContent() {
                       <th style={{ width: '50px' }}>#</th>
                       <th>Mã Sân</th>
                       <th>Tên Sân Đấu</th>
+                      <th>Môn Thi Đấu</th>
                       <th>Cụm Sân Trực Thuộc</th>
                       <th>Loại Sân</th>
                       <th>Sức Chứa</th>
@@ -315,6 +344,16 @@ function AdminSanDauContent() {
                           <div className="fw-semibold text-dark">{item.ten}</div>
                           {item.soSan && (
                             <small className="text-muted">Số hiệu: #{item.soSan}</small>
+                          )}
+                        </td>
+                        <td>
+                          {item.tenMonTheThao ? (
+                            <Badge color="primary" pill className="px-2 py-1 fw-medium d-inline-flex align-items-center gap-1">
+                              <i className="bi bi-trophy"></i>
+                              {item.tenMonTheThao}
+                            </Badge>
+                          ) : (
+                            <span className="badge bg-light text-secondary border">Chưa gán môn</span>
                           )}
                         </td>
                         <td>
@@ -437,6 +476,31 @@ function AdminSanDauContent() {
               <Col md={6}>
                 <FormGroup>
                   <Label className="fw-semibold small">
+                    Môn thể thao thi đấu (1 sân chỉ 1 môn)
+                  </Label>
+                  <Input
+                    type="select"
+                    value={formData.monTheThaoId || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        monTheThaoId: e.target.value ? Number(e.target.value) : undefined,
+                      })
+                    }
+                  >
+                    <option value="">-- Chưa gán môn thi đấu --</option>
+                    {monTheThaos.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.ten} ({m.ma})
+                      </option>
+                    ))}
+                  </Input>
+                </FormGroup>
+              </Col>
+
+              <Col md={4}>
+                <FormGroup>
+                  <Label className="fw-semibold small">
                     Mã sân đấu <span className="text-danger">*</span>
                   </Label>
                   <Input
@@ -449,7 +513,7 @@ function AdminSanDauContent() {
                 </FormGroup>
               </Col>
 
-              <Col md={8}>
+              <Col md={5}>
                 <FormGroup>
                   <Label className="fw-semibold small">
                     Tên sân đấu <span className="text-danger">*</span>
@@ -464,7 +528,7 @@ function AdminSanDauContent() {
                 </FormGroup>
               </Col>
 
-              <Col md={4}>
+              <Col md={3}>
                 <FormGroup>
                   <Label className="fw-semibold small">Số thứ tự sân</Label>
                   <Input

@@ -16,7 +16,8 @@ import {
   Spinner,
   Badge,
 } from 'reactstrap';
-import { giaiDauService, khoiService, monTheThaoService } from '@/services';
+import { giaiDauService, khoiService, monTheThaoService, noiDungThiDauService } from '@/services';
+import GiaiDauNoiDungManager, { NoiDungThiDauFormItem } from '@/components/admin/GiaiDauNoiDungManager';
 import {
   CreateUpdateGiaiDau,
   PhamViGiaiDau,
@@ -53,6 +54,7 @@ export default function CreateGiaiDauPage() {
 
   const [availableKhois, setAvailableKhois] = useState<{ id: number; ma: string; ten: string }[]>([]);
   const [availableMons, setAvailableMons] = useState<MonTheThao[]>([]);
+  const [noiDungItems, setNoiDungItems] = useState<NoiDungThiDauFormItem[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -229,8 +231,37 @@ export default function CreateGiaiDauPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await giaiDauService.create(formData);
-      toast.success('Thêm mới giải đấu thành công!', 'Hoàn tất');
+      const createdGiaiDau = await giaiDauService.create(formData);
+
+      // Lưu các nội dung thi đấu đã cấu hình theo từng môn
+      if (createdGiaiDau?.id && noiDungItems.length > 0) {
+        const validItems = noiDungItems.filter((item) =>
+          (formData.monTheThaoIds || []).includes(item.monTheThaoId)
+        );
+
+        if (validItems.length > 0) {
+          const createPromises = validItems.map((item) =>
+            noiDungThiDauService.create({
+              giaiDauId: createdGiaiDau.id,
+              monTheThaoId: item.monTheThaoId,
+              ma: item.ma,
+              ten: item.ten,
+              gioiTinh: item.gioiTinh,
+              loaiThiDau: item.loaiThiDau,
+              hinhThucThiDau: item.hinhThucThiDau,
+              soLuongToiThieu: item.soLuongToiThieu,
+              soLuongToiDa: item.soLuongToiDa,
+              moTa: item.moTa,
+              trangThai: item.trangThai,
+            }).catch((err) => {
+              console.error(`Lỗi tạo nội dung [${item.ten}]:`, err);
+            })
+          );
+          await Promise.all(createPromises);
+        }
+      }
+
+      toast.success('Thêm mới giải đấu và cấu hình nội dung thi đấu thành công!', 'Hoàn tất');
       router.push('/admin/giai-dau');
     } catch (err: any) {
       console.error('Lỗi khi thêm giải đấu:', err);
@@ -487,6 +518,14 @@ export default function CreateGiaiDauPage() {
                     })}
                   </div>
                 )}
+
+                {/* CẤU HÌNH NỘI DUNG THI ĐẤU THEO MÔN */}
+                <GiaiDauNoiDungManager
+                  selectedMonIds={formData.monTheThaoIds || []}
+                  availableMons={availableMons}
+                  items={noiDungItems}
+                  onChange={setNoiDungItems}
+                />
               </CardBody>
             </Card>
 
@@ -834,6 +873,49 @@ export default function CreateGiaiDauPage() {
                   <span>Môn thể thao:</span>
                   <span className="fw-bold">{(formData.monTheThaoIds || []).length} môn</span>
                 </div>
+                <div className="d-flex justify-content-between py-2 border-bottom border-white border-opacity-25 small">
+                  <span>Nội dung thi đấu:</span>
+                  <span className="fw-bold">
+                    {
+                      noiDungItems.filter((nd) =>
+                        (formData.monTheThaoIds || []).includes(nd.monTheThaoId)
+                      ).length
+                    }{' '}
+                    nội dung
+                  </span>
+                </div>
+                {(formData.monTheThaoIds || []).length > 0 && (
+                  <div className="py-2 border-bottom border-white border-opacity-25">
+                    <div className="text-white-50 small mb-1" style={{ fontSize: '11.5px' }}>
+                      Theo từng môn thi đấu:
+                    </div>
+                    <div className="d-flex flex-column gap-1">
+                      {(formData.monTheThaoIds || []).map((monId) => {
+                        const mon = availableMons.find((m) => m.id === monId);
+                        const count = noiDungItems.filter((nd) => nd.monTheThaoId === monId).length;
+                        return (
+                          <div
+                            key={monId}
+                            className="d-flex justify-content-between align-items-center small ps-2"
+                            style={{ fontSize: '12px' }}
+                          >
+                            <span className="text-truncate text-white-75" style={{ maxWidth: '160px' }}>
+                              • {mon?.ten || `Môn #${monId}`}:
+                            </span>
+                            <span
+                              className={`badge ${
+                                count > 0 ? 'bg-white text-primary' : 'bg-white bg-opacity-25 text-white'
+                              }`}
+                              style={{ fontSize: '11px' }}
+                            >
+                              {count} nội dung
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="d-flex justify-content-between py-2 border-bottom border-white border-opacity-25 small">
                   <span>Mục điều lệ:</span>
                   <span className="fw-bold">{(formData.dieuLes || []).length} điều khoản</span>

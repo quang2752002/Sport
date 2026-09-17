@@ -75,7 +75,8 @@ namespace Dms.Application.Mappings
 
             // SanDau
             CreateMap<SanDau, SanDauDto>()
-                .ForMember(dest => dest.TenCumSan, opt => opt.MapFrom(src => src.CumSan != null ? src.CumSan.Ten : null));
+                .ForMember(dest => dest.TenCumSan, opt => opt.MapFrom(src => src.CumSan != null ? src.CumSan.Ten : null))
+                .ForMember(dest => dest.TenMonTheThao, opt => opt.MapFrom(src => src.MonTheThao != null ? src.MonTheThao.Ten : null));
             CreateMap<CreateUpdateSanDauDto, SanDau>();
 
             // LoaiHuyChuong

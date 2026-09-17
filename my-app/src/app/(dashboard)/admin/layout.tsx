@@ -102,6 +102,11 @@ const adminNavigation: NavItem[] = [
         permission: Permissions.MonTheThao.View,
       },
       {
+        title: 'Nội dung thi đấu',
+        href: '/admin/noi-dung-thi-dau',
+        icon: 'bi bi-layers',
+      },
+      {
         title: 'Trọng tài',
         href: '/admin/trong-tai',
         icon: 'bi bi-whistle',

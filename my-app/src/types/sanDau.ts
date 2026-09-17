@@ -2,6 +2,8 @@ export interface SanDau {
   id: number;
   cumSanId: number;
   tenCumSan?: string;
+  monTheThaoId?: number;
+  tenMonTheThao?: string;
   ma: string;
   ten: string;
   loaiSan?: string;
@@ -15,6 +17,7 @@ export interface SanDau {
 
 export interface CreateUpdateSanDau {
   cumSanId: number;
+  monTheThaoId?: number;
   ma: string;
   ten: string;
   loaiSan?: string;

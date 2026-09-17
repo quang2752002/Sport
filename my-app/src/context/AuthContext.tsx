@@ -68,6 +68,27 @@ function parseUserFromToken(token: string): User | null {
       0
     );
 
+    const rawDonViId =
+      rawDecoded['donViId'] ||
+      rawDecoded['DonViId'] ||
+      rawDecoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/donViId'];
+    const donViId =
+      rawDonViId !== undefined && rawDonViId !== null && rawDonViId !== ''
+        ? Number(rawDonViId)
+        : null;
+
+    const rawTrongTaiId = rawDecoded['trongTaiId'] || rawDecoded['TrongTaiId'];
+    const trongTaiId =
+      rawTrongTaiId !== undefined && rawTrongTaiId !== null && rawTrongTaiId !== ''
+        ? Number(rawTrongTaiId)
+        : null;
+
+    const rawThuKyId = rawDecoded['thuKyId'] || rawDecoded['ThuKyId'];
+    const thuKyId =
+      rawThuKyId !== undefined && rawThuKyId !== null && rawThuKyId !== ''
+        ? Number(rawThuKyId)
+        : null;
+
     return {
       id: userId,
       username:
@@ -78,6 +99,9 @@ function parseUserFromToken(token: string): User | null {
       email: rawDecoded.email || '',
       roles,
       permissions,
+      donViId,
+      trongTaiId,
+      thuKyId,
     };
   } catch {
     return null;
@@ -140,6 +164,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Giải mã trực tiếp từ token vừa nhận
       const parsedUser = parseUserFromToken(data.accessToken);
+      if (parsedUser && data.donViId && !parsedUser.donViId) {
+        parsedUser.donViId = data.donViId;
+      }
       setUser(parsedUser);
       loadPermissionTree();
       return parsedUser;
@@ -155,6 +182,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tokenStorage.setTokens(data.accessToken, data.refreshToken);
 
       const parsedUser = parseUserFromToken(data.accessToken);
+      if (parsedUser && data.donViId && !parsedUser.donViId) {
+        parsedUser.donViId = data.donViId;
+      }
       setUser(parsedUser);
       loadPermissionTree();
       return parsedUser;

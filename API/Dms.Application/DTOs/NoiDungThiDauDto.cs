@@ -8,12 +8,15 @@ namespace Dms.Application.DTOs
     {
         public int Id { get; set; }
         public int GiaiDauMonTheThaoId { get; set; }
+        public int? GiaiDauId { get; set; }
+        public int? MonTheThaoId { get; set; }
         public string? TenMonTheThao { get; set; }
         public string? TenGiaiDau { get; set; }
         public string Ma { get; set; } = string.Empty;
         public string Ten { get; set; } = string.Empty;
         public string GioiTinh { get; set; } = "HonHop";
         public string LoaiThiDau { get; set; } = "CaNhan";
+        public string? HinhThucThiDau { get; set; }
         public int? SoLuongToiThieu { get; set; }
         public int? SoLuongToiDa { get; set; }
         public string? MoTa { get; set; }
@@ -26,11 +29,14 @@ namespace Dms.Application.DTOs
 
     public class CreateUpdateNoiDungThiDauDto
     {
+        public int? GiaiDauId { get; set; }
+        public int? MonTheThaoId { get; set; }
         public int GiaiDauMonTheThaoId { get; set; }
         public string Ma { get; set; } = string.Empty;
         public string Ten { get; set; } = string.Empty;
         public string GioiTinh { get; set; } = "HonHop";
         public string LoaiThiDau { get; set; } = "CaNhan";
+        public string? HinhThucThiDau { get; set; }
         public int? SoLuongToiThieu { get; set; }
         public int? SoLuongToiDa { get; set; }
         public string? MoTa { get; set; }

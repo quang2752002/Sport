@@ -10,3 +10,4 @@ export * from './sanDauService';
 export * from './thuKyService';
 export * from './vanDongVienService';
 export * from './dangKyThiDauService';
+export * from './noiDungThiDauService';

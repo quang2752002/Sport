@@ -17,8 +17,8 @@ namespace Dms.Application.Interfaces
 
     public interface ISanDauService
     {
-        Task<PagedResult<SanDauDto>> GetPagedAsync(int pageIndex, int pageSize, string? keyword = null, int? cumSanId = null, bool? trangThai = null);
-        Task<IEnumerable<SanDauDto>> GetAllAsync(int? cumSanId = null);
+        Task<PagedResult<SanDauDto>> GetPagedAsync(int pageIndex, int pageSize, string? keyword = null, int? cumSanId = null, int? monTheThaoId = null, bool? trangThai = null);
+        Task<IEnumerable<SanDauDto>> GetAllAsync(int? cumSanId = null, int? monTheThaoId = null);
         Task<SanDauDto?> GetByIdAsync(int id);
         Task<SanDauDto> CreateAsync(CreateUpdateSanDauDto dto, string? createdBy = null);
         Task<SanDauDto?> UpdateAsync(int id, CreateUpdateSanDauDto dto, string? updatedBy = null);

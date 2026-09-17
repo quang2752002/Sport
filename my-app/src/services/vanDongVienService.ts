@@ -23,6 +23,21 @@ export const vanDongVienService = {
     return res.data;
   },
 
+  /** Lấy danh sách VĐV của đoàn (gọi endpoint /api/vandongvien/doan hoặc fallback /api/vandongvien như /don-vi/dang-ky/1) */
+  getByDoan: async (donViId?: number) => {
+    try {
+      const res = await api.get<VanDongVien[]>('/api/vandongvien/doan', {
+        params: donViId ? { donViId } : undefined,
+      });
+      return res.data;
+    } catch {
+      const res = await api.get<VanDongVien[]>('/api/vandongvien', {
+        params: donViId ? { donViId } : undefined,
+      });
+      return res.data;
+    }
+  },
+
   /** Lấy chi tiết VĐV theo ID */
   getById: async (id: number) => {
     const res = await api.get<VanDongVien>(`/api/vandongvien/${id}`);

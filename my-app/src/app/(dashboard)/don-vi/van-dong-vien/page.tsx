@@ -80,44 +80,84 @@ export default function DonViVanDongVienPage() {
   // Modal Xóa
   const [deletingVdv, setDeletingVdv] = useState<VanDongVien | null>(null);
 
-  // Load danh sách đơn vị và VĐV
+  // Load danh sách VĐV của đoàn (tham khảo nghiệp vụ tương tự /don-vi/dang-ky/1)
   const loadData = async () => {
     try {
       setLoading(true);
-      const [allDonVis, allVdvs] = await Promise.all([
-        donViService.getAll(),
-        vanDongVienService.getAll(),
-      ]);
 
+      // 1. Tải danh sách đơn vị (nếu không có quyền thì bắt lỗi trả về rỗng, không làm gián đoạn tải VĐV)
+      const allDonVis = await donViService.getAll().catch(() => []);
       setDonVis(allDonVis || []);
 
-      // Xác định đơn vị của người dùng đang đăng nhập (khớp theo user.fullName, user.username hoặc tên đơn vị)
+      // 2. Tải danh sách VĐV từ backend (hàm getByDoan / getAll tương tự /don-vi/dang-ky/1)
+      const allAthletes = await vanDongVienService.getByDoan(user?.donViId || undefined);
+
+      // 3. Xác định thông tin đơn vị hiển thị
       let myUnit: DonVi | undefined = undefined;
       if (allDonVis && allDonVis.length > 0) {
-        myUnit = allDonVis.find(
-          (d) =>
-            d.ten.toLowerCase().includes((user?.fullName || '').toLowerCase()) ||
-            d.ma.toLowerCase() === (user?.username || '').toLowerCase() ||
-            (user?.fullName && d.ten.toLowerCase() === user.fullName.toLowerCase())
-        );
-
-        // Nếu tài khoản đoàn thi đấu chưa map tên đặc biệt, lấy đơn vị đầu tiên hoặc matching
-        if (!myUnit && allDonVis.length > 0) {
+        if (user?.donViId) {
+          myUnit = allDonVis.find((d) => d.id === user.donViId);
+        }
+        if (!myUnit && user) {
+          myUnit = allDonVis.find(
+            (d) =>
+              (user.fullName && d.ten.toLowerCase().includes(user.fullName.toLowerCase())) ||
+              (user.username && d.ma.toLowerCase() === user.username.toLowerCase()) ||
+              (user.fullName && d.ten.toLowerCase() === user.fullName.toLowerCase())
+          );
+        }
+        if (!myUnit) {
           myUnit = allDonVis[0];
         }
+      } else if (user) {
+        // Dự phòng tạo thông tin đơn vị dựa trên tài khoản hoặc VĐV hiện có
+        const detectedUnitName = allAthletes.find((a) => a.tenDonVi)?.tenDonVi;
+        myUnit = {
+          id: user.donViId || 1,
+          ma: user.username || 'DOAN',
+          ten: detectedUnitName || user.fullName || 'Đoàn Thể Thao',
+          trangThai: true,
+        };
       }
       setCurrentDonVi(myUnit || null);
 
-      // Lọc danh sách VĐV thuộc đơn vị này (hoặc toàn bộ nếu chưa gán đơn vị)
-      if (myUnit) {
-        const unitVdvs = (allVdvs || []).filter((v) => v.donViId === myUnit!.id);
-        // Nếu đơn vị chưa có VDV nào trong DB, fallback hiển thị các VDV mẫu
-        setVdvs(unitVdvs.length > 0 ? unitVdvs : allVdvs || []);
+      // 4. Lấy danh sách VĐV của đoàn:
+      // Nếu tài khoản có donViId xác định: hiển thị VĐV thuộc đoàn (và các VĐV tự tạo)
+      // Nếu tài khoản đoàn chung (như delegation) hoặc Admin: hiển thị danh sách VĐV như trang /don-vi/dang-ky/1
+      if (user?.donViId) {
+        const unitVdvs = allAthletes.filter(
+          (a) => a.donViId === user.donViId || a.donViId === null || a.donViId === undefined
+        );
+        setVdvs(unitVdvs);
       } else {
-        setVdvs(allVdvs || []);
+        setVdvs(allAthletes || []);
       }
     } catch (err) {
-      console.error('Lỗi khi tải dữ liệu VĐV:', err);
+      console.error('Lỗi khi tải dữ liệu VĐV của đoàn:', err);
+      // Fallback gọi getAll() giống hệt /don-vi/dang-ky/1
+      try {
+        const fallback = await vanDongVienService.getAll();
+        setVdvs(fallback || []);
+      } catch {
+        setVdvs([]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Hàm chuyển đổi đoàn thể thao (hữu ích cho tài khoản Admin/Quản lý)
+  const handleSwitchDonVi = async (unitId: number) => {
+    const selected = donVis.find((d) => d.id === unitId);
+    if (!selected) return;
+    setCurrentDonVi(selected);
+    try {
+      setLoading(true);
+      const unitVdvs = await vanDongVienService.getByDoan(selected.id);
+      setVdvs(unitVdvs || []);
+    } catch (err) {
+      console.error('Lỗi khi nạp danh sách VĐV:', err);
+      setVdvs([]);
     } finally {
       setLoading(false);
     }
@@ -161,7 +201,7 @@ export default function DonViVanDongVienPage() {
     setFormData({
       ma: `VDV-${Math.floor(1000 + Math.random() * 9000)}`,
       hoTen: '',
-      donViId: currentDonVi?.id || (donVis[0]?.id ?? undefined),
+      donViId: currentDonVi?.id,
       ngaySinh: '',
       gioiTinh: 'Nam',
       soDienThoai: '',
@@ -180,7 +220,7 @@ export default function DonViVanDongVienPage() {
     setFormData({
       ma: item.ma,
       hoTen: item.hoTen,
-      donViId: item.donViId,
+      donViId: item.donViId || currentDonVi?.id,
       ngaySinh: item.ngaySinh ? item.ngaySinh.slice(0, 10) : '',
       gioiTinh: item.gioiTinh || 'Nam',
       soDienThoai: item.soDienThoai || '',
@@ -210,12 +250,18 @@ export default function DonViVanDongVienPage() {
 
       if (editingId) {
         const updated = await vanDongVienService.update(editingId, payload);
-        setVdvs((prev) => prev.map((item) => (item.id === editingId ? updated : item)));
+        setVdvs((prev) =>
+          prev.map((item) =>
+            item.id === editingId
+              ? { ...item, ...updated, tenDonVi: currentDonVi?.ten || updated.tenDonVi || item.tenDonVi }
+              : item
+          )
+        );
         setAlertMsg({ type: 'success', text: `Cập nhật VĐV [${updated.hoTen}] thành công!` });
       } else {
         const created = await vanDongVienService.create(payload);
-        setVdvs((prev) => [created, ...prev]);
-        setAlertMsg({ type: 'success', text: `Thêm mới VĐV [${created.hoTen}] thành công!` });
+        setVdvs((prev) => [{ ...created, tenDonVi: currentDonVi?.ten || created.tenDonVi }, ...prev]);
+        setAlertMsg({ type: 'success', text: `Thêm mới VĐV [${created.hoTen}] vào đoàn thành công!` });
       }
 
       setModalOpen(false);
@@ -294,8 +340,38 @@ export default function DonViVanDongVienPage() {
                 Danh Sách Vận Động Viên - {currentDonVi?.ten || user?.fullName || 'Đoàn Thể Thao'}
               </h2>
               <p className="text-white-50 mb-0 small" style={{ maxWidth: '650px' }}>
-                Quản lý lý lịch trích ngang, thông tin CCCD, số điện thoại và trạng thái sẵn sàng thi đấu của các vận động viên thuộc đơn vị.
+                Quản lý lý lịch trích ngang, thông tin CCCD, số điện thoại và trạng thái sẵn sàng thi đấu của các vận động viên thuộc đoàn.
               </p>
+
+              {/* Selector chuyển đổi đoàn dành cho Admin hoặc khi chưa cố định đơn vị */}
+              {(user?.roles.includes('Admin') || user?.roles.includes('Manager') || !user?.donViId) && donVis.length > 0 && (
+                <div
+                  className="d-inline-flex align-items-center gap-2 mt-3 p-1.5 px-3 rounded-pill"
+                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.2)' }}
+                >
+                  <Building2 size={15} className="text-warning flex-shrink-0" />
+                  <span className="small text-white-50 text-nowrap" style={{ fontSize: '12px' }}>Đoàn thể thao:</span>
+                  <Input
+                    type="select"
+                    bsSize="sm"
+                    value={currentDonVi?.id || ''}
+                    onChange={(e) => handleSwitchDonVi(Number(e.target.value))}
+                    className="border-0 text-white rounded-pill px-2 py-0"
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                      fontSize: '12px',
+                      height: '26px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {donVis.map((dv) => (
+                      <option key={dv.id} value={dv.id} className="text-dark bg-white">
+                        {dv.ten} ({dv.ma})
+                      </option>
+                    ))}
+                  </Input>
+                </div>
+              )}
             </div>
             <Button
               color="light"
@@ -472,15 +548,25 @@ export default function DonViVanDongVienPage() {
                 <tr>
                   <td colSpan={8} className="text-center py-5 text-secondary">
                     <div className="d-flex flex-column align-items-center justify-content-center gap-2">
-                      <Users size={40} className="text-muted opacity-50" />
-                      <p className="mb-0">Chưa có vận động viên nào phù hợp.</p>
+                      <Users size={42} className="text-muted opacity-50" />
+                      <p className="mb-0 fw-semibold text-dark fs-6">
+                        {keyword || gioiTinhFilter !== 'ALL' || trangThaiFilter !== 'ALL'
+                          ? 'Không tìm thấy vận động viên nào khớp với bộ lọc hiện tại.'
+                          : `Đoàn "${currentDonVi?.ten || 'này'}" hiện chưa có vận động viên nào.`}
+                      </p>
+                      <small className="text-muted mb-2">
+                        {keyword || gioiTinhFilter !== 'ALL' || trangThaiFilter !== 'ALL'
+                          ? 'Hãy thử thay đổi từ khóa hoặc thiết lập lại bộ lọc tìm kiếm.'
+                          : 'Bấm nút dưới đây để tạo hồ sơ vận động viên mới cho đoàn của bạn.'}
+                      </small>
                       <Button
-                        color="outline-success"
+                        color="success"
                         size="sm"
-                        className="rounded-pill mt-2"
+                        className="rounded-pill px-3 py-1.5 d-flex align-items-center gap-1.5 shadow-sm"
                         onClick={handleOpenAdd}
                       >
-                        Thêm vận động viên mới
+                        <Plus size={15} />
+                        <span>Thêm vận động viên mới</span>
                       </Button>
                     </div>
                   </td>
@@ -612,6 +698,25 @@ export default function DonViVanDongVienPage() {
         <Form onSubmit={handleSubmit}>
           <ModalBody className="p-4">
             <Row className="g-3">
+              <Col xs={12}>
+                <div className="p-3 rounded-3 bg-light border d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-2.5">
+                    <div className="p-2 rounded-circle bg-success bg-opacity-10 text-success">
+                      <Building2 size={18} />
+                    </div>
+                    <div>
+                      <small className="text-secondary d-block">Đoàn thể thao chủ quản</small>
+                      <strong className="text-dark fs-6">{currentDonVi?.ten || 'Đoàn Thể Thao'}</strong>
+                    </div>
+                  </div>
+                  {currentDonVi?.ma && (
+                    <Badge color="success" className="rounded-pill px-3 py-1.5 font-monospace">
+                      {currentDonVi.ma}
+                    </Badge>
+                  )}
+                </div>
+              </Col>
+
               <Col xs={12} md={6}>
                 <FormGroup>
                   <Label className="fw-semibold small">

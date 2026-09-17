@@ -5,6 +5,9 @@ export interface User {
   fullName: string;
   roles: string[];
   permissions: string[];
+  donViId?: number | null;
+  trongTaiId?: number | null;
+  thuKyId?: number | null;
 }
 
 export interface AuthResponse {
@@ -16,6 +19,9 @@ export interface AuthResponse {
   fullName: string;
   role: string;
   permissions: string[];
+  donViId?: number | null;
+  trongTaiId?: number | null;
+  thuKyId?: number | null;
 }
 
 export interface LoginRequest {

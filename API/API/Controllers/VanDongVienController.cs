@@ -40,6 +40,27 @@ namespace API.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Lấy danh sách vận động viên của đoàn hiện tại (theo tài khoản đăng nhập hoặc donViId)
+        /// Tham khảo nghiệp vụ tương tự trang đăng ký thi đấu
+        /// </summary>
+        [HttpGet("doan")]
+        [Authorize]
+        public async Task<IActionResult> GetByDoan([FromQuery] int? donViId = null)
+        {
+            int? effectiveDonViId = donViId;
+            if (!effectiveDonViId.HasValue)
+            {
+                var claim = User.FindFirst("donViId")?.Value;
+                if (int.TryParse(claim, out var cid))
+                {
+                    effectiveDonViId = cid;
+                }
+            }
+            var result = await _vanDongVienService.GetAllAsync(effectiveDonViId);
+            return Ok(result);
+        }
+
         [HttpGet("{id}")]
         [Authorize(Policy = Permissions.VanDongVien.View)]
         public async Task<IActionResult> GetById(int id)

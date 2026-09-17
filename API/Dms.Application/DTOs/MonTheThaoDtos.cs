@@ -11,6 +11,7 @@ namespace Dms.Application.DTOs
         public string Ten { get; set; } = string.Empty;
         public string? MoTa { get; set; }
         public bool LaMonDongDoi { get; set; } = false;
+        public string HinhThucThiDau { get; set; } = "LoaiTrucTiep";
         public bool TrangThai { get; set; } = true;
         public DateTime? Created { get; set; }
         public DateTime? LastModified { get; set; }
@@ -23,6 +24,7 @@ namespace Dms.Application.DTOs
         public string Ten { get; set; } = string.Empty;
         public string? MoTa { get; set; }
         public bool LaMonDongDoi { get; set; } = false;
+        public string? HinhThucThiDau { get; set; }
         public bool TrangThai { get; set; } = true;
     }
 }

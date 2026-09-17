@@ -33,7 +33,7 @@ namespace API.Controllers
         }
 
         [HttpGet]
-        [Authorize(Policy = Permissions.DonVi.View)]
+        [Authorize]
         public async Task<IActionResult> GetAll([FromQuery] int? khoiId = null)
         {
             var result = await _donViService.GetAllAsync(khoiId);

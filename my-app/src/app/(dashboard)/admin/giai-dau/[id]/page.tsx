@@ -15,7 +15,8 @@ import {
   Input,
   Spinner,
 } from 'reactstrap';
-import { giaiDauService, khoiService, monTheThaoService } from '@/services';
+import { giaiDauService, khoiService, monTheThaoService, noiDungThiDauService } from '@/services';
+import GiaiDauNoiDungManager, { NoiDungThiDauFormItem } from '@/components/admin/GiaiDauNoiDungManager';
 import {
   CreateUpdateGiaiDau,
   PhamViGiaiDau,
@@ -56,6 +57,7 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
 
   const [availableKhois, setAvailableKhois] = useState<{ id: number; ma: string; ten: string }[]>([]);
   const [availableMons, setAvailableMons] = useState<MonTheThao[]>([]);
+  const [noiDungItems, setNoiDungItems] = useState<NoiDungThiDauFormItem[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -104,10 +106,11 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     async function loadData() {
       try {
-        const [khoiData, monData, giaiDauData] = await Promise.all([
+        const [khoiData, monData, giaiDauData, noiDungList] = await Promise.all([
           khoiService.getAll(),
           monTheThaoService.getAll(),
           giaiDauService.getById(id),
+          noiDungThiDauService.getAll({ giaiDauId: id }).catch(() => []),
         ]);
 
         setAvailableKhois(khoiData || []);
@@ -119,6 +122,32 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
             if (!dateStr) return '';
             return new Date(dateStr).toISOString().split('T')[0];
           };
+
+          // Map GiaiDauMonTheThaoId -> MonTheThaoId từ giaiDauData.monTheThaos
+          const gdmMap = new Map<number, number>();
+          (giaiDauData.monTheThaos || []).forEach((m: any) => {
+            gdmMap.set(m.id, m.monTheThaoId);
+          });
+
+          const formattedItems: NoiDungThiDauFormItem[] = (noiDungList || []).map((nd) => {
+            const resolvedMonId = nd.monTheThaoId || gdmMap.get(nd.giaiDauMonTheThaoId) || 0;
+            return {
+              id: nd.id,
+              monTheThaoId: resolvedMonId,
+              giaiDauMonTheThaoId: nd.giaiDauMonTheThaoId,
+              tenMonTheThao: nd.tenMonTheThao || '',
+              ma: nd.ma,
+              ten: nd.ten,
+              gioiTinh: nd.gioiTinh,
+              loaiThiDau: nd.loaiThiDau,
+              hinhThucThiDau: nd.hinhThucThiDau,
+              soLuongToiThieu: nd.soLuongToiThieu ?? 1,
+              soLuongToiDa: nd.soLuongToiDa ?? 1,
+              moTa: nd.moTa,
+              trangThai: nd.trangThai,
+            };
+          });
+          setNoiDungItems(formattedItems);
 
           setFormData({
             ma: giaiDauData.ma || '',
@@ -307,6 +336,14 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
         <div className="d-flex gap-2">
+          <Link
+            href={`/admin/noi-dung-thi-dau?giaiDauId=${id}`}
+            className="btn btn-outline-primary rounded-3 px-3 d-inline-flex align-items-center gap-2"
+            title="Quản lý các nội dung thi đấu thuộc giải này"
+          >
+            <i className="bi bi-layers"></i>
+            Nội dung thi đấu
+          </Link>
           <Link href="/admin/giai-dau" className="btn btn-light rounded-3 px-3">
             Hủy bỏ
           </Link>
@@ -527,6 +564,16 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                     })}
                   </div>
                 )}
+
+                {/* CẤU HÌNH NỘI DUNG THI ĐẤU THEO MÔN */}
+                <GiaiDauNoiDungManager
+                  giaiDauId={id}
+                  selectedMonIds={formData.monTheThaoIds || []}
+                  availableMons={availableMons}
+                  items={noiDungItems}
+                  onChange={setNoiDungItems}
+                  readOnly={!canEdit}
+                />
               </CardBody>
             </Card>
 
@@ -874,6 +921,49 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                   <span>Môn thể thao:</span>
                   <span className="fw-bold">{(formData.monTheThaoIds || []).length} môn</span>
                 </div>
+                <div className="d-flex justify-content-between py-2 border-bottom border-white border-opacity-25 small">
+                  <span>Nội dung thi đấu:</span>
+                  <span className="fw-bold">
+                    {
+                      noiDungItems.filter((nd) =>
+                        (formData.monTheThaoIds || []).includes(nd.monTheThaoId)
+                      ).length
+                    }{' '}
+                    nội dung
+                  </span>
+                </div>
+                {(formData.monTheThaoIds || []).length > 0 && (
+                  <div className="py-2 border-bottom border-white border-opacity-25">
+                    <div className="text-white-50 small mb-1" style={{ fontSize: '11.5px' }}>
+                      Theo từng môn thi đấu:
+                    </div>
+                    <div className="d-flex flex-column gap-1">
+                      {(formData.monTheThaoIds || []).map((monId) => {
+                        const mon = availableMons.find((m) => m.id === monId);
+                        const count = noiDungItems.filter((nd) => nd.monTheThaoId === monId).length;
+                        return (
+                          <div
+                            key={monId}
+                            className="d-flex justify-content-between align-items-center small ps-2"
+                            style={{ fontSize: '12px' }}
+                          >
+                            <span className="text-truncate text-white-75" style={{ maxWidth: '160px' }}>
+                              • {mon?.ten || `Môn #${monId}`}:
+                            </span>
+                            <span
+                              className={`badge ${
+                                count > 0 ? 'bg-white text-primary' : 'bg-white bg-opacity-25 text-white'
+                              }`}
+                              style={{ fontSize: '11px' }}
+                            >
+                              {count} nội dung
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="d-flex justify-content-between py-2 border-bottom border-white border-opacity-25 small">
                   <span>Mục điều lệ:</span>
                   <span className="fw-bold">{(formData.dieuLes || []).length} điều khoản</span>

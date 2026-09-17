@@ -12,6 +12,11 @@ namespace Dms.Domain.Entities
         [ForeignKey(nameof(CumSanId))]
         public virtual CumSan CumSan { get; set; } = null!;
 
+        // Môn thể thao mà sân này phục vụ (1 sân chỉ đáp ứng 1 môn)
+        public int? MonTheThaoId { get; set; }
+        [ForeignKey(nameof(MonTheThaoId))]
+        public virtual MonTheThao? MonTheThao { get; set; }
+
         [Required]
         [MaxLength(50)]
         public string Ma { get; set; } = string.Empty;

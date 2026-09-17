@@ -34,6 +34,8 @@ namespace Dms.Application.DTOs
         public int Id { get; set; }
         public int CumSanId { get; set; }
         public string? TenCumSan { get; set; }
+        public int? MonTheThaoId { get; set; }
+        public string? TenMonTheThao { get; set; }
         public string Ma { get; set; } = string.Empty;
         public string Ten { get; set; } = string.Empty;
         public string? LoaiSan { get; set; }
@@ -48,6 +50,7 @@ namespace Dms.Application.DTOs
     public class CreateUpdateSanDauDto
     {
         public int CumSanId { get; set; }
+        public int? MonTheThaoId { get; set; }
         public string Ma { get; set; } = string.Empty;
         public string Ten { get; set; } = string.Empty;
         public string? LoaiSan { get; set; }

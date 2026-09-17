@@ -12,3 +12,5 @@ export * from './loaiHuyChuong';
 export * from './thuKy';
 export * from './vanDongVien';
 export * from './dangKyThiDau';
+export * from './noiDungThiDau';
+export * from './hinhThucThiDau';

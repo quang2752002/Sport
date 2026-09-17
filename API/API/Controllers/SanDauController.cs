@@ -26,17 +26,20 @@ namespace API.Controllers
             [FromQuery] int pageSize = 10,
             [FromQuery] string? keyword = null,
             [FromQuery] int? cumSanId = null,
+            [FromQuery] int? monTheThaoId = null,
             [FromQuery] bool? trangThai = null)
         {
-            var result = await _sanDauService.GetPagedAsync(pageIndex, pageSize, keyword, cumSanId, trangThai);
+            var result = await _sanDauService.GetPagedAsync(pageIndex, pageSize, keyword, cumSanId, monTheThaoId, trangThai);
             return Ok(result);
         }
 
         [HttpGet]
         [Authorize(Policy = Permissions.SanDau.View)]
-        public async Task<IActionResult> GetAll([FromQuery] int? cumSanId = null)
+        public async Task<IActionResult> GetAll(
+            [FromQuery] int? cumSanId = null,
+            [FromQuery] int? monTheThaoId = null)
         {
-            var result = await _sanDauService.GetAllAsync(cumSanId);
+            var result = await _sanDauService.GetAllAsync(cumSanId, monTheThaoId);
             return Ok(result);
         }
 
