@@ -25,6 +25,10 @@ export interface DangKyThiDau {
 export interface CreateUpdateDangKyThiDau {
   noiDungThiDauId: number;
   doiId?: number;
+  /** Nếu true: backend tự tạo Doi từ tenDoi + vanDongVienIds */
+  tuDongTaoDoi?: boolean;
+  tenDoi?: string;
+  donViId?: number;
   soDangKy?: string;
   tenDangKy?: string;
   trangThai?: string;
@@ -32,3 +36,4 @@ export interface CreateUpdateDangKyThiDau {
   ghiChu?: string;
   vanDongVienIds?: number[];
 }
+

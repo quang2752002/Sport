@@ -58,9 +58,16 @@ namespace API.Controllers
         [Authorize(Policy = Permissions.DangKyThiDau.Create)]
         public async Task<IActionResult> Create([FromBody] CreateUpdateDangKyThiDauDto dto)
         {
-            var username = User.FindFirst(ClaimTypes.Name)?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var result = await _dangKyThiDauService.CreateAsync(dto, username);
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            try
+            {
+                var username = User.FindFirst(ClaimTypes.Name)?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var result = await _dangKyThiDauService.CreateAsync(dto, username);
+                return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            }
+            catch (System.InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpPut("{id}")]

@@ -99,14 +99,108 @@ namespace Dms.Application.Services
 
         public async Task<DangKyThiDauDto> CreateAsync(CreateUpdateDangKyThiDauDto dto, string? createdBy = null)
         {
+            var noiDung = await _unitOfWork.NoiDungThiDaus.GetByIdAsync(dto.NoiDungThiDauId);
+            if (noiDung == null || noiDung.IsDeleted == true)
+            {
+                throw new InvalidOperationException("Nội dung thi đấu không tồn tại hoặc đã bị xóa.");
+            }
+
+            var vdvIds = dto.VanDongVienIds?.Distinct().ToList() ?? new List<int>();
+            if (!vdvIds.Any())
+            {
+                throw new InvalidOperationException("Vui lòng chọn ít nhất một vận động viên.");
+            }
+
+            // Kiểm tra số lượng VĐV theo loại thi đấu: Cá nhân chỉ cho phép đúng 1 VĐV
+            if (string.Equals(noiDung.LoaiThiDau, "CaNhan", StringComparison.OrdinalIgnoreCase))
+            {
+                if (vdvIds.Count > 1)
+                {
+                    throw new InvalidOperationException($"Nội dung '{noiDung.Ten}' là nội dung thi đấu cá nhân, chỉ được chọn 1 vận động viên.");
+                }
+            }
+            else
+            {
+                // Nội dung tập thể/đồng đội/đôi
+                if (noiDung.SoLuongToiThieu.HasValue && vdvIds.Count < noiDung.SoLuongToiThieu.Value)
+                {
+                    throw new InvalidOperationException($"Nội dung '{noiDung.Ten}' yêu cầu tối thiểu {noiDung.SoLuongToiThieu.Value} vận động viên (hiện có {vdvIds.Count}).");
+                }
+                if (noiDung.SoLuongToiDa.HasValue && vdvIds.Count > noiDung.SoLuongToiDa.Value)
+                {
+                    throw new InvalidOperationException($"Nội dung '{noiDung.Ten}' chỉ cho phép tối đa {noiDung.SoLuongToiDa.Value} vận động viên (hiện có {vdvIds.Count}).");
+                }
+            }
+
+            int? resolvedDoiId = dto.DoiId;
+
+            // Tự động tạo Doi + ThanhVienDoi nếu chưa có DoiId
+            if (!resolvedDoiId.HasValue && vdvIds.Any())
+            {
+                var vdvEntities = (await _unitOfWork.VanDongViens.FindAsync(v => vdvIds.Contains(v.Id))).ToList();
+                int? donViId = dto.DonViId ?? vdvEntities.FirstOrDefault(v => v.DonViId.HasValue)?.DonViId;
+
+                string tenDoi = dto.TenDoi?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(tenDoi))
+                {
+                    if (vdvEntities.Count == 1)
+                    {
+                        tenDoi = vdvEntities[0].HoTen;
+                    }
+                    else
+                    {
+                        tenDoi = string.Join(" - ", vdvEntities.Select(v => v.HoTen));
+                        if (tenDoi.Length > 190)
+                        {
+                            tenDoi = tenDoi.Substring(0, 187) + "...";
+                        }
+                    }
+                }
+
+                var randomSuffix = new Random().Next(100, 999);
+                var maDoi = $"DOI_{DateTime.Now:yyyyMMddHHmmss}_{randomSuffix}";
+
+                var newDoi = new Doi
+                {
+                    Ma = maDoi,
+                    Ten = tenDoi,
+                    DonViId = donViId,
+                    TrangThai = true,
+                    CreatedBy = createdBy,
+                    Created = DateTime.Now
+                };
+                await _unitOfWork.Dois.AddAsync(newDoi);
+                await _unitOfWork.CompleteAsync();
+
+                // Thêm từng VĐV vào ThanhVienDoi
+                bool isFirst = true;
+                foreach (var vdvId in vdvIds)
+                {
+                    await _unitOfWork.ThanhVienDois.AddAsync(new ThanhVienDoi
+                    {
+                        DoiId = newDoi.Id,
+                        VanDongVienId = vdvId,
+                        LaDoiTruong = isFirst,
+                        NgayThamGia = DateTime.Now,
+                        CreatedBy = createdBy,
+                        Created = DateTime.Now
+                    });
+                    isFirst = false;
+                }
+                await _unitOfWork.CompleteAsync();
+                resolvedDoiId = newDoi.Id;
+            }
+
             var entity = new DangKyThiDau
             {
                 NoiDungThiDauId = dto.NoiDungThiDauId,
-                DoiId = dto.DoiId,
+                DoiId = resolvedDoiId,
                 SoDangKy = string.IsNullOrWhiteSpace(dto.SoDangKy) ? $"DK_{DateTime.Now:yyyyMMddHHmmss}" : dto.SoDangKy,
-                TenDangKy = dto.TenDangKy,
-                TrangThai = string.IsNullOrWhiteSpace(dto.TrangThai) ? "ChoDuyet" : dto.TrangThai,
-                NgayDangKy = dto.NgayDangKy,
+                TenDangKy = !string.IsNullOrWhiteSpace(dto.TenDangKy)
+                    ? dto.TenDangKy
+                    : (!string.IsNullOrWhiteSpace(dto.TenDoi) ? $"{dto.TenDoi} - {noiDung.Ten}" : $"{noiDung.Ten}"),
+                TrangThai = "DaDuyet", // Luôn mặc định đã duyệt theo yêu cầu của hệ thống
+                NgayDangKy = dto.NgayDangKy != default ? dto.NgayDangKy : DateTime.Now,
                 GhiChu = dto.GhiChu,
                 CreatedBy = createdBy,
                 Created = DateTime.Now,
@@ -116,26 +210,25 @@ namespace Dms.Application.Services
             await _unitOfWork.DangKyThiDaus.AddAsync(entity);
             await _unitOfWork.CompleteAsync();
 
-            if (dto.VanDongVienIds != null && dto.VanDongVienIds.Any())
+            // Thêm ChiTietDangKyThiDau (liên kết VĐV trực tiếp vào hồ sơ)
+            int stt = 1;
+            foreach (var vdvId in vdvIds)
             {
-                int stt = 1;
-                foreach (var vdvId in dto.VanDongVienIds)
+                await _unitOfWork.ChiTietDangKyThiDaus.AddAsync(new ChiTietDangKyThiDau
                 {
-                    await _unitOfWork.ChiTietDangKyThiDaus.AddAsync(new ChiTietDangKyThiDau
-                    {
-                        DangKyThiDauId = entity.Id,
-                        VanDongVienId = vdvId,
-                        SoThuTu = stt++,
-                        VaiTro = "Vận động viên thi đấu",
-                        CreatedBy = createdBy,
-                        Created = DateTime.Now
-                    });
-                }
-                await _unitOfWork.CompleteAsync();
+                    DangKyThiDauId = entity.Id,
+                    VanDongVienId = vdvId,
+                    SoThuTu = stt++,
+                    VaiTro = stt == 2 && vdvIds.Count > 1 ? "Đội trưởng" : "Vận động viên thi đấu",
+                    CreatedBy = createdBy,
+                    Created = DateTime.Now
+                });
             }
+            await _unitOfWork.CompleteAsync();
 
             return (await GetByIdAsync(entity.Id))!;
         }
+
 
         public async Task<DangKyThiDauDto?> UpdateAsync(int id, CreateUpdateDangKyThiDauDto dto, string? updatedBy = null)
         {

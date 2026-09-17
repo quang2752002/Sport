@@ -132,13 +132,20 @@ namespace Dms.Application.DTOs
     {
         public int NoiDungThiDauId { get; set; }
         public int? DoiId { get; set; }
+        /// <summary>Nếu true: backend tự tạo Doi mới từ TenDoi + VanDongVienIds rồi gán DoiId</summary>
+        public bool TuDongTaoDoi { get; set; } = false;
+        /// <summary>Tên đội tự động tạo (dùng khi TuDongTaoDoi = true)</summary>
+        public string? TenDoi { get; set; }
+        /// <summary>Đơn vị chủ quản đội (dùng khi TuDongTaoDoi = true)</summary>
+        public int? DonViId { get; set; }
         public string? SoDangKy { get; set; }
         public string? TenDangKy { get; set; }
-        public string TrangThai { get; set; } = "ChoDuyet";
+        public string TrangThai { get; set; } = "DaDuyet";
         public DateTime NgayDangKy { get; set; } = DateTime.Now;
         public string? GhiChu { get; set; }
         public List<int>? VanDongVienIds { get; set; }
     }
+
 
     // ==================== BANG DAU & VONG DAU DTOs ====================
     public class BangDauDto
