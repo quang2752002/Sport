@@ -55,12 +55,33 @@ namespace Dms.Application.Interfaces
 
     public interface ITranDauService
     {
-        Task<PagedResult<TranDauDto>> GetPagedAsync(int pageIndex, int pageSize, string? keyword = null, int? noiDungThiDauId = null, int? vongDauId = null, string? trangThai = null);
-        Task<IEnumerable<TranDauDto>> GetAllAsync(int? noiDungThiDauId = null);
+        Task<PagedResult<TranDauDto>> GetPagedAsync(
+            int pageIndex,
+            int pageSize,
+            string? keyword = null,
+            int? giaiDauId = null,
+            int? noiDungThiDauId = null,
+            int? vongDauId = null,
+            int? bangDauId = null,
+            int? sanDauId = null,
+            DateTime? ngay = null,
+            string? trangThai = null);
+
+        Task<IEnumerable<TranDauDto>> GetAllAsync(
+            int? giaiDauId = null,
+            int? noiDungThiDauId = null,
+            int? vongDauId = null,
+            int? bangDauId = null,
+            int? sanDauId = null,
+            DateTime? ngay = null);
+
         Task<TranDauDto?> GetByIdAsync(int id);
         Task<TranDauDto> CreateAsync(CreateUpdateTranDauDto dto, string? createdBy = null);
         Task<TranDauDto?> UpdateAsync(int id, CreateUpdateTranDauDto dto, string? updatedBy = null);
         Task<bool> DeleteAsync(int id);
+        Task<bool> ClearByNoiDungAsync(int noiDungThiDauId);
+        Task<AutoScheduleResultDto> AutoScheduleAsync(AutoScheduleRequestDto request, string? createdBy = null);
+        Task<ConflictCheckResultDto> CheckConflictAsync(ConflictCheckRequestDto request);
     }
 
     public interface IBangDauService
@@ -70,6 +91,8 @@ namespace Dms.Application.Interfaces
         Task<BangDauDto> CreateAsync(CreateUpdateBangDauDto dto, string? createdBy = null);
         Task<BangDauDto?> UpdateAsync(int id, CreateUpdateBangDauDto dto, string? updatedBy = null);
         Task<bool> DeleteAsync(int id);
+        Task<bool> AssignTeamsAsync(AssignTeamsToBangDto dto, string? updatedBy = null);
+        Task<IEnumerable<BangDauDto>> AutoDistributeAsync(AutoDistributeBangDto dto, string? createdBy = null);
     }
 
     public interface IVongDauService

@@ -14,3 +14,6 @@ export * from './vanDongVien';
 export * from './dangKyThiDau';
 export * from './noiDungThiDau';
 export * from './hinhThucThiDau';
+export * from './tranDau';
+export * from './bangDau';
+export * from './vongDau';

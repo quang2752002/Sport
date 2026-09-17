@@ -26,6 +26,9 @@ namespace Dms.Application
             services.AddScoped<Dms.Application.Interfaces.ILoaiHuyChuongService, Dms.Application.Services.LoaiHuyChuongService>();
             services.AddScoped<Dms.Application.Interfaces.IVanDongVienService, Dms.Application.Services.VanDongVienService>();
             services.AddScoped<Dms.Application.Interfaces.IDangKyThiDauService, Dms.Application.Services.DangKyThiDauService>();
+            services.AddScoped<Dms.Application.Interfaces.ITranDauService, Dms.Application.Services.TranDauService>();
+            services.AddScoped<Dms.Application.Interfaces.IBangDauService, Dms.Application.Services.BangDauService>();
+            services.AddScoped<Dms.Application.Interfaces.IVongDauService, Dms.Application.Services.VongDauService>();
             
             return services;
         }

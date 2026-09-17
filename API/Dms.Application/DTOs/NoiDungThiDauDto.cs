@@ -154,6 +154,25 @@ namespace Dms.Application.DTOs
 
 
     // ==================== BANG DAU & VONG DAU DTOs ====================
+    public class ThanhVienBangDto
+    {
+        public int Id { get; set; }
+        public int BangDauId { get; set; }
+        public int DangKyThiDauId { get; set; }
+        public string? TenDangKy { get; set; }
+        public string? TenDoi { get; set; }
+        public string? TenDonVi { get; set; }
+        public int? HatGiong { get; set; }
+        public int SoTran { get; set; }
+        public int SoThang { get; set; }
+        public int SoHoa { get; set; }
+        public int SoThua { get; set; }
+        public decimal DiemGhiDuoc { get; set; }
+        public decimal DiemBiGhi { get; set; }
+        public decimal Diem { get; set; }
+        public int? XepHang { get; set; }
+    }
+
     public class BangDauDto
     {
         public int Id { get; set; }
@@ -163,6 +182,7 @@ namespace Dms.Application.DTOs
         public string Ten { get; set; } = string.Empty;
         public int ThuTu { get; set; }
         public int SoDoi { get; set; }
+        public List<ThanhVienBangDto> ThanhViens { get; set; } = new();
         public DateTime? Created { get; set; }
         public DateTime? LastModified { get; set; }
     }
@@ -173,6 +193,20 @@ namespace Dms.Application.DTOs
         public string Ma { get; set; } = string.Empty;
         public string Ten { get; set; } = string.Empty;
         public int ThuTu { get; set; } = 1;
+        public List<int>? DangKyThiDauIds { get; set; }
+    }
+
+    public class AssignTeamsToBangDto
+    {
+        public int BangDauId { get; set; }
+        public List<int> DangKyThiDauIds { get; set; } = new();
+    }
+
+    public class AutoDistributeBangDto
+    {
+        public int NoiDungThiDauId { get; set; }
+        public int SoBang { get; set; } = 2;
+        public string TienToBang { get; set; } = "Bảng ";
     }
 
     public class VongDauDto
@@ -184,6 +218,7 @@ namespace Dms.Application.DTOs
         public string Ten { get; set; } = string.Empty;
         public int ThuTu { get; set; }
         public string? LoaiVongDau { get; set; }
+        public int SoTran { get; set; }
         public DateTime? Created { get; set; }
         public DateTime? LastModified { get; set; }
     }
@@ -195,20 +230,59 @@ namespace Dms.Application.DTOs
         public string Ten { get; set; } = string.Empty;
         public int ThuTu { get; set; } = 1;
         public string? LoaiVongDau { get; set; }
+        public string? MoTa { get; set; }
     }
 
-    // ==================== TRAN DAU DTOs ====================
+    // ==================== TRAN DAU & PHAN CONG TRONG TAI DTOs ====================
+    public class PhanCongTrongTaiItemDto
+    {
+        public int Id { get; set; }
+        public int TranDauId { get; set; }
+        public int TrongTaiId { get; set; }
+        public string? TenTrongTai { get; set; }
+        public string? SoDienThoai { get; set; }
+        public string? CapBac { get; set; }
+        public string? VaiTro { get; set; } // 'TrongTaiChinh' | 'TrongTaiPhu' | 'TrongTaiBan' | 'GiamSat'
+        public string? GhiChu { get; set; }
+    }
+
+    public class AssignTrongTaiDto
+    {
+        public int TrongTaiId { get; set; }
+        public string? VaiTro { get; set; } = "TrongTaiChinh";
+        public string? GhiChu { get; set; }
+    }
+
+    public class ThanhPhanTranDauItemDto
+    {
+        public int Id { get; set; }
+        public int TranDauId { get; set; }
+        public int DangKyThiDauId { get; set; }
+        public string? TenDangKy { get; set; }
+        public string? TenDoi { get; set; }
+        public string? TenDonVi { get; set; }
+        public int? SoLane { get; set; }
+        public int? ViTri { get; set; } // 1: Đội 1 (Nhà), 2: Đội 2 (Khách)
+        public string TrangThai { get; set; } = "ThamGia";
+        public string? GhiChu { get; set; }
+    }
+
     public class TranDauDto
     {
         public int Id { get; set; }
         public int NoiDungThiDauId { get; set; }
         public string? TenNoiDung { get; set; }
+        public int? GiaiDauId { get; set; }
+        public string? TenGiaiDau { get; set; }
+        public int? MonTheThaoId { get; set; }
+        public string? TenMonTheThao { get; set; }
         public int VongDauId { get; set; }
         public string? TenVongDau { get; set; }
         public int? BangDauId { get; set; }
         public string? TenBangDau { get; set; }
         public int? SanDauId { get; set; }
         public string? TenSanDau { get; set; }
+        public string? TenCumSan { get; set; }
         public int SoTran { get; set; }
         public string? TenTran { get; set; }
         public DateTime? ThoiGianDuKien { get; set; }
@@ -216,6 +290,20 @@ namespace Dms.Application.DTOs
         public DateTime? ThoiGianKetThuc { get; set; }
         public string TrangThai { get; set; } = "ChuaDau";
         public string? GhiChu { get; set; }
+
+        // Đội 1 (Nhà/Vị trí 1)
+        public int? Doi1DangKyId { get; set; }
+        public string? TenDoi1 { get; set; }
+        public string? DonViDoi1 { get; set; }
+
+        // Đội 2 (Khách/Vị trí 2)
+        public int? Doi2DangKyId { get; set; }
+        public string? TenDoi2 { get; set; }
+        public string? DonViDoi2 { get; set; }
+
+        public List<ThanhPhanTranDauItemDto> ThanhPhanTranDaus { get; set; } = new();
+        public List<PhanCongTrongTaiItemDto> DanhSachTrongTai { get; set; } = new();
+
         public DateTime? Created { get; set; }
         public DateTime? LastModified { get; set; }
     }
@@ -233,6 +321,54 @@ namespace Dms.Application.DTOs
         public DateTime? ThoiGianKetThuc { get; set; }
         public string TrangThai { get; set; } = "ChuaDau";
         public string? GhiChu { get; set; }
+
+        // Cặp đấu
+        public int? Doi1DangKyId { get; set; }
+        public int? Doi2DangKyId { get; set; }
+
+        // Phân công trọng tài
+        public List<AssignTrongTaiDto>? DanhSachTrongTai { get; set; }
+    }
+
+    // ==================== AUTO SCHEDULE & CONFLICT CHECK DTOs ====================
+    public class AutoScheduleRequestDto
+    {
+        public int NoiDungThiDauId { get; set; }
+        public DateTime NgayBatDau { get; set; } = DateTime.Today;
+        public string GioBatDauMoiNgay { get; set; } = "08:00";
+        public string GioKetThucMoiNgay { get; set; } = "17:30";
+        public int ThoiLuongTranPhut { get; set; } = 60;
+        public int NghiGiuaTranPhut { get; set; } = 15;
+        public List<int> SanDauIds { get; set; } = new();
+        public List<int> TrongTaiIds { get; set; } = new();
+        public int SoTrongTaiMoiTran { get; set; } = 1;
+        public bool TaoBangDauNeuChuaCo { get; set; } = true;
+        public int SoDoiMoiBang { get; set; } = 4;
+        public bool XoaLichCu { get; set; } = false;
+    }
+
+    public class AutoScheduleResultDto
+    {
+        public bool Success { get; set; }
+        public int TotalMatchesCreated { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public List<TranDauDto> Matches { get; set; } = new();
+    }
+
+    public class ConflictCheckRequestDto
+    {
+        public int? TranDauId { get; set; } // Nếu cập nhật
+        public int? SanDauId { get; set; }
+        public DateTime ThoiGianBatDau { get; set; }
+        public DateTime ThoiGianKetThuc { get; set; }
+        public List<int>? TrongTaiIds { get; set; }
+        public List<int>? DangKyThiDauIds { get; set; }
+    }
+
+    public class ConflictCheckResultDto
+    {
+        public bool HasConflict { get; set; }
+        public List<string> Conflicts { get; set; } = new();
     }
 
     // ==================== HUY CHUONG DTOs ====================

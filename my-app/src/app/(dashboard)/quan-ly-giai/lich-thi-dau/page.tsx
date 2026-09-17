@@ -1,0 +1,2050 @@
+'use client';
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
+  Shield,
+  Plus,
+  Trash2,
+  Edit2,
+  RefreshCw,
+  Zap,
+  Layers,
+  AlertTriangle,
+  CheckCircle2,
+  Search,
+  Filter,
+  Trophy,
+  ChevronRight,
+  UserCheck,
+  Flag,
+  Shuffle,
+  Eye,
+  Info,
+  Sliders,
+  CalendarDays,
+} from 'lucide-react';
+import {
+  Row,
+  Col,
+  Card,
+  CardBody,
+  Badge,
+  Button,
+  Table,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Form,
+  FormGroup,
+  Label,
+  Input,
+  Nav,
+  NavItem,
+  NavLink,
+  Spinner,
+  Alert,
+} from 'reactstrap';
+import { useToast } from '@/context/AuthContext';
+import {
+  giaiDauService,
+  noiDungThiDauService,
+  sanDauService,
+  trongTaiService,
+  dangKyThiDauService,
+  tranDauService,
+  bangDauService,
+  vongDauService,
+} from '@/services';
+import {
+  GiaiDau,
+  NoiDungThiDau,
+  SanDau,
+  TrongTai,
+  DangKyThiDau,
+  TranDau,
+  BangDau,
+  VongDau,
+  AutoScheduleRequest,
+  CreateUpdateTranDau,
+  AssignTrongTai,
+} from '@/types';
+import { HinhThucThiDauLabels } from '@/types/hinhThucThiDau';
+
+export default function LichThiDauPage() {
+  const toast = useToast();
+  // 1. Data Selection States
+  const [tournaments, setTournaments] = useState<GiaiDau[]>([]);
+  const [selectedTournamentId, setSelectedTournamentId] = useState<number | ''>('');
+  const [events, setEvents] = useState<NoiDungThiDau[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<number | ''>('');
+
+  // 2. Resource Data States
+  const [matches, setMatches] = useState<TranDau[]>([]);
+  const [groups, setGroups] = useState<BangDau[]>([]);
+  const [rounds, setRounds] = useState<VongDau[]>([]);
+  const [venues, setVenues] = useState<SanDau[]>([]);
+  const [referees, setReferees] = useState<TrongTai[]>([]);
+  const [registeredTeams, setRegisteredTeams] = useState<DangKyThiDau[]>([]);
+
+  // 3. UI States
+  const [loading, setLoading] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'list' | 'court' | 'referee' | 'groups'>('list');
+  const [filterDate, setFilterDate] = useState<string>('');
+  const [filterRoundId, setFilterRoundId] = useState<string>('');
+  const [filterGroupId, setFilterGroupId] = useState<string>('');
+  const [filterVenueId, setFilterVenueId] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
+
+  // 4. Modal States
+  const [autoScheduleModalOpen, setAutoScheduleModalOpen] = useState(false);
+  const [autoScheduleSubmitting, setAutoScheduleSubmitting] = useState(false);
+  const [autoScheduleConfig, setAutoScheduleConfig] = useState<{
+    startDate: string;
+    startTime: string;
+    endTime: string;
+    matchDuration: number;
+    breakDuration: number;
+    selectedVenueIds: number[];
+    selectedRefereeIds: number[];
+    refereesPerMatch: number;
+    autoCreateGroups: boolean;
+    teamsPerGroup: number;
+    clearOldMatches: boolean;
+  }>({
+    startDate: new Date().toISOString().split('T')[0],
+    startTime: '08:00',
+    endTime: '17:30',
+    matchDuration: 60,
+    breakDuration: 15,
+    selectedVenueIds: [],
+    selectedRefereeIds: [],
+    refereesPerMatch: 1,
+    autoCreateGroups: true,
+    teamsPerGroup: 4,
+    clearOldMatches: true,
+  });
+
+  // Manual Match Modal
+  const [manualMatchModalOpen, setManualMatchModalOpen] = useState(false);
+  const [editingMatchId, setEditingMatchId] = useState<number | null>(null);
+  const [matchForm, setMatchForm] = useState<{
+    roundId: number | '';
+    groupId: number | '';
+    doi1Id: number | '';
+    doi2Id: number | '';
+    venueId: number | '';
+    matchDate: string;
+    startTime: string;
+    endTime: string;
+    matchNumber: number;
+    matchName: string;
+    status: string;
+    notes: string;
+    refereeAssignments: AssignTrongTai[];
+  }>({
+    roundId: '',
+    groupId: '',
+    doi1Id: '',
+    doi2Id: '',
+    venueId: '',
+    matchDate: new Date().toISOString().split('T')[0],
+    startTime: '08:30',
+    endTime: '09:30',
+    matchNumber: 1,
+    matchName: '',
+    status: 'ChuaDau',
+    notes: '',
+    refereeAssignments: [],
+  });
+
+  // Conflict state
+  const [conflictWarning, setConflictWarning] = useState<string[]>([]);
+  const [checkingConflict, setCheckingConflict] = useState(false);
+
+  // Group Distribution Modal
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [distributeGroupCount, setDistributeGroupCount] = useState<number>(2);
+
+  // Current selected event object
+  const currentEvent = useMemo(() => {
+    return events.find((e) => e.id === Number(selectedEventId));
+  }, [events, selectedEventId]);
+
+  // Check if current event has group stage
+  const hasGroupStage = useMemo(() => {
+    if (!currentEvent) return false;
+    const ht = currentEvent.hinhThucThiDau;
+    return (
+      ht === 'VongBang' ||
+      ht === 'KetHopVongBangVaLoaiTrucTiep' ||
+      groups.length > 0
+    );
+  }, [currentEvent, groups]);
+
+  // Initial Load: Tournaments
+  useEffect(() => {
+    const loadTournaments = async () => {
+      try {
+        const data = await giaiDauService.getAll();
+        setTournaments(data);
+        if (data.length > 0) {
+          setSelectedTournamentId(data[0].id);
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách giải đấu:', err);
+      }
+    };
+    loadTournaments();
+  }, []);
+
+  // When selected tournament changes -> Load events
+  useEffect(() => {
+    if (!selectedTournamentId) {
+      setEvents([]);
+      setSelectedEventId('');
+      return;
+    }
+    const loadEvents = async () => {
+      try {
+        const data = await noiDungThiDauService.getAll({ giaiDauId: Number(selectedTournamentId) });
+        setEvents(data);
+        if (data.length > 0) {
+          setSelectedEventId(data[0].id);
+        } else {
+          setSelectedEventId('');
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách nội dung thi đấu:', err);
+      }
+    };
+    loadEvents();
+  }, [selectedTournamentId]);
+
+  // When selected event changes -> Load all related data (Matches, Groups, Rounds, Venues, Referees, Registrations)
+  const refreshEventData = useCallback(async () => {
+    if (!selectedEventId) {
+      setMatches([]);
+      setGroups([]);
+      setRounds([]);
+      setRegisteredTeams([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const eId = Number(selectedEventId);
+      const [matchesRes, groupsRes, roundsRes, teamsRes, venuesRes, refereesRes] = await Promise.all([
+        tranDauService.getAll({ noiDungThiDauId: eId }),
+        bangDauService.getAll(eId),
+        vongDauService.getAll(eId),
+        dangKyThiDauService.getAll({ noiDungThiDauId: eId }),
+        sanDauService.getAll(),
+        trongTaiService.getAll(),
+      ]);
+
+      setMatches(matchesRes);
+      setGroups(groupsRes);
+      setRounds(roundsRes);
+      setRegisteredTeams(teamsRes);
+      setVenues(venuesRes);
+      setReferees(refereesRes);
+
+      // Pre-select venues compatible with sport if available
+      const curEv = events.find((e) => e.id === eId);
+      const monId = curEv?.monTheThaoId;
+      const compatibleVenues = monId
+        ? venuesRes.filter((v) => !v.monTheThaoId || v.monTheThaoId === monId)
+        : venuesRes;
+
+      setAutoScheduleConfig((prev) => ({
+        ...prev,
+        selectedVenueIds: compatibleVenues.map((v) => v.id),
+        selectedRefereeIds: refereesRes.map((r) => r.id),
+      }));
+    } catch (err) {
+      console.error('Lỗi khi tải dữ liệu chi tiết của nội dung thi đấu:', err);
+      toast.error('Không thể tải dữ liệu thi đấu.');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedEventId, events]);
+
+  useEffect(() => {
+    refreshEventData();
+  }, [refreshEventData]);
+
+  // KPI Calculations
+  const totalMatches = matches.length;
+  const scheduledVenues = matches.filter((m) => m.sanDauId).length;
+  const assignedReferees = matches.filter((m) => m.danhSachTrongTai && m.danhSachTrongTai.length > 0).length;
+  const uniqueVenuesUsed = new Set(matches.map((m) => m.sanDauId).filter(Boolean)).size;
+  const uniqueRefereesUsed = new Set(
+    matches.flatMap((m) => m.danhSachTrongTai?.map((r) => r.trongTaiId) || []).filter(Boolean)
+  ).size;
+
+  // Filtered Matches
+  const filteredMatches = useMemo(() => {
+    return matches.filter((m) => {
+      if (filterDate && m.thoiGianDuKien) {
+        const matchDay = new Date(m.thoiGianDuKien).toISOString().split('T')[0];
+        if (matchDay !== filterDate) return false;
+      }
+      if (filterRoundId && m.vongDauId !== Number(filterRoundId)) return false;
+      if (filterGroupId && m.bangDauId !== Number(filterGroupId)) return false;
+      if (filterVenueId && m.sanDauId !== Number(filterVenueId)) return false;
+      if (filterStatus && m.trangThai !== filterStatus) return false;
+      if (searchKeyword) {
+        const kw = searchKeyword.toLowerCase();
+        const matchName = (m.tenTran || '').toLowerCase();
+        const team1 = (m.tenDoi1 || '').toLowerCase();
+        const team2 = (m.tenDoi2 || '').toLowerCase();
+        const venue = (m.tenSanDau || '').toLowerCase();
+        if (!matchName.includes(kw) && !team1.includes(kw) && !team2.includes(kw) && !venue.includes(kw)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [matches, filterDate, filterRoundId, filterGroupId, filterVenueId, filterStatus, searchKeyword]);
+
+  // Unique match dates for filters and Court Matrix
+  const uniqueDates = useMemo(() => {
+    const dates = new Set<string>();
+    matches.forEach((m) => {
+      if (m.thoiGianDuKien) {
+        dates.add(new Date(m.thoiGianDuKien).toISOString().split('T')[0]);
+      }
+    });
+    return Array.from(dates).sort();
+  }, [matches]);
+
+  // Handle Auto-Schedule Submission
+  const handleAutoSchedule = async () => {
+    if (!selectedEventId) {
+      toast.warning('Vui lòng chọn một nội dung thi đấu.');
+      return;
+    }
+    if (registeredTeams.length < 2) {
+      toast.warning('Cần có ít nhất 2 đội/VĐV đã duyệt đăng ký để xếp lịch.');
+      return;
+    }
+    if (autoScheduleConfig.selectedVenueIds.length === 0) {
+      toast.warning('Vui lòng chọn ít nhất 1 sân đấu.');
+      return;
+    }
+
+    setAutoScheduleSubmitting(true);
+    try {
+      const payload: AutoScheduleRequest = {
+        noiDungThiDauId: Number(selectedEventId),
+        ngayBatDau: autoScheduleConfig.startDate,
+        gioBatDauMoiNgay: autoScheduleConfig.startTime,
+        gioKetThucMoiNgay: autoScheduleConfig.endTime,
+        thoiLuongTranPhut: Number(autoScheduleConfig.matchDuration),
+        nghiGiuaTranPhut: Number(autoScheduleConfig.breakDuration),
+        sanDauIds: autoScheduleConfig.selectedVenueIds,
+        trongTaiIds: autoScheduleConfig.selectedRefereeIds,
+        soTrongTaiMoiTran: Number(autoScheduleConfig.refereesPerMatch),
+        taoBangDauNeuChuaCo: autoScheduleConfig.autoCreateGroups,
+        soDoiMoiBang: Number(autoScheduleConfig.teamsPerGroup),
+        xoaLichCu: autoScheduleConfig.clearOldMatches,
+      };
+
+      const res = await tranDauService.autoSchedule(payload);
+      if (res.success) {
+        toast.success(res.message || `Đã xếp lịch thành công ${res.totalMatchesCreated} trận!`);
+        setAutoScheduleModalOpen(false);
+        refreshEventData();
+      } else {
+        toast.error(res.message || 'Xếp lịch thất bại.');
+      }
+    } catch (err: any) {
+      console.error('Lỗi khi xếp lịch tự động:', err);
+      toast.error(err?.response?.data?.message || 'Không thể thực hiện xếp lịch tự động.');
+    } finally {
+      setAutoScheduleSubmitting(false);
+    }
+  };
+
+  // Open Create Manual Match Modal
+  const handleOpenCreateMatch = () => {
+    setEditingMatchId(null);
+    setConflictWarning([]);
+    setMatchForm({
+      roundId: rounds.length > 0 ? rounds[0].id : '',
+      groupId: groups.length > 0 ? groups[0].id : '',
+      doi1Id: '',
+      doi2Id: '',
+      venueId: venues.length > 0 ? venues[0].id : '',
+      matchDate: uniqueDates[0] || new Date().toISOString().split('T')[0],
+      startTime: '08:30',
+      endTime: '09:30',
+      matchNumber: matches.length + 1,
+      matchName: `Trận ${matches.length + 1}`,
+      status: 'ChuaDau',
+      notes: '',
+      refereeAssignments: referees.length > 0 ? [{ trongTaiId: referees[0].id, vaiTro: 'TrongTaiChinh' }] : [],
+    });
+    setManualMatchModalOpen(true);
+  };
+
+  // Open Edit Manual Match Modal
+  const handleOpenEditMatch = (m: TranDau) => {
+    setEditingMatchId(m.id);
+    setConflictWarning([]);
+
+    const matchDateStr = m.thoiGianBatDau
+      ? new Date(m.thoiGianBatDau).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+    const startTimeStr = m.thoiGianBatDau
+      ? new Date(m.thoiGianBatDau).toTimeString().substring(0, 5)
+      : '08:30';
+    const endTimeStr = m.thoiGianKetThuc
+      ? new Date(m.thoiGianKetThuc).toTimeString().substring(0, 5)
+      : '09:30';
+
+    setMatchForm({
+      roundId: m.vongDauId,
+      groupId: m.bangDauId || '',
+      doi1Id: m.doi1DangKyId || '',
+      doi2Id: m.doi2DangKyId || '',
+      venueId: m.sanDauId || '',
+      matchDate: matchDateStr,
+      startTime: startTimeStr,
+      endTime: endTimeStr,
+      matchNumber: m.soTran,
+      matchName: m.tenTran || '',
+      status: m.trangThai,
+      notes: m.ghiChu || '',
+      refereeAssignments: m.danhSachTrongTai?.map((r) => ({
+        trongTaiId: r.trongTaiId,
+        vaiTro: r.vaiTro,
+        ghiChu: r.ghiChu,
+      })) || [],
+    });
+    setManualMatchModalOpen(true);
+  };
+
+  // Check Conflict in Manual Match
+  const handleCheckConflict = async () => {
+    if (!matchForm.venueId || !matchForm.matchDate || !matchForm.startTime || !matchForm.endTime) {
+      return;
+    }
+    setCheckingConflict(true);
+    try {
+      const startDateTime = `${matchForm.matchDate}T${matchForm.startTime}:00`;
+      const endDateTime = `${matchForm.matchDate}T${matchForm.endTime}:00`;
+
+      const res = await tranDauService.checkConflict({
+        tranDauId: editingMatchId || undefined,
+        sanDauId: Number(matchForm.venueId),
+        thoiGianBatDau: startDateTime,
+        thoiGianKetThuc: endDateTime,
+        trongTaiIds: matchForm.refereeAssignments.map((r) => r.trongTaiId),
+        dangKyThiDauIds: [Number(matchForm.doi1Id), Number(matchForm.doi2Id)].filter(Boolean),
+      });
+
+      if (res.hasConflict) {
+        setConflictWarning(res.conflicts);
+      } else {
+        setConflictWarning([]);
+        toast.success('Không có xung đột nào về sân đấu, trọng tài hoặc đội thi đấu!');
+      }
+    } catch (err) {
+      console.error('Lỗi khi kiểm tra xung đột:', err);
+    } finally {
+      setCheckingConflict(false);
+    }
+  };
+
+  // Save Manual Match
+  const handleSaveManualMatch = async () => {
+    if (!selectedEventId) return;
+    if (!matchForm.roundId) {
+      toast.warning('Vui lòng chọn Vòng đấu.');
+      return;
+    }
+    if (!matchForm.doi1Id || !matchForm.doi2Id) {
+      toast.warning('Vui lòng chọn đủ 2 đội tham gia trận đấu.');
+      return;
+    }
+    if (matchForm.doi1Id === matchForm.doi2Id) {
+      toast.warning('Hai đội thi đấu phải khác nhau.');
+      return;
+    }
+
+    try {
+      const startDateTime = `${matchForm.matchDate}T${matchForm.startTime}:00`;
+      const endDateTime = `${matchForm.matchDate}T${matchForm.endTime}:00`;
+
+      const payload: CreateUpdateTranDau = {
+        noiDungThiDauId: Number(selectedEventId),
+        vongDauId: Number(matchForm.roundId),
+        bangDauId: matchForm.groupId ? Number(matchForm.groupId) : null,
+        sanDauId: matchForm.venueId ? Number(matchForm.venueId) : null,
+        soTran: Number(matchForm.matchNumber),
+        tenTran: matchForm.matchName,
+        thoiGianDuKien: startDateTime,
+        thoiGianBatDau: startDateTime,
+        thoiGianKetThuc: endDateTime,
+        trangThai: matchForm.status,
+        ghiChu: matchForm.notes,
+        doi1DangKyId: Number(matchForm.doi1Id),
+        doi2DangKyId: Number(matchForm.doi2Id),
+        danhSachTrongTai: matchForm.refereeAssignments,
+      };
+
+      if (editingMatchId) {
+        await tranDauService.update(editingMatchId, payload);
+        toast.success('Cập nhật trận đấu thành công!');
+      } else {
+        await tranDauService.create(payload);
+        toast.success('Tạo trận đấu mới thành công!');
+      }
+
+      setManualMatchModalOpen(false);
+      refreshEventData();
+    } catch (err: any) {
+      console.error('Lỗi lưu trận đấu:', err);
+      toast.error(err?.response?.data?.message || 'Không thể lưu trận đấu.');
+    }
+  };
+
+  // Delete Match
+  const handleDeleteMatch = async (id: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa trận đấu này?')) return;
+    try {
+      await tranDauService.delete(id);
+      toast.success('Đã xóa trận đấu.');
+      refreshEventData();
+    } catch (err) {
+      toast.error('Không thể xóa trận đấu.');
+    }
+  };
+
+  // Clear All Matches
+  const handleClearAllMatches = async () => {
+    if (!selectedEventId) return;
+    if (!window.confirm('CẢNH BÁO: Thao tác này sẽ xóa toàn bộ lịch thi đấu và phân công trọng tài đã tạo của nội dung này! Bạn có chắc chắn không?')) {
+      return;
+    }
+    try {
+      await tranDauService.clearByNoiDung(Number(selectedEventId));
+      toast.success('Đã xóa toàn bộ lịch thi đấu của nội dung.');
+      refreshEventData();
+    } catch (err) {
+      toast.error('Không thể xóa lịch.');
+    }
+  };
+
+  // Auto Distribute Groups
+  const handleAutoDistributeGroups = async () => {
+    if (!selectedEventId) return;
+    try {
+      await bangDauService.autoDistribute({
+        noiDungThiDauId: Number(selectedEventId),
+        soBang: Number(distributeGroupCount),
+        tienToBang: 'Bảng ',
+      });
+      toast.success(`Đã bốc thăm chia ${distributeGroupCount} bảng đấu thành công!`);
+      setGroupModalOpen(false);
+      refreshEventData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Không thể chia bảng.');
+    }
+  };
+
+  // Available Teams for match form (filtered by group if group selected)
+  const availableTeamsForMatch = useMemo(() => {
+    if (matchForm.groupId) {
+      const grp = groups.find((g) => g.id === Number(matchForm.groupId));
+      if (grp && grp.thanhViens && grp.thanhViens.length > 0) {
+        const teamIds = grp.thanhViens.map((m) => m.dangKyThiDauId);
+        return registeredTeams.filter((t) => teamIds.includes(t.id));
+      }
+    }
+    return registeredTeams;
+  }, [matchForm.groupId, groups, registeredTeams]);
+
+  return (
+    <div className="d-flex flex-column gap-4 pb-5">
+      {/* 1. Header Banner & Selectors */}
+      <div
+        className="rounded-4 p-4 text-white position-relative overflow-hidden shadow-sm"
+        style={{
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #0369a1 100%)',
+        }}
+      >
+        <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 position-relative" style={{ zIndex: 2 }}>
+          <div>
+            <div className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-2 border" style={{ backgroundColor: 'rgba(255,255,255,0.12)', fontSize: '12px' }}>
+              <Calendar size={14} className="text-warning" />
+              <span className="fw-semibold">Trung Tâm Xếp Lịch & Điều Hành Thi Đấu</span>
+            </div>
+            <h3 className="fw-bold mb-1 fs-4 text-white">
+              Xếp Lịch Thi Đấu & Phân Công Trọng Tài
+            </h3>
+            <p className="text-white-50 mb-0 small" style={{ maxWidth: '640px' }}>
+              Hệ thống xếp lịch thi đấu thông minh tự động tối ưu theo Sân đấu, Trọng tài điều hành, Vòng đấu và Bảng đấu theo thể thức thi đấu.
+            </p>
+          </div>
+
+          {/* Tournament & Event Selectors */}
+          <div className="bg-dark bg-opacity-50 p-3 rounded-4 border border-secondary border-opacity-25 d-flex flex-column flex-sm-row gap-3">
+            <div style={{ minWidth: '220px' }}>
+              <Label className="small text-white-50 mb-1 fw-medium">Chọn Giải Đấu</Label>
+              <Input
+                type="select"
+                className="form-select form-select-sm bg-dark text-white border-secondary rounded-3"
+                value={selectedTournamentId}
+                onChange={(e) => setSelectedTournamentId(e.target.value ? Number(e.target.value) : '')}
+              >
+                {tournaments.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.ten}
+                  </option>
+                ))}
+              </Input>
+            </div>
+
+            <div style={{ minWidth: '240px' }}>
+              <Label className="small text-white-50 mb-1 fw-medium">Nội Dung / Môn Thi Đấu</Label>
+              <Input
+                type="select"
+                className="form-select form-select-sm bg-dark text-white border-secondary rounded-3"
+                value={selectedEventId}
+                onChange={(e) => setSelectedEventId(e.target.value ? Number(e.target.value) : '')}
+                disabled={events.length === 0}
+              >
+                {events.map((ev) => (
+                  <option key={ev.id} value={ev.id}>
+                    {ev.ten} ({ev.tenMonTheThao || 'Môn'})
+                  </option>
+                ))}
+              </Input>
+            </div>
+          </div>
+        </div>
+
+        {/* Selected Event Details Strip */}
+        {currentEvent && (
+          <div className="mt-3 pt-3 border-top border-white border-opacity-10 d-flex flex-wrap align-items-center gap-3" style={{ fontSize: '13px' }}>
+            <div className="d-flex align-items-center gap-1.5 text-white-50">
+              <Trophy size={14} className="text-warning" />
+              <span>Hình thức:</span>
+              <Badge color="info" pill className="px-2.5 py-1 text-white">
+                {HinhThucThiDauLabels[currentEvent.hinhThucThiDau || ''] || currentEvent.hinhThucThiDau || 'Loại trực tiếp'}
+              </Badge>
+            </div>
+
+            <div className="d-flex align-items-center gap-1.5 text-white-50">
+              <Users size={14} className="text-success" />
+              <span>Đội đã duyệt:</span>
+              <strong className="text-white">{registeredTeams.length}</strong>
+            </div>
+
+            <div className="d-flex align-items-center gap-1.5 text-white-50">
+              <Layers size={14} className="text-info" />
+              <span>Số bảng đấu:</span>
+              <strong className="text-white">{groups.length} bảng</strong>
+            </div>
+
+            <div className="d-flex align-items-center gap-1.5 text-white-50">
+              <MapPin size={14} className="text-danger" />
+              <span>Sân khả dụng:</span>
+              <strong className="text-white">{venues.length} sân</strong>
+            </div>
+
+            <div className="d-flex align-items-center gap-1.5 text-white-50 ms-auto">
+              <Button
+                color="light"
+                size="sm"
+                className="rounded-pill px-3 py-1 d-flex align-items-center gap-1.5 fw-semibold"
+                style={{ fontSize: '12px' }}
+                onClick={refreshEventData}
+              >
+                <RefreshCw size={13} className={loading ? 'spin' : ''} />
+                Làm mới
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 2. 4 KPI Overview Cards */}
+      <Row className="g-3">
+        <Col xs={6} md={3}>
+          <div className="bg-white rounded-4 p-3 border shadow-sm d-flex align-items-center gap-3">
+            <div className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '44px', height: '44px', backgroundColor: '#eef2ff', color: '#4f46e5' }}>
+              <CalendarDays size={22} />
+            </div>
+            <div>
+              <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                Tổng số trận đấu
+              </span>
+              <span className="fw-bold fs-4 text-dark">{totalMatches}</span>
+            </div>
+          </div>
+        </Col>
+
+        <Col xs={6} md={3}>
+          <div className="bg-white rounded-4 p-3 border shadow-sm d-flex align-items-center gap-3">
+            <div className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '44px', height: '44px', backgroundColor: '#ecfdf5', color: '#059669' }}>
+              <MapPin size={22} />
+            </div>
+            <div>
+              <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                Sân đã bố trí
+              </span>
+              <span className="fw-bold fs-4 text-success">
+                {scheduledVenues} / {totalMatches}
+              </span>
+            </div>
+          </div>
+        </Col>
+
+        <Col xs={6} md={3}>
+          <div className="bg-white rounded-4 p-3 border shadow-sm d-flex align-items-center gap-3">
+            <div className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '44px', height: '44px', backgroundColor: '#fffbeb', color: '#d97706' }}>
+              <Shield size={22} />
+            </div>
+            <div>
+              <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                Trận có trọng tài
+              </span>
+              <span className="fw-bold fs-4 text-warning">
+                {assignedReferees} / {totalMatches}
+              </span>
+            </div>
+          </div>
+        </Col>
+
+        <Col xs={6} md={3}>
+          <div className="bg-white rounded-4 p-3 border shadow-sm d-flex align-items-center gap-3">
+            <div className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '44px', height: '44px', backgroundColor: '#f0fdfa', color: '#0d9488' }}>
+              <UserCheck size={22} />
+            </div>
+            <div>
+              <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                Trọng tài tham gia
+              </span>
+              <span className="fw-bold fs-4 text-dark">
+                {uniqueRefereesUsed} người
+              </span>
+            </div>
+          </div>
+        </Col>
+      </Row>
+
+      {/* 3. Action Toolbar & Filter Bar */}
+      <Card className="border-0 shadow-sm rounded-4">
+        <CardBody className="p-3">
+          <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+            {/* Action buttons */}
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              <Button
+                color="primary"
+                className="rounded-pill px-3 py-2 fw-semibold d-flex align-items-center gap-2 shadow-sm"
+                style={{ fontSize: '13px' }}
+                onClick={() => setAutoScheduleModalOpen(true)}
+                disabled={!selectedEventId}
+              >
+                <Zap size={16} />
+                <span>Xếp Lịch Tự Động (Auto-Schedule)</span>
+              </Button>
+
+              <Button
+                color="success"
+                className="rounded-pill px-3 py-2 fw-semibold d-flex align-items-center gap-2 text-white shadow-sm"
+                style={{ fontSize: '13px' }}
+                onClick={handleOpenCreateMatch}
+                disabled={!selectedEventId}
+              >
+                <Plus size={16} />
+                <span>Thêm Trận Đấu</span>
+              </Button>
+
+              {hasGroupStage && (
+                <Button
+                  color="info"
+                  className="rounded-pill px-3 py-2 fw-semibold d-flex align-items-center gap-2 text-white shadow-sm"
+                  style={{ fontSize: '13px' }}
+                  onClick={() => setGroupModalOpen(true)}
+                  disabled={!selectedEventId}
+                >
+                  <Shuffle size={16} />
+                  <span>Chia Bảng / Bốc Thăm</span>
+                </Button>
+              )}
+
+              {totalMatches > 0 && (
+                <Button
+                  color="outline-danger"
+                  className="rounded-pill px-3 py-2 fw-semibold d-flex align-items-center gap-1.5"
+                  style={{ fontSize: '13px' }}
+                  onClick={handleClearAllMatches}
+                >
+                  <Trash2 size={15} />
+                  <span>Xóa Hết Lịch</span>
+                </Button>
+              )}
+            </div>
+
+            {/* Quick search input */}
+            <div className="position-relative" style={{ minWidth: '240px' }}>
+              <Search size={15} className="position-absolute text-muted" style={{ left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              <Input
+                type="text"
+                placeholder="Tìm trận, đội, sân..."
+                className="form-control form-control-sm rounded-pill ps-5"
+                style={{ fontSize: '13px' }}
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Filter Row */}
+          <div className="d-flex flex-wrap align-items-center gap-2 mt-3 pt-3 border-top">
+            <span className="small text-muted fw-semibold d-flex align-items-center gap-1 me-1">
+              <Filter size={13} /> Lọc:
+            </span>
+
+            {/* Date filter */}
+            <Input
+              type="select"
+              bsSize="sm"
+              className="rounded-pill"
+              style={{ width: 'auto', fontSize: '12px' }}
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+            >
+              <option value="">Tất cả ngày</option>
+              {uniqueDates.map((d) => (
+                <option key={d} value={d}>
+                  Ngày {d}
+                </option>
+              ))}
+            </Input>
+
+            {/* Round filter */}
+            <Input
+              type="select"
+              bsSize="sm"
+              className="rounded-pill"
+              style={{ width: 'auto', fontSize: '12px' }}
+              value={filterRoundId}
+              onChange={(e) => setFilterRoundId(e.target.value)}
+            >
+              <option value="">Tất cả vòng đấu</option>
+              {rounds.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.ten}
+                </option>
+              ))}
+            </Input>
+
+            {/* Group filter (if group stage exists) */}
+            {groups.length > 0 && (
+              <Input
+                type="select"
+                bsSize="sm"
+                className="rounded-pill"
+                style={{ width: 'auto', fontSize: '12px' }}
+                value={filterGroupId}
+                onChange={(e) => setFilterGroupId(e.target.value)}
+              >
+                <option value="">Tất cả bảng đấu</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.ten}
+                  </option>
+                ))}
+              </Input>
+            )}
+
+            {/* Venue filter */}
+            <Input
+              type="select"
+              bsSize="sm"
+              className="rounded-pill"
+              style={{ width: 'auto', fontSize: '12px' }}
+              value={filterVenueId}
+              onChange={(e) => setFilterVenueId(e.target.value)}
+            >
+              <option value="">Tất cả sân đấu</option>
+              {venues.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.ten}
+                </option>
+              ))}
+            </Input>
+
+            {/* Status filter */}
+            <Input
+              type="select"
+              bsSize="sm"
+              className="rounded-pill"
+              style={{ width: 'auto', fontSize: '12px' }}
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="ChuaDau">Chưa đấu</option>
+              <option value="DangDienRa">Đang diễn ra</option>
+              <option value="DaKetThuc">Đã kết thúc</option>
+              <option value="Hoan">Hoãn</option>
+            </Input>
+
+            {(filterDate || filterRoundId || filterGroupId || filterVenueId || filterStatus || searchKeyword) && (
+              <Button
+                color="link"
+                size="sm"
+                className="text-danger p-0 ms-auto text-decoration-none small"
+                onClick={() => {
+                  setFilterDate('');
+                  setFilterRoundId('');
+                  setFilterGroupId('');
+                  setFilterVenueId('');
+                  setFilterStatus('');
+                  setSearchKeyword('');
+                }}
+              >
+                Xóa bộ lọc
+              </Button>
+            )}
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* 4. Tab Navigation for Different Views */}
+      <div className="d-flex align-items-center justify-content-between border-bottom pb-2">
+        <Nav pills className="custom-pills gap-2">
+          <NavItem>
+            <NavLink
+              className={`rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-2 cursor-pointer ${
+                activeTab === 'list' ? 'active bg-primary text-white' : 'text-secondary bg-white border'
+              }`}
+              onClick={() => setActiveTab('list')}
+              style={{ fontSize: '13px' }}
+            >
+              <Calendar size={15} />
+              <span>Danh Sách Trận Đấu ({filteredMatches.length})</span>
+            </NavLink>
+          </NavItem>
+
+          <NavItem>
+            <NavLink
+              className={`rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-2 cursor-pointer ${
+                activeTab === 'court' ? 'active bg-primary text-white' : 'text-secondary bg-white border'
+              }`}
+              onClick={() => setActiveTab('court')}
+              style={{ fontSize: '13px' }}
+            >
+              <MapPin size={15} />
+              <span>Ma Trận Sân Đấu (Court View)</span>
+            </NavLink>
+          </NavItem>
+
+          <NavItem>
+            <NavLink
+              className={`rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-2 cursor-pointer ${
+                activeTab === 'referee' ? 'active bg-primary text-white' : 'text-secondary bg-white border'
+              }`}
+              onClick={() => setActiveTab('referee')}
+              style={{ fontSize: '13px' }}
+            >
+              <Shield size={15} />
+              <span>Phân Công Trọng Tài</span>
+            </NavLink>
+          </NavItem>
+
+          {hasGroupStage && (
+            <NavItem>
+              <NavLink
+                className={`rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-2 cursor-pointer ${
+                  activeTab === 'groups' ? 'active bg-primary text-white' : 'text-secondary bg-white border'
+                }`}
+                onClick={() => setActiveTab('groups')}
+                style={{ fontSize: '13px' }}
+              >
+                <Layers size={15} />
+                <span>Bảng Đấu & BXH ({groups.length})</span>
+              </NavLink>
+            </NavItem>
+          )}
+        </Nav>
+      </div>
+
+      {/* 5. Tab Content */}
+      {loading ? (
+        <div className="text-center py-5">
+          <Spinner color="primary" />
+          <p className="text-muted mt-2 small">Đang tải lịch thi đấu...</p>
+        </div>
+      ) : (
+        <>
+          {/* TAB 1: LIST VIEW */}
+          {activeTab === 'list' && (
+            <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
+              <div className="table-responsive">
+                <Table hover className="align-middle mb-0" style={{ fontSize: '13px' }}>
+                  <thead className="table-light">
+                    <tr>
+                      <th className="py-3 px-3 text-center" style={{ width: '70px' }}>STT</th>
+                      <th className="py-3 px-3" style={{ minWidth: '160px' }}>Trận Đấu & Vòng</th>
+                      <th className="py-3 px-3" style={{ minWidth: '280px' }}>Cặp Đấu (Đội 1 vs Đội 2)</th>
+                      <th className="py-3 px-3" style={{ minWidth: '170px' }}>Thời Gian</th>
+                      <th className="py-3 px-3" style={{ minWidth: '150px' }}>Sân Đấu</th>
+                      <th className="py-3 px-3" style={{ minWidth: '180px' }}>Trọng Tài Điều Hành</th>
+                      <th className="py-3 px-3 text-center" style={{ width: '120px' }}>Trạng Thái</th>
+                      <th className="py-3 px-3 text-center" style={{ width: '100px' }}>Thao Tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredMatches.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="text-center py-5 text-muted">
+                          <div className="d-flex flex-column align-items-center justify-content-center">
+                            <Calendar size={44} className="text-secondary opacity-25 mb-2" />
+                            <p className="mb-1 fw-semibold text-dark">Chưa có trận đấu nào được xếp</p>
+                            <small className="text-secondary mb-3">
+                              Hãy nhấn nút <strong>"Xếp Lịch Tự Động"</strong> để hệ thống tự động sinh lịch theo sân và trọng tài, hoặc thêm từng trận thủ công.
+                            </small>
+                            <Button
+                              color="primary"
+                              size="sm"
+                              className="rounded-pill px-3 py-1.5 fw-semibold"
+                              onClick={() => setAutoScheduleModalOpen(true)}
+                            >
+                              <Zap size={14} className="me-1" />
+                              Bắt Đầu Xếp Lịch Tự Động
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredMatches.map((m, idx) => {
+                        const dateFormatted = m.thoiGianBatDau
+                          ? new Date(m.thoiGianBatDau).toLocaleDateString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            })
+                          : 'Chưa xếp';
+                        const timeFormatted = m.thoiGianBatDau && m.thoiGianKetThuc
+                          ? `${new Date(m.thoiGianBatDau).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - ${new Date(m.thoiGianKetThuc).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`
+                          : '--:--';
+
+                        return (
+                          <tr key={m.id}>
+                            <td className="py-3 px-3 text-center fw-bold text-muted">
+                              #{m.soTran || idx + 1}
+                            </td>
+
+                            <td className="py-3 px-3">
+                              <div className="fw-bold text-dark">{m.tenTran || `Trận ${m.soTran}`}</div>
+                              <div className="d-flex align-items-center gap-1.5 mt-0.5">
+                                <Badge color="light" className="text-secondary border fw-medium px-2 py-0.5" style={{ fontSize: '11px' }}>
+                                  {m.tenVongDau || 'Vòng đấu'}
+                                </Badge>
+                                {m.tenBangDau && (
+                                  <Badge color="warning" pill className="px-2 py-0.5 text-dark fw-bold" style={{ fontSize: '11px' }}>
+                                    {m.tenBangDau}
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Teams display */}
+                            <td className="py-3 px-3">
+                              <div className="p-2 rounded-3 bg-light border d-flex flex-column gap-1">
+                                <div className="d-flex align-items-center justify-content-between">
+                                  <div className="d-flex align-items-center gap-2">
+                                    <span className="badge rounded-circle bg-primary text-white p-1" style={{ width: '18px', height: '18px', fontSize: '10px' }}>1</span>
+                                    <span className="fw-semibold text-dark">{m.tenDoi1 || 'Chờ xác định'}</span>
+                                  </div>
+                                  {m.donViDoi1 && <small className="text-muted" style={{ fontSize: '11px' }}>({m.donViDoi1})</small>}
+                                </div>
+
+                                <div className="text-center my-0.5">
+                                  <span className="badge bg-secondary-subtle text-secondary px-2 py-0.5 rounded-pill fw-bold" style={{ fontSize: '10px' }}>VS</span>
+                                </div>
+
+                                <div className="d-flex align-items-center justify-content-between">
+                                  <div className="d-flex align-items-center gap-2">
+                                    <span className="badge rounded-circle bg-danger text-white p-1" style={{ width: '18px', height: '18px', fontSize: '10px' }}>2</span>
+                                    <span className="fw-semibold text-dark">{m.tenDoi2 || 'Chờ xác định'}</span>
+                                  </div>
+                                  {m.donViDoi2 && <small className="text-muted" style={{ fontSize: '11px' }}>({m.donViDoi2})</small>}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Match Time */}
+                            <td className="py-3 px-3">
+                              <div className="fw-semibold text-dark d-flex align-items-center gap-1.5">
+                                <Calendar size={13} className="text-primary" />
+                                {dateFormatted}
+                              </div>
+                              <div className="small text-muted d-flex align-items-center gap-1.5 mt-0.5">
+                                <Clock size={12} />
+                                {timeFormatted}
+                              </div>
+                            </td>
+
+                            {/* Venue */}
+                            <td className="py-3 px-3">
+                              {m.tenSanDau ? (
+                                <div>
+                                  <div className="fw-semibold text-dark d-flex align-items-center gap-1">
+                                    <MapPin size={13} className="text-danger" />
+                                    {m.tenSanDau}
+                                  </div>
+                                  {m.tenCumSan && (
+                                    <small className="text-muted d-block" style={{ fontSize: '11px' }}>
+                                      {m.tenCumSan}
+                                    </small>
+                                  )}
+                                </div>
+                              ) : (
+                                <Badge color="secondary" pill className="px-2 py-1">Chưa xếp sân</Badge>
+                              )}
+                            </td>
+
+                            {/* Referees */}
+                            <td className="py-3 px-3">
+                              {m.danhSachTrongTai && m.danhSachTrongTai.length > 0 ? (
+                                <div className="d-flex flex-column gap-1">
+                                  {m.danhSachTrongTai.map((r) => (
+                                    <div key={r.id} className="d-flex align-items-center gap-1.5">
+                                      <Shield size={12} className={r.vaiTro === 'TrongTaiChinh' ? 'text-warning' : 'text-secondary'} />
+                                      <span className="fw-medium text-dark" style={{ fontSize: '12px' }}>{r.tenTrongTai}</span>
+                                      <span className="text-muted small" style={{ fontSize: '10px' }}>
+                                        ({r.vaiTro === 'TrongTaiChinh' ? 'Chính' : r.vaiTro === 'TrongTaiPhu' ? 'Phụ' : 'Bàn'})
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <Badge color="warning-subtle" className="text-warning border border-warning px-2 py-0.5" style={{ fontSize: '11px' }}>
+                                  Chưa phân công
+                                </Badge>
+                              )}
+                            </td>
+
+                            {/* Status */}
+                            <td className="py-3 px-3 text-center">
+                              <Badge
+                                color={
+                                  m.trangThai === 'DangDienRa'
+                                    ? 'success'
+                                    : m.trangThai === 'DaKetThuc'
+                                    ? 'secondary'
+                                    : m.trangThai === 'Hoan'
+                                    ? 'danger'
+                                    : 'primary'
+                                }
+                                pill
+                                className="px-2.5 py-1 fw-semibold"
+                                style={{ fontSize: '11px' }}
+                              >
+                                {m.trangThai === 'ChuaDau'
+                                  ? 'Chưa đấu'
+                                  : m.trangThai === 'DangDienRa'
+                                  ? 'Đang đá'
+                                  : m.trangThai === 'DaKetThuc'
+                                  ? 'Kết thúc'
+                                  : m.trangThai === 'Hoan'
+                                  ? 'Hoãn'
+                                  : m.trangThai}
+                              </Badge>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="py-3 px-3 text-center">
+                              <div className="d-flex align-items-center justify-content-center gap-1">
+                                <Button
+                                  color="light"
+                                  size="sm"
+                                  className="p-1 text-primary rounded-2 border"
+                                  title="Chỉnh sửa trận"
+                                  onClick={() => handleOpenEditMatch(m)}
+                                >
+                                  <Edit2 size={14} />
+                                </Button>
+                                <Button
+                                  color="light"
+                                  size="sm"
+                                  className="p-1 text-danger rounded-2 border"
+                                  title="Xóa trận"
+                                  onClick={() => handleDeleteMatch(m.id)}
+                                >
+                                  <Trash2 size={14} />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </Table>
+              </div>
+            </Card>
+          )}
+
+          {/* TAB 2: COURT MATRIX VIEW (Ma trận theo sân) */}
+          {activeTab === 'court' && (
+            <Card className="border-0 shadow-sm rounded-4">
+              <CardBody className="p-4">
+                <div className="d-flex align-items-center justify-content-between mb-4">
+                  <div>
+                    <h6 className="fw-bold mb-1">Ma Trận Phân Bổ Sân Đấu Theo Khung Giờ</h6>
+                    <small className="text-muted">Trực quan hóa từng sân đấu theo thời gian, chống trùng lịch và nhận diện sân trống</small>
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <Label className="small text-muted mb-0 fw-semibold">Chọn ngày:</Label>
+                    <Input
+                      type="select"
+                      bsSize="sm"
+                      className="rounded-pill"
+                      style={{ width: '160px' }}
+                      value={filterDate || (uniqueDates[0] || '')}
+                      onChange={(e) => setFilterDate(e.target.value)}
+                    >
+                      {uniqueDates.map((d) => (
+                        <option key={d} value={d}>
+                          Ngày {d}
+                        </option>
+                      ))}
+                    </Input>
+                  </div>
+                </div>
+
+                <div className="table-responsive">
+                  <Table bordered className="align-middle text-center mb-0" style={{ minWidth: '800px' }}>
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: '130px' }} className="py-3">Khung Giờ</th>
+                        {venues.map((v) => (
+                          <th key={v.id} className="py-3">
+                            <div className="fw-bold text-dark">{v.ten}</div>
+                            <small className="text-muted fw-normal" style={{ fontSize: '11px' }}>{v.loaiSan || 'Sân tiêu chuẩn'}</small>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* Unique start times for the chosen date */}
+                      {(() => {
+                        const targetDate = filterDate || uniqueDates[0];
+                        const dateMatches = matches.filter((m) => {
+                          if (!m.thoiGianBatDau) return false;
+                          return new Date(m.thoiGianBatDau).toISOString().split('T')[0] === targetDate;
+                        });
+
+                        const times = Array.from(
+                          new Set(
+                            dateMatches.map((m) =>
+                              new Date(m.thoiGianBatDau!).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+                            )
+                          )
+                        ).sort();
+
+                        if (times.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={venues.length + 1} className="py-5 text-muted">
+                                Không có trận đấu nào trong ngày được chọn.
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return times.map((tStr) => (
+                          <tr key={tStr}>
+                            <td className="fw-bold text-primary bg-light">
+                              <Clock size={12} className="me-1" />
+                              {tStr}
+                            </td>
+                            {venues.map((v) => {
+                              const matchAtCourt = dateMatches.find((m) => {
+                                if (m.sanDauId !== v.id) return false;
+                                const mTime = new Date(m.thoiGianBatDau!).toLocaleTimeString('vi-VN', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                });
+                                return mTime === tStr;
+                              });
+
+                              return (
+                                <td key={v.id} className="p-2" style={{ verticalAlign: 'top', height: '90px' }}>
+                                  {matchAtCourt ? (
+                                    <div
+                                      className="p-2 rounded-3 text-start shadow-sm position-relative cursor-pointer"
+                                      style={{
+                                        backgroundColor: '#eff6ff',
+                                        border: '1px solid #bfdbfe',
+                                      }}
+                                      onClick={() => handleOpenEditMatch(matchAtCourt)}
+                                    >
+                                      <div className="d-flex align-items-center justify-content-between mb-1">
+                                        <Badge color="primary" pill style={{ fontSize: '9px' }}>
+                                          #{matchAtCourt.soTran} {matchAtCourt.tenVongDau}
+                                        </Badge>
+                                        {matchAtCourt.tenBangDau && (
+                                          <Badge color="warning" pill style={{ fontSize: '9px' }}>
+                                            {matchAtCourt.tenBangDau}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <div className="fw-bold text-dark text-truncate" style={{ fontSize: '12px' }}>
+                                        {matchAtCourt.tenDoi1}
+                                      </div>
+                                      <div className="text-muted fw-bold text-center" style={{ fontSize: '9px' }}>VS</div>
+                                      <div className="fw-bold text-dark text-truncate" style={{ fontSize: '12px' }}>
+                                        {matchAtCourt.tenDoi2}
+                                      </div>
+
+                                      {matchAtCourt.danhSachTrongTai && matchAtCourt.danhSachTrongTai.length > 0 && (
+                                        <div className="mt-1 pt-1 border-top d-flex align-items-center gap-1 text-muted" style={{ fontSize: '10px' }}>
+                                          <Shield size={10} className="text-warning" />
+                                          <span className="text-truncate">{matchAtCourt.danhSachTrongTai[0]?.tenTrongTai}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="h-100 d-flex align-items-center justify-content-center text-muted opacity-25 small">
+                                      Trống
+                                    </div>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </Table>
+                </div>
+              </CardBody>
+            </Card>
+          )}
+
+          {/* TAB 3: REFEREE ASSIGNMENT VIEW */}
+          {activeTab === 'referee' && (
+            <Card className="border-0 shadow-sm rounded-4">
+              <CardBody className="p-4">
+                <div className="d-flex align-items-center justify-content-between mb-4">
+                  <div>
+                    <h6 className="fw-bold mb-1">Bảng Phân Công & Giám Sát Trọng Tài</h6>
+                    <small className="text-muted">Tổng hợp danh sách phân công, số lượng trận điều hành và đảm bảo công bằng khối lượng ca trực</small>
+                  </div>
+                </div>
+
+                <Row className="g-3">
+                  {referees.map((ref) => {
+                    // Matches assigned to this referee
+                    const refMatches = matches.filter((m) =>
+                      m.danhSachTrongTai?.some((r) => r.trongTaiId === ref.id)
+                    );
+
+                    return (
+                      <Col key={ref.id} xs={12} md={6} lg={4}>
+                        <div className="p-3.5 rounded-4 border bg-white shadow-sm h-100 d-flex flex-column">
+                          <div className="d-flex align-items-center gap-3 mb-3">
+                            <div
+                              className="rounded-circle bg-warning bg-opacity-25 text-dark d-flex align-items-center justify-content-center fw-bold"
+                              style={{ width: '46px', height: '46px', fontSize: '16px' }}
+                            >
+                              {ref.hoTen.slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="lh-sm">
+                              <h6 className="fw-bold text-dark mb-0.5">{ref.hoTen}</h6>
+                              <div className="d-flex align-items-center gap-2 text-muted small" style={{ fontSize: '11px' }}>
+                                <span>{ref.capBac || 'Trọng tài'}</span>
+                                <span>•</span>
+                                <span>{ref.soDienThoai || 'N/A'}</span>
+                              </div>
+                            </div>
+                            <Badge color="primary" pill className="ms-auto px-2.5 py-1 fw-bold">
+                              {refMatches.length} trận
+                            </Badge>
+                          </div>
+
+                          <div className="border-top pt-2 mt-auto">
+                            <span className="small text-secondary fw-semibold d-block mb-2" style={{ fontSize: '11px' }}>
+                              Lịch các trận được phân công:
+                            </span>
+                            {refMatches.length === 0 ? (
+                              <p className="text-muted small mb-0 fst-italic" style={{ fontSize: '11px' }}>
+                                Chưa có trận đấu nào được phân công.
+                              </p>
+                            ) : (
+                              <div className="d-flex flex-column gap-1.5" style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                                {refMatches.map((rm) => (
+                                  <div
+                                    key={rm.id}
+                                    className="p-2 rounded-2 bg-light border d-flex align-items-center justify-content-between"
+                                    style={{ fontSize: '11px' }}
+                                  >
+                                    <div>
+                                      <span className="fw-bold text-dark">Trận #{rm.soTran}</span>: {rm.tenDoi1} vs {rm.tenDoi2}
+                                      <div className="text-muted" style={{ fontSize: '10px' }}>
+                                        {rm.tenSanDau} • {rm.thoiGianBatDau ? new Date(rm.thoiGianBatDau).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                      </div>
+                                    </div>
+                                    <Badge color="info" pill style={{ fontSize: '9px' }}>
+                                      {rm.danhSachTrongTai?.find((x) => x.trongTaiId === ref.id)?.vaiTro === 'TrongTaiChinh' ? 'Chính' : 'Phụ'}
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </Col>
+                    );
+                  })}
+                </Row>
+              </CardBody>
+            </Card>
+          )}
+
+          {/* TAB 4: GROUPS & STANDINGS (Bảng Đấu) */}
+          {activeTab === 'groups' && (
+            <div className="d-flex flex-column gap-4">
+              <div className="d-flex align-items-center justify-content-between">
+                <div>
+                  <h6 className="fw-bold mb-1">Danh Sách Bảng Đấu & Các Đội Tham Gia</h6>
+                  <small className="text-muted">Bốc thăm chia bảng các đội đăng ký thi đấu của nội dung</small>
+                </div>
+                <Button
+                  color="primary"
+                  size="sm"
+                  className="rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-1.5"
+                  onClick={() => setGroupModalOpen(true)}
+                >
+                  <Shuffle size={14} />
+                  <span>Bốc Thăm Lại Bảng Đấu</span>
+                </Button>
+              </div>
+
+              <Row className="g-3">
+                {groups.length === 0 ? (
+                  <Col xs={12}>
+                    <div className="bg-white rounded-4 p-5 text-center border">
+                      <Layers size={44} className="text-muted opacity-25 mb-2" />
+                      <p className="fw-semibold text-dark mb-1">Chưa có bảng đấu nào được tạo</p>
+                      <small className="text-muted mb-3 d-block">
+                        Nhấn nút bên dưới để tự động bốc thăm chia các đội đã duyệt vào các bảng đấu.
+                      </small>
+                      <Button color="primary" size="sm" className="rounded-pill px-3 py-1.5" onClick={() => setGroupModalOpen(true)}>
+                        <Shuffle size={14} className="me-1" />
+                        Chia Bảng Đấu Ngay
+                      </Button>
+                    </div>
+                  </Col>
+                ) : (
+                  groups.map((g) => (
+                    <Col key={g.id} xs={12} md={6}>
+                      <Card className="border-0 shadow-sm rounded-4 h-100">
+                        <CardBody className="p-3.5">
+                          <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                            <div className="d-flex align-items-center gap-2">
+                              <Badge color="warning" pill className="px-2.5 py-1 text-dark fw-bold">
+                                {g.ten}
+                              </Badge>
+                              <span className="text-muted small">({g.thanhViens?.length || 0} đội)</span>
+                            </div>
+                          </div>
+
+                          <div className="table-responsive">
+                            <Table size="sm" className="align-middle mb-0" style={{ fontSize: '12px' }}>
+                              <thead className="table-light">
+                                <tr>
+                                  <th style={{ width: '35px' }}>#</th>
+                                  <th>Tên Đội / VĐV</th>
+                                  <th>Đơn Vị</th>
+                                  <th className="text-center">Số Trận</th>
+                                  <th className="text-center">Điểm</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {g.thanhViens && g.thanhViens.length > 0 ? (
+                                  g.thanhViens.map((tv, idx) => (
+                                    <tr key={tv.id}>
+                                      <td className="fw-bold text-muted">{idx + 1}</td>
+                                      <td className="fw-semibold text-dark">{tv.tenDoi || tv.tenDangKy}</td>
+                                      <td className="text-muted">{tv.tenDonVi || '--'}</td>
+                                      <td className="text-center font-monospace">{tv.soTran}</td>
+                                      <td className="text-center fw-bold text-primary font-monospace">{tv.diem}</td>
+                                    </tr>
+                                  ))
+                                ) : (
+                                  <tr>
+                                    <td colSpan={5} className="text-center py-3 text-muted">
+                                      Bảng đấu chưa có đội
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </Table>
+                          </div>
+                        </CardBody>
+                      </Card>
+                    </Col>
+                  ))
+                )}
+              </Row>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 1: AUTO SCHEDULE WIZARD                            */}
+      {/* ======================================================== */}
+      <Modal isOpen={autoScheduleModalOpen} toggle={() => setAutoScheduleModalOpen(!autoScheduleModalOpen)} size="lg" centered>
+        <ModalHeader toggle={() => setAutoScheduleModalOpen(!autoScheduleModalOpen)} className="border-bottom">
+          <div className="d-flex align-items-center gap-2">
+            <Zap size={18} className="text-warning" />
+            <span className="fw-bold fs-6">Trình Xếp Lịch Thi Đấu Tự Động Thông Minh</span>
+          </div>
+        </ModalHeader>
+        <ModalBody className="p-4">
+          <Alert color="primary" className="d-flex align-items-center gap-2 mb-3 py-2 px-3 rounded-3" style={{ fontSize: '12px' }}>
+            <Info size={16} className="flex-shrink-0 text-primary" />
+            <div>
+              Thuật toán tự động sinh lịch theo thể thức <strong>{HinhThucThiDauLabels[currentEvent?.hinhThucThiDau || ''] || 'Loại trực tiếp'}</strong>,
+              phân bổ tối ưu Sân đấu không bị trùng và xoay vòng Trọng tài điều hành.
+            </div>
+          </Alert>
+
+          <Row className="g-3">
+            {/* Start Date & Time */}
+            <Col xs={12} md={4}>
+              <Label className="small fw-semibold">Ngày bắt đầu</Label>
+              <Input
+                type="date"
+                bsSize="sm"
+                value={autoScheduleConfig.startDate}
+                onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, startDate: e.target.value })}
+              />
+            </Col>
+
+            <Col xs={6} md={4}>
+              <Label className="small fw-semibold">Giờ bắt đầu mỗi ngày</Label>
+              <Input
+                type="time"
+                bsSize="sm"
+                value={autoScheduleConfig.startTime}
+                onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, startTime: e.target.value })}
+              />
+            </Col>
+
+            <Col xs={6} md={4}>
+              <Label className="small fw-semibold">Giờ kết thúc mỗi ngày</Label>
+              <Input
+                type="time"
+                bsSize="sm"
+                value={autoScheduleConfig.endTime}
+                onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, endTime: e.target.value })}
+              />
+            </Col>
+
+            {/* Match Duration & Break */}
+            <Col xs={6} md={6}>
+              <Label className="small fw-semibold">Thời lượng mỗi trận (phút)</Label>
+              <Input
+                type="number"
+                bsSize="sm"
+                min={15}
+                max={180}
+                value={autoScheduleConfig.matchDuration}
+                onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, matchDuration: Number(e.target.value) })}
+              />
+            </Col>
+
+            <Col xs={6} md={6}>
+              <Label className="small fw-semibold">Thời gian nghỉ giữa trận (phút)</Label>
+              <Input
+                type="number"
+                bsSize="sm"
+                min={0}
+                max={60}
+                value={autoScheduleConfig.breakDuration}
+                onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, breakDuration: Number(e.target.value) })}
+              />
+            </Col>
+
+            {/* Group stage configuration if applicable */}
+            {hasGroupStage && (
+              <Col xs={12}>
+                <div className="p-3 rounded-3 bg-light border">
+                  <div className="form-check mb-2">
+                    <Input
+                      type="checkbox"
+                      id="autoCreateGroups"
+                      checked={autoScheduleConfig.autoCreateGroups}
+                      onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, autoCreateGroups: e.target.checked })}
+                    />
+                    <Label check htmlFor="autoCreateGroups" className="fw-semibold small">
+                      Tự động bốc thăm chia Bảng đấu nếu chưa có bảng
+                    </Label>
+                  </div>
+
+                  {autoScheduleConfig.autoCreateGroups && (
+                    <div className="d-flex align-items-center gap-2 mt-2">
+                      <Label className="small mb-0">Số đội mỗi bảng:</Label>
+                      <Input
+                        type="select"
+                        bsSize="sm"
+                        style={{ width: '120px' }}
+                        value={autoScheduleConfig.teamsPerGroup}
+                        onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, teamsPerGroup: Number(e.target.value) })}
+                      >
+                        <option value={3}>3 đội / bảng</option>
+                        <option value={4}>4 đội / bảng</option>
+                        <option value={5}>5 đội / bảng</option>
+                        <option value={6}>6 đội / bảng</option>
+                      </Input>
+                    </div>
+                  )}
+                </div>
+              </Col>
+            )}
+
+            {/* Venue selection */}
+            <Col xs={12}>
+              <Label className="small fw-semibold d-flex align-items-center justify-content-between">
+                <span>Chọn các Sân đấu áp dụng:</span>
+                <span className="text-primary cursor-pointer" onClick={() => setAutoScheduleConfig({ ...autoScheduleConfig, selectedVenueIds: venues.map((v) => v.id) })}>
+                  Chọn tất cả ({venues.length})
+                </span>
+              </Label>
+              <div className="d-flex flex-wrap gap-2 p-2.5 rounded-3 border bg-light" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                {venues.map((v) => {
+                  const isChecked = autoScheduleConfig.selectedVenueIds.includes(v.id);
+                  return (
+                    <Badge
+                      key={v.id}
+                      color={isChecked ? 'primary' : 'light'}
+                      className={`cursor-pointer px-3 py-1.5 border ${isChecked ? 'text-white' : 'text-dark'}`}
+                      onClick={() => {
+                        const newIds = isChecked
+                          ? autoScheduleConfig.selectedVenueIds.filter((id) => id !== v.id)
+                          : [...autoScheduleConfig.selectedVenueIds, v.id];
+                        setAutoScheduleConfig({ ...autoScheduleConfig, selectedVenueIds: newIds });
+                      }}
+                    >
+                      <MapPin size={11} className="me-1" />
+                      {v.ten}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </Col>
+
+            {/* Referee selection */}
+            <Col xs={12}>
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <Label className="small fw-semibold mb-0">Chọn các Trọng tài điều hành:</Label>
+                <div className="d-flex align-items-center gap-2">
+                  <span className="small text-muted">Số TT / trận:</span>
+                  <Input
+                    type="select"
+                    bsSize="sm"
+                    style={{ width: '80px' }}
+                    value={autoScheduleConfig.refereesPerMatch}
+                    onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, refereesPerMatch: Number(e.target.value) })}
+                  >
+                    <option value={1}>1 người</option>
+                    <option value={2}>2 người</option>
+                    <option value={3}>3 người</option>
+                  </Input>
+                </div>
+              </div>
+              <div className="d-flex flex-wrap gap-2 p-2.5 rounded-3 border bg-light" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                {referees.map((r) => {
+                  const isChecked = autoScheduleConfig.selectedRefereeIds.includes(r.id);
+                  return (
+                    <Badge
+                      key={r.id}
+                      color={isChecked ? 'warning' : 'light'}
+                      className={`cursor-pointer px-3 py-1.5 border ${isChecked ? 'text-dark fw-bold' : 'text-secondary'}`}
+                      onClick={() => {
+                        const newIds = isChecked
+                          ? autoScheduleConfig.selectedRefereeIds.filter((id) => id !== r.id)
+                          : [...autoScheduleConfig.selectedRefereeIds, r.id];
+                        setAutoScheduleConfig({ ...autoScheduleConfig, selectedRefereeIds: newIds });
+                      }}
+                    >
+                      <Shield size={11} className="me-1" />
+                      {r.hoTen}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </Col>
+
+            {/* Clear old matches checkbox */}
+            <Col xs={12}>
+              <div className="form-check">
+                <Input
+                  type="checkbox"
+                  id="clearOldMatches"
+                  checked={autoScheduleConfig.clearOldMatches}
+                  onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, clearOldMatches: e.target.checked })}
+                />
+                <Label check htmlFor="clearOldMatches" className="small text-danger fw-semibold">
+                  Xóa lịch thi đấu cũ của nội dung này trước khi sinh lịch mới
+                </Label>
+              </div>
+            </Col>
+          </Row>
+        </ModalBody>
+        <ModalFooter className="border-top">
+          <Button color="secondary" size="sm" className="rounded-pill px-3" onClick={() => setAutoScheduleModalOpen(false)}>
+            Hủy
+          </Button>
+          <Button
+            color="primary"
+            size="sm"
+            className="rounded-pill px-4 fw-semibold d-flex align-items-center gap-1.5"
+            onClick={handleAutoSchedule}
+            disabled={autoScheduleSubmitting}
+          >
+            {autoScheduleSubmitting ? <Spinner size="sm" /> : <Zap size={15} />}
+            <span>Bắt Đầu Xếp Lịch</span>
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL 2: CREATE / EDIT MANUAL MATCH                      */}
+      {/* ======================================================== */}
+      <Modal isOpen={manualMatchModalOpen} toggle={() => setManualMatchModalOpen(!manualMatchModalOpen)} size="lg" centered>
+        <ModalHeader toggle={() => setManualMatchModalOpen(!manualMatchModalOpen)} className="border-bottom">
+          <div className="d-flex align-items-center gap-2">
+            <Edit2 size={18} className="text-primary" />
+            <span className="fw-bold fs-6">
+              {editingMatchId ? 'Chỉnh Sửa Trận Đấu & Phân Công' : 'Thêm Mới Trận Đấu Thủ Công'}
+            </span>
+          </div>
+        </ModalHeader>
+        <ModalBody className="p-4">
+          {conflictWarning.length > 0 && (
+            <Alert color="danger" className="py-2 px-3 rounded-3 mb-3" style={{ fontSize: '12px' }}>
+              <div className="fw-bold d-flex align-items-center gap-1.5 mb-1">
+                <AlertTriangle size={15} />
+                Phát hiện xung đột lịch thi đấu:
+              </div>
+              <ul className="mb-0 ps-3">
+                {conflictWarning.map((c, i) => (
+                  <li key={i}>{c}</li>
+                ))}
+              </ul>
+            </Alert>
+          )}
+
+          <Row className="g-3">
+            <Col xs={12} md={4}>
+              <Label className="small fw-semibold">Vòng đấu *</Label>
+              <Input
+                type="select"
+                bsSize="sm"
+                value={matchForm.roundId}
+                onChange={(e) => setMatchForm({ ...matchForm, roundId: Number(e.target.value) })}
+              >
+                <option value="">-- Chọn vòng đấu --</option>
+                {rounds.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.ten}
+                  </option>
+                ))}
+              </Input>
+            </Col>
+
+            {hasGroupStage && (
+              <Col xs={12} md={4}>
+                <Label className="small fw-semibold">Bảng đấu (nếu có)</Label>
+                <Input
+                  type="select"
+                  bsSize="sm"
+                  value={matchForm.groupId}
+                  onChange={(e) => setMatchForm({ ...matchForm, groupId: e.target.value ? Number(e.target.value) : '' })}
+                >
+                  <option value="">-- Không thuộc bảng (Knockout) --</option>
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.ten}
+                    </option>
+                  ))}
+                </Input>
+              </Col>
+            )}
+
+            <Col xs={12} md={hasGroupStage ? 4 : 8}>
+              <Label className="small fw-semibold">Tên trận đấu</Label>
+              <Input
+                type="text"
+                bsSize="sm"
+                value={matchForm.matchName}
+                placeholder="Ví dụ: Trận 1 - Bảng A"
+                onChange={(e) => setMatchForm({ ...matchForm, matchName: e.target.value })}
+              />
+            </Col>
+
+            {/* Teams 1 & 2 */}
+            <Col xs={12} md={6}>
+              <Label className="small fw-semibold text-primary">Đội 1 (Vị trí 1 / Nhà) *</Label>
+              <Input
+                type="select"
+                bsSize="sm"
+                value={matchForm.doi1Id}
+                onChange={(e) => setMatchForm({ ...matchForm, doi1Id: Number(e.target.value) })}
+              >
+                <option value="">-- Chọn Đội 1 --</option>
+                {availableTeamsForMatch.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.tenDoi || t.tenDangKy} ({t.tenDonVi || 'Đơn vị'})
+                  </option>
+                ))}
+              </Input>
+            </Col>
+
+            <Col xs={12} md={6}>
+              <Label className="small fw-semibold text-danger">Đội 2 (Vị trí 2 / Khách) *</Label>
+              <Input
+                type="select"
+                bsSize="sm"
+                value={matchForm.doi2Id}
+                onChange={(e) => setMatchForm({ ...matchForm, doi2Id: Number(e.target.value) })}
+              >
+                <option value="">-- Chọn Đội 2 --</option>
+                {availableTeamsForMatch.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.tenDoi || t.tenDangKy} ({t.tenDonVi || 'Đơn vị'})
+                  </option>
+                ))}
+              </Input>
+            </Col>
+
+            {/* Venue & Timing */}
+            <Col xs={12} md={4}>
+              <Label className="small fw-semibold">Sân thi đấu</Label>
+              <Input
+                type="select"
+                bsSize="sm"
+                value={matchForm.venueId}
+                onChange={(e) => setMatchForm({ ...matchForm, venueId: e.target.value ? Number(e.target.value) : '' })}
+              >
+                <option value="">-- Chọn sân đấu --</option>
+                {venues.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.ten} ({v.loaiSan || 'Sân'})
+                  </option>
+                ))}
+              </Input>
+            </Col>
+
+            <Col xs={6} md={3}>
+              <Label className="small fw-semibold">Ngày thi đấu</Label>
+              <Input
+                type="date"
+                bsSize="sm"
+                value={matchForm.matchDate}
+                onChange={(e) => setMatchForm({ ...matchForm, matchDate: e.target.value })}
+              />
+            </Col>
+
+            <Col xs={3} md={2.5}>
+              <Label className="small fw-semibold">Giờ bắt đầu</Label>
+              <Input
+                type="time"
+                bsSize="sm"
+                value={matchForm.startTime}
+                onChange={(e) => setMatchForm({ ...matchForm, startTime: e.target.value })}
+              />
+            </Col>
+
+            <Col xs={3} md={2.5}>
+              <Label className="small fw-semibold">Giờ kết thúc</Label>
+              <Input
+                type="time"
+                bsSize="sm"
+                value={matchForm.endTime}
+                onChange={(e) => setMatchForm({ ...matchForm, endTime: e.target.value })}
+              />
+            </Col>
+
+            {/* Referees Assignment Section */}
+            <Col xs={12}>
+              <div className="p-3 rounded-3 border bg-light">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <span className="small fw-bold text-dark d-flex align-items-center gap-1.5">
+                    <Shield size={14} className="text-warning" />
+                    Phân công Trọng tài điều hành:
+                  </span>
+                  <Button
+                    color="outline-primary"
+                    size="sm"
+                    className="p-1 px-2 rounded-pill"
+                    style={{ fontSize: '11px' }}
+                    onClick={() => {
+                      const firstAvailable = referees.find(
+                        (r) => !matchForm.refereeAssignments.some((a) => a.trongTaiId === r.id)
+                      );
+                      if (firstAvailable) {
+                        setMatchForm({
+                          ...matchForm,
+                          refereeAssignments: [
+                            ...matchForm.refereeAssignments,
+                            { trongTaiId: firstAvailable.id, vaiTro: 'TrongTaiPhu' },
+                          ],
+                        });
+                      }
+                    }}
+                  >
+                    + Thêm Trọng Tài
+                  </Button>
+                </div>
+
+                {matchForm.refereeAssignments.length === 0 ? (
+                  <p className="text-muted small mb-0 fst-italic" style={{ fontSize: '11px' }}>
+                    Chưa phân công trọng tài nào. Nhấn "+ Thêm Trọng Tài" ở trên.
+                  </p>
+                ) : (
+                  <div className="d-flex flex-column gap-2">
+                    {matchForm.refereeAssignments.map((ra, idx) => (
+                      <div key={idx} className="d-flex align-items-center gap-2">
+                        <Input
+                          type="select"
+                          bsSize="sm"
+                          value={ra.trongTaiId}
+                          onChange={(e) => {
+                            const newAssigns = [...matchForm.refereeAssignments];
+                            newAssigns[idx].trongTaiId = Number(e.target.value);
+                            setMatchForm({ ...matchForm, refereeAssignments: newAssigns });
+                          }}
+                          style={{ flex: 2 }}
+                        >
+                          {referees.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.hoTen} ({r.capBac || 'Trọng tài'})
+                            </option>
+                          ))}
+                        </Input>
+
+                        <Input
+                          type="select"
+                          bsSize="sm"
+                          value={ra.vaiTro}
+                          onChange={(e) => {
+                            const newAssigns = [...matchForm.refereeAssignments];
+                            newAssigns[idx].vaiTro = e.target.value;
+                            setMatchForm({ ...matchForm, refereeAssignments: newAssigns });
+                          }}
+                          style={{ flex: 1.5 }}
+                        >
+                          <option value="TrongTaiChinh">Trọng tài chính</option>
+                          <option value="TrongTaiPhu">Trọng tài phụ</option>
+                          <option value="TrongTaiBan">Trọng tài bàn</option>
+                          <option value="GiamSat">Giám sát</option>
+                        </Input>
+
+                        <Button
+                          color="light"
+                          size="sm"
+                          className="p-1 text-danger rounded-2 border"
+                          onClick={() => {
+                            const newAssigns = matchForm.refereeAssignments.filter((_, i) => i !== idx);
+                            setMatchForm({ ...matchForm, refereeAssignments: newAssigns });
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Col>
+
+            {/* Conflict Check Trigger Button */}
+            <Col xs={12} className="d-flex align-items-center justify-content-between pt-2">
+              <Button
+                color="outline-secondary"
+                size="sm"
+                className="rounded-pill px-3 py-1 d-flex align-items-center gap-1.5"
+                style={{ fontSize: '12px' }}
+                onClick={handleCheckConflict}
+                disabled={checkingConflict}
+              >
+                {checkingConflict ? <Spinner size="sm" /> : <AlertTriangle size={13} className="text-warning" />}
+                Kiểm tra trùng lịch (Sân / Trọng tài / Đội)
+              </Button>
+            </Col>
+          </Row>
+        </ModalBody>
+        <ModalFooter className="border-top">
+          <Button color="secondary" size="sm" className="rounded-pill px-3" onClick={() => setManualMatchModalOpen(false)}>
+            Hủy
+          </Button>
+          <Button color="primary" size="sm" className="rounded-pill px-4 fw-semibold" onClick={handleSaveManualMatch}>
+            Lưu Trận Đấu
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL 3: AUTO DISTRIBUTE GROUPS (Chia Bảng / Bốc Thăm)   */}
+      {/* ======================================================== */}
+      <Modal isOpen={groupModalOpen} toggle={() => setGroupModalOpen(!groupModalOpen)} centered>
+        <ModalHeader toggle={() => setGroupModalOpen(!groupModalOpen)} className="border-bottom">
+          <div className="d-flex align-items-center gap-2">
+            <Shuffle size={18} className="text-info" />
+            <span className="fw-bold fs-6">Bốc Thăm & Chia Bảng Đấu</span>
+          </div>
+        </ModalHeader>
+        <ModalBody className="p-4">
+          <p className="small text-muted mb-3">
+            Hệ thống sẽ tự động tạo các bảng đấu và chia đều ngẫu nhiên {registeredTeams.length} đội đã duyệt vào từng bảng đấu.
+          </p>
+
+          <FormGroup>
+            <Label className="small fw-semibold">Số lượng bảng đấu cần chia:</Label>
+            <Input
+              type="select"
+              bsSize="sm"
+              value={distributeGroupCount}
+              onChange={(e) => setDistributeGroupCount(Number(e.target.value))}
+            >
+              <option value={2}>2 bảng (Bảng A, B)</option>
+              <option value={3}>3 bảng (Bảng A, B, C)</option>
+              <option value={4}>4 bảng (Bảng A, B, C, D)</option>
+              <option value={6}>6 bảng (Bảng A - F)</option>
+              <option value={8}>8 bảng (Bảng A - H)</option>
+            </Input>
+          </FormGroup>
+        </ModalBody>
+        <ModalFooter className="border-top">
+          <Button color="secondary" size="sm" className="rounded-pill px-3" onClick={() => setGroupModalOpen(false)}>
+            Hủy
+          </Button>
+          <Button color="info" size="sm" className="rounded-pill px-4 fw-semibold text-white" onClick={handleAutoDistributeGroups}>
+            Bắt Đầu Bốc Thăm
+          </Button>
+        </ModalFooter>
+      </Modal>
+    </div>
+  );
+}
