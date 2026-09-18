@@ -7,10 +7,12 @@ import { giaiDauService } from '@/services/giaiDauService';
 import { vanDongVienService } from '@/services/vanDongVienService';
 import { dangKyThiDauService } from '@/services/dangKyThiDauService';
 import { noiDungThiDauService } from '@/services/noiDungThiDauService';
+import { donViService } from '@/services/donViService';
 import { GiaiDau, TrangThaiGiaiDau } from '@/types/giaiDau';
 import { VanDongVien } from '@/types/vanDongVien';
 import { DangKyThiDau } from '@/types/dangKyThiDau';
 import { NoiDungThiDau } from '@/types/noiDungThiDau';
+import { DonVi } from '@/types/donVi';
 import {
   Trophy,
   Calendar,
@@ -30,6 +32,8 @@ import {
   Award,
   ClipboardList,
   Plus,
+  Building2,
+  X,
 } from 'lucide-react';
 import {
   Spinner,
@@ -91,6 +95,8 @@ export default function DangKyGiaiDauPage() {
   const [athletes, setAthletes] = useState<VanDongVien[]>([]);
   const [noiDungs, setNoiDungs] = useState<NoiDungThiDau[]>([]);
   const [registrations, setRegistrations] = useState<DangKyThiDau[]>([]);
+  const [donVis, setDonVis] = useState<DonVi[]>([]);
+  const [currentDonVi, setCurrentDonVi] = useState<DonVi | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloading, setReloading] = useState(false);
   const [vdvError, setVdvError] = useState<'forbidden' | 'error' | null>(null);
@@ -127,13 +133,60 @@ export default function DangKyGiaiDauPage() {
     [toast]
   );
 
-  /* ── Fetch data ── */
-  const fetchRegistrations = useCallback(async () => {
-    try {
-      const data = await dangKyThiDauService.getAll({ giaiDauId });
-      setRegistrations(data || []);
-    } catch { /* ignore */ }
-  }, [giaiDauId]);
+  /* ── Tải danh sách VĐV và hồ sơ theo đơn vị cụ thể ── */
+  const loadDataForUnit = useCallback(
+    async (unitId?: number) => {
+      try {
+        const [vdvRes, regRes] = await Promise.allSettled([
+          vanDongVienService.getByDoan(unitId),
+          dangKyThiDauService.getAll({ giaiDauId, donViId: unitId }),
+        ]);
+
+        if (vdvRes.status === 'fulfilled') {
+          let vdvList = vdvRes.value || [];
+          if (unitId) {
+            vdvList = vdvList.filter((a) => a.donViId === unitId);
+          }
+          setAthletes(vdvList);
+          setVdvError(null);
+        } else {
+          const err = vdvRes.reason as any;
+          const status = err?.response?.status;
+          setVdvError(status === 403 ? 'forbidden' : 'error');
+        }
+
+        if (regRes.status === 'fulfilled') {
+          let regList = regRes.value || [];
+          if (unitId) {
+            regList = regList.filter((r) => r.donViId === unitId);
+          }
+          setRegistrations(regList);
+        }
+      } catch {
+        /* ignore */
+      }
+    },
+    [giaiDauId]
+  );
+
+  /* ── Fetch registrations theo đơn vị ── */
+  const fetchRegistrations = useCallback(
+    async (unitId?: number) => {
+      try {
+        const targetId = unitId !== undefined ? unitId : (currentDonVi?.id || user?.donViId || undefined);
+        const data = await dangKyThiDauService.getAll({ giaiDauId, donViId: targetId });
+        let filtered = data || [];
+        if (targetId) {
+          filtered = filtered.filter((r) => r.donViId === targetId);
+        }
+        setRegistrations(filtered);
+      } catch {
+        /* ignore */
+      }
+    },
+    [giaiDauId, currentDonVi?.id, user?.donViId]
+  );
+
 
   useEffect(() => {
     if (!giaiDauId) return;
@@ -141,28 +194,53 @@ export default function DangKyGiaiDauPage() {
       setLoading(true);
       setVdvError(null);
       try {
-        const [gd, vdv, nds] = await Promise.allSettled([
+        const [gd, allDonVisRes, nds] = await Promise.allSettled([
           giaiDauService.getById(giaiDauId),
-          vanDongVienService.getAll(),
+          donViService.getAll().catch(() => []),
           noiDungThiDauService.getAll({ giaiDauId }),
         ]);
+
         if (gd.status === 'fulfilled') setGiaiDau(gd.value);
-        if (vdv.status === 'fulfilled') {
-          setAthletes(vdv.value || []);
-        } else {
-          const err = vdv.reason as any;
-          const status = err?.response?.status;
-          setVdvError(status === 403 ? 'forbidden' : 'error');
+        if (nds.status === 'fulfilled') setNoiDungs(nds.value || []);
+
+        const allDonVis = allDonVisRes.status === 'fulfilled' ? allDonVisRes.value || [] : [];
+        setDonVis(allDonVis);
+
+        // Xác định đơn vị của người dùng
+        let myUnit: DonVi | undefined = undefined;
+        if (allDonVis.length > 0) {
+          if (user?.donViId) {
+            myUnit = allDonVis.find((d) => d.id === user.donViId);
+          }
+          if (!myUnit && user) {
+            myUnit = allDonVis.find(
+              (d) =>
+                (user.fullName && d.ten.toLowerCase().includes(user.fullName.toLowerCase())) ||
+                (user.username && d.ma.toLowerCase() === user.username.toLowerCase()) ||
+                (user.fullName && d.ten.toLowerCase() === user.fullName.toLowerCase())
+            );
+          }
+          if (!myUnit) {
+            myUnit = allDonVis[0];
+          }
+        } else if (user) {
+          myUnit = {
+            id: user.donViId || 1,
+            ma: user.username || 'DOAN',
+            ten: user.fullName || 'Đoàn Thể Thao',
+            trangThai: true,
+          };
         }
-        if (nds.status === 'fulfilled') {
-          setNoiDungs(nds.value || []);
-        }
-        await fetchRegistrations();
+        setCurrentDonVi(myUnit || null);
+
+        // Tải VĐV và hồ sơ theo đơn vị
+        const targetUnitId = myUnit?.id || user?.donViId || undefined;
+        await loadDataForUnit(targetUnitId);
       } finally {
         setLoading(false);
       }
     })();
-  }, [giaiDauId, fetchRegistrations]);
+  }, [giaiDauId, user, loadDataForUnit]);
 
   /* ── Môn thi đấu trong giải ── */
   const monList = useMemo(() => {
@@ -210,6 +288,11 @@ export default function DangKyGiaiDauPage() {
     );
   }, [athletes, selectedNoiDung, onlyMatchingGender, formVdvSearch]);
 
+  /* ── Danh sách VĐV đã chọn trong modal ── */
+  const chosenAthletes = useMemo(() => {
+    return athletes.filter((a) => selectedVdvs.includes(a.id));
+  }, [athletes, selectedVdvs]);
+
   /* ── Lọc VĐV trong tab tổng quan ── */
   const filteredAthletes = useMemo(() => {
     if (!vdvSearch.trim()) return athletes;
@@ -228,8 +311,26 @@ export default function DangKyGiaiDauPage() {
     );
   }, [registrations, statusFilter]);
 
-  /* ── Toggle chọn VĐV: Chống trường hợp cá nhân mà chọn nhiều VĐV ── */
+  /* ── Danh sách ID các VĐV đã đăng ký trong nội dung đang chọn ── */
+  const registeredVdvIdsInSelectedNoiDung = useMemo(() => {
+    if (!selectedNoiDungId) return new Set<number>();
+    const activeRegs = registrations.filter(
+      (r) => r.noiDungThiDauId === Number(selectedNoiDungId) && r.trangThai !== 'TuChoi'
+    );
+    const set = new Set<number>();
+    activeRegs.forEach((r) => {
+      (r.vanDongVienIds || []).forEach((id) => set.add(id));
+    });
+    return set;
+  }, [registrations, selectedNoiDungId]);
+
+  /* ── Toggle chọn VĐV: Chống trường hợp cá nhân mà chọn nhiều VĐV & Chống trùng nội dung ── */
   const toggleVdv = (id: number) => {
+    if (registeredVdvIdsInSelectedNoiDung.has(id)) {
+      showToast('warning', `VĐV này đã đăng ký tham gia nội dung "${selectedNoiDung?.ten || ''}". Không thể đăng ký trùng.`);
+      return;
+    }
+
     if (isCaNhan) {
       // Nội dung cá nhân: chỉ chọn đúng 1 VĐV
       setSelectedVdvs((prev) => (prev.includes(id) ? [] : [id]));
@@ -250,16 +351,19 @@ export default function DangKyGiaiDauPage() {
   };
 
   const selectAllFiltered = () => {
+    const selectable = filteredFormVdv.filter(a => !registeredVdvIdsInSelectedNoiDung.has(a.id));
+    if (selectable.length === 0) {
+      showToast('warning', 'Tất cả VĐV trong danh sách đã được đăng ký cho nội dung này.');
+      return;
+    }
     if (isCaNhan) {
-      // Với nội dung cá nhân, không thể chọn tất cả! Chỉ chọn người đầu tiên
-      if (filteredFormVdv.length > 0) {
-        setSelectedVdvs([filteredFormVdv[0].id]);
-        showToast('warning', 'Nội dung cá nhân chỉ cho phép chọn 1 vận động viên. Đã chọn VĐV đầu tiên.');
-      }
+      // Với nội dung cá nhân, chỉ chọn người đầu tiên chưa đăng ký
+      setSelectedVdvs([selectable[0].id]);
+      showToast('warning', 'Nội dung cá nhân chỉ cho phép chọn 1 vận động viên. Đã chọn VĐV hợp lệ đầu tiên.');
       return;
     }
     const max = selectedNoiDung?.soLuongToiDa;
-    const ids = filteredFormVdv.map((a) => a.id);
+    const ids = selectable.map((a) => a.id);
     if (max && ids.length > max) {
       setSelectedVdvs(ids.slice(0, max));
       showToast('warning', `Đã chọn tối đa ${max} vận động viên theo quy định của nội dung.`);
@@ -280,15 +384,48 @@ export default function DangKyGiaiDauPage() {
     setFormGhiChu('');
   };
 
+  /* ── Hạn đăng ký & Kiểm tra quá hạn ── */
+  const registrationDeadline = useMemo(() => {
+    if (!giaiDau) return null;
+    return giaiDau.hanDangKy || giaiDau.ngayBatDau || null;
+  }, [giaiDau]);
+
+  const isPastDeadline = useMemo(() => {
+    if (!giaiDau) return false;
+    // Nếu giải đấu đã kết thúc hoặc bị hủy
+    if (giaiDau.trangThai === TrangThaiGiaiDau.KetThuc || giaiDau.trangThai === TrangThaiGiaiDau.Huy) {
+      return true;
+    }
+    const deadlineStr = giaiDau.hanDangKy || giaiDau.ngayBatDau;
+    if (!deadlineStr) return false;
+    return new Date() > new Date(deadlineStr);
+  }, [giaiDau]);
+
+  const canRegister =
+    !isPastDeadline &&
+    (giaiDau?.trangThai === TrangThaiGiaiDau.SapDienRa ||
+      giaiDau?.trangThai === TrangThaiGiaiDau.DangDienRa);
+
   /* ── Submit đăng ký ── */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPastDeadline) {
+      return showToast('danger', `Giải đấu đã quá hạn đăng ký (Hạn chót: ${formatDate(registrationDeadline || '')}). Không thể gửi hồ sơ mới.`);
+    }
+
     if (!selectedNoiDungId || !selectedNoiDung) {
       return showToast('danger', 'Vui lòng chọn nội dung thi đấu.');
     }
 
     if (selectedVdvs.length === 0) {
       return showToast('danger', 'Vui lòng chọn ít nhất một vận động viên.');
+    }
+
+    // Kiểm tra trùng VĐV đã đăng ký
+    const duplicates = selectedVdvs.filter(id => registeredVdvIdsInSelectedNoiDung.has(id));
+    if (duplicates.length > 0) {
+      const dupNames = athletes.filter(a => duplicates.includes(a.id)).map(a => a.hoTen).join(', ');
+      return showToast('danger', `Vận động viên [${dupNames}] đã đăng ký tham gia nội dung này. Vui lòng bỏ chọn để tiếp tục.`);
     }
 
     // Kiểm tra tính hợp lệ: Cá nhân chỉ được 1 VĐV
@@ -312,13 +449,13 @@ export default function DangKyGiaiDauPage() {
       const autoTenDoi = isCaNhan
         ? selectedAthletesList[0]?.hoTen || ''
         : (tenDoi.trim() || selectedAthletesList.map(a => a.hoTen).join(' - '));
-      const donViId = selectedAthletesList[0]?.donViId;
+      const activeDonViId = currentDonVi?.id || user?.donViId || selectedAthletesList[0]?.donViId;
 
       await dangKyThiDauService.create({
         noiDungThiDauId: selectedNoiDung.id,
         tuDongTaoDoi: true,
         tenDoi: autoTenDoi,
-        donViId: donViId,
+        donViId: activeDonViId,
         tenDangKy: isCaNhan
           ? `${selectedAthletesList[0]?.hoTen || 'VĐV'} - ${selectedNoiDung.ten}`
           : `${autoTenDoi} - ${selectedNoiDung.ten}`,
@@ -333,7 +470,7 @@ export default function DangKyGiaiDauPage() {
       setModalOpen(false);
       resetForm();
       setActiveTab('hosodagui');
-      await fetchRegistrations();
+      await fetchRegistrations(activeDonViId);
     } catch (err: any) {
       showToast('danger', err?.response?.data?.message || 'Có lỗi khi gửi đăng ký. Vui lòng thử lại.');
     } finally {
@@ -343,20 +480,25 @@ export default function DangKyGiaiDauPage() {
 
   /* ── Xóa hồ sơ ── */
   const handleDelete = async (reg: DangKyThiDau) => {
+    if (isPastDeadline) {
+      showToast('warning', `Giải đấu đã quá hạn đăng ký (Hạn chót: ${formatDate(registrationDeadline || '')}). Không thể xóa hoặc hủy hồ sơ.`);
+      return;
+    }
     if (!confirm(`Xác nhận hủy hồ sơ "${reg.soDangKy}"?`)) return;
     try {
       await dangKyThiDauService.delete(reg.id);
       showToast('success', `Đã hủy hồ sơ ${reg.soDangKy}.`);
-      await fetchRegistrations();
-    } catch {
-      showToast('danger', 'Không thể xóa hồ sơ này.');
+      await fetchRegistrations(currentDonVi?.id || user?.donViId || undefined);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Không thể xóa hồ sơ này.';
+      showToast('danger', msg);
     }
   };
 
   /* ── Reload ── */
   const handleReload = async () => {
     setReloading(true);
-    await fetchRegistrations();
+    await fetchRegistrations(currentDonVi?.id || user?.donViId || undefined);
     setReloading(false);
   };
 
@@ -367,10 +509,6 @@ export default function DangKyGiaiDauPage() {
     pending: registrations.filter((r) => r.trangThai === 'ChoDuyet').length,
     rejected: registrations.filter((r) => r.trangThai === 'TuChoi').length,
   }), [registrations]);
-
-  const canRegister =
-    giaiDau?.trangThai === TrangThaiGiaiDau.SapDienRa ||
-    giaiDau?.trangThai === TrangThaiGiaiDau.DangDienRa;
 
   /* ────────────────────── RENDER ────────────────────── */
   if (loading)
@@ -450,10 +588,19 @@ export default function DangKyGiaiDauPage() {
                 {giaiDau.trangThaiText || giaiDau.trangThai}
               </span>
               <h3 className="fw-bold mb-1 lh-sm">{giaiDau.ten}</h3>
-              <div className="d-flex flex-wrap gap-3 small text-white-75">
+              <div className="d-flex flex-wrap gap-3 small text-white-75 mb-2">
                 <span className="d-flex align-items-center gap-1">
                   <Calendar size={13} />
                   {formatDate(giaiDau.ngayBatDau)} – {formatDate(giaiDau.ngayKetThuc)}
+                </span>
+                <span className="d-flex align-items-center gap-1">
+                  <Clock size={13} />
+                  Hạn đăng ký: <strong>{formatDate(registrationDeadline || '')}</strong>
+                  {isPastDeadline ? (
+                    <span className="badge bg-danger ms-1" style={{ fontSize: '10px' }}>Đã hết hạn</span>
+                  ) : (
+                    <span className="badge bg-success ms-1" style={{ fontSize: '10px' }}>Đang mở</span>
+                  )}
                 </span>
                 {giaiDau.diaDiem && (
                   <span className="d-flex align-items-center gap-1">
@@ -467,6 +614,17 @@ export default function DangKyGiaiDauPage() {
                     {monList.length} môn thi đấu
                   </span>
                 )}
+              </div>
+
+              {/* Thông tin đoàn đại diện */}
+              <div className="d-inline-flex flex-wrap align-items-center gap-2 pt-1">
+                <span
+                  className="badge rounded-pill px-3 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5"
+                  style={{ background: 'rgba(255,255,255,0.22)', backdropFilter: 'blur(6px)', fontSize: '12px' }}
+                >
+                  <Building2 size={13} />
+                  Đoàn đại diện: <strong>{currentDonVi?.ten || user?.fullName || 'Đoàn Thể Thao'}</strong>
+                </span>
               </div>
             </div>
 
@@ -510,6 +668,24 @@ export default function DangKyGiaiDauPage() {
 
       {/* ── Tabs ── */}
       <div className="bg-white rounded-4 border shadow-sm overflow-hidden">
+        {/* Cảnh báo khi đã quá hạn đăng ký */}
+        {isPastDeadline && (
+          <div
+            className="m-3 p-3 rounded-3 d-flex align-items-center justify-content-between gap-3"
+            style={{ background: '#fef2f2', border: '1px solid #fecaca' }}
+          >
+            <div className="d-flex align-items-center gap-2 text-danger">
+              <AlertCircle size={18} className="flex-shrink-0" />
+              <span className="small fw-semibold">
+                Giải đấu đã hết hạn đăng ký thi đấu (Hạn chót: {formatDate(registrationDeadline || '')}). Các hồ sơ đã gửi được khóa cố định, không thể chỉnh sửa hoặc xóa hủy.
+              </span>
+            </div>
+            <span className="badge bg-danger rounded-pill px-2.5 py-1 flex-shrink-0" style={{ fontSize: '11px' }}>
+              Đã khóa đăng ký & sửa xóa
+            </span>
+          </div>
+        )}
+
         {/* Tab header */}
         <div className="d-flex border-bottom px-2">
           {(
@@ -544,7 +720,7 @@ export default function DangKyGiaiDauPage() {
               <div>
                 <h6 className="fw-bold mb-0">Vận động viên của đoàn</h6>
                 <small className="text-secondary">
-                  {athletes.length} VĐV • Đơn vị: {user?.fullName || '—'}
+                  {athletes.length} VĐV • Đơn vị: {currentDonVi?.ten || user?.fullName || '—'}
                 </small>
               </div>
               <div className="d-flex gap-2 align-items-center">
@@ -556,14 +732,21 @@ export default function DangKyGiaiDauPage() {
                   />
                   <Input
                     type="text"
-                    placeholder="Tìm VĐV..."
+                    placeholder="Tìm VĐV trong đoàn..."
                     value={vdvSearch}
                     onChange={(e) => setVdvSearch(e.target.value)}
                     className="ps-5 rounded-pill border-secondary-subtle"
-                    style={{ fontSize: '13px', width: '200px' }}
+                    style={{ fontSize: '13px', width: '220px' }}
                   />
                 </div>
-                {canRegister && (
+                {isPastDeadline ? (
+                  <span
+                    className="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill d-flex align-items-center gap-1.5 fw-semibold flex-shrink-0"
+                    style={{ fontSize: '12px' }}
+                  >
+                    <Clock size={14} /> Đã hết hạn đăng ký
+                  </span>
+                ) : canRegister && (
                   <button
                     className="btn btn-success rounded-pill px-3 d-flex align-items-center gap-2 fw-semibold flex-shrink-0"
                     style={{ fontSize: '13px' }}
@@ -608,7 +791,27 @@ export default function DangKyGiaiDauPage() {
             ) : filteredAthletes.length === 0 ? (
               <div className="text-center py-5 text-secondary">
                 <Users size={44} className="mb-3 opacity-30" />
-                <p className="mb-0">Không tìm thấy vận động viên phù hợp.</p>
+                <p className="mb-1 fw-semibold">
+                  {athletes.length === 0
+                    ? `Đoàn "${currentDonVi?.ten || ''}" chưa có vận động viên nào.`
+                    : 'Không tìm thấy vận động viên phù hợp.'}
+                </p>
+                {athletes.length === 0 && (
+                  <>
+                    <p className="small text-muted mb-3">
+                      Vui lòng vào trang Quản lý VĐV để thêm vận động viên vào đoàn trước khi đăng ký giải đấu.
+                    </p>
+                    <button
+                      type="button"
+                      className="btn btn-outline-success rounded-pill px-3 py-1.5"
+                      style={{ fontSize: '13px' }}
+                      onClick={() => router.push('/don-vi/van-dong-vien')}
+                    >
+                      <Users size={14} className="me-1" />
+                      Quản lý VĐV của đoàn
+                    </button>
+                  </>
+                )}
               </div>
 
             ) : (
@@ -691,7 +894,7 @@ export default function DangKyGiaiDauPage() {
             <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-4">
               <div>
                 <h6 className="fw-bold mb-0">Hồ sơ đăng ký đã gửi</h6>
-                <small className="text-secondary">Giải: {giaiDau.ten}</small>
+                <small className="text-secondary">Giải: {giaiDau.ten} • Đơn vị: {currentDonVi?.ten || user?.fullName || '—'}</small>
               </div>
               <div className="d-flex gap-2 align-items-center flex-wrap">
                 <Input
@@ -820,9 +1023,19 @@ export default function DangKyGiaiDauPage() {
                         <td className="text-end pe-3">
                           <button
                             type="button"
-                            className="btn btn-light btn-sm border text-danger rounded-2 p-1"
-                            title="Hủy đăng ký"
-                            onClick={() => handleDelete(reg)}
+                            className={`btn btn-light btn-sm border rounded-2 p-1 ${isPastDeadline ? 'text-secondary' : 'text-danger'}`}
+                            style={{
+                              cursor: isPastDeadline ? 'not-allowed' : 'pointer',
+                              opacity: isPastDeadline ? 0.45 : 1,
+                            }}
+                            title={isPastDeadline ? `Giải đấu đã hết hạn đăng ký (${formatDate(registrationDeadline || '')}), không thể xóa` : "Hủy đăng ký"}
+                            onClick={() => {
+                              if (isPastDeadline) {
+                                showToast('warning', `Giải đấu đã quá hạn đăng ký (Hạn chót: ${formatDate(registrationDeadline || '')}). Không thể xóa hoặc hủy hồ sơ.`);
+                                return;
+                              }
+                              handleDelete(reg);
+                            }}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -862,6 +1075,24 @@ export default function DangKyGiaiDauPage() {
         <Form onSubmit={handleSubmit}>
           <ModalBody className="p-4">
             <div className="row g-3">
+              {/* Đơn vị tham gia đăng ký */}
+              <div className="col-12">
+                <div
+                  className="rounded-3 px-3 py-2 d-flex align-items-center justify-content-between"
+                  style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}
+                >
+                  <div className="d-flex align-items-center gap-2">
+                    <Building2 size={16} className="text-success" />
+                    <span className="small text-dark">
+                      Đoàn đăng ký: <strong>{currentDonVi?.ten || user?.fullName || 'Đoàn Thể Thao'}</strong>
+                    </span>
+                  </div>
+                  <span className="badge rounded-pill bg-success-subtle text-success px-2.5 py-1" style={{ fontSize: '11px' }}>
+                    {athletes.length} VĐV trong đoàn
+                  </span>
+                </div>
+              </div>
+
               {/* Chọn môn thi */}
               <div className="col-12 col-md-6">
                 <FormGroup>
@@ -1029,13 +1260,13 @@ export default function DangKyGiaiDauPage() {
                           background: selectedNoiDung && selectedNoiDung.soLuongToiThieu && selectedVdvs.length < selectedNoiDung.soLuongToiThieu
                             ? '#fffbeb'
                             : selectedNoiDung && selectedNoiDung.soLuongToiDa && selectedVdvs.length > selectedNoiDung.soLuongToiDa
-                            ? '#fef2f2'
-                            : '#ecfdf5',
+                              ? '#fef2f2'
+                              : '#ecfdf5',
                           color: selectedNoiDung && selectedNoiDung.soLuongToiThieu && selectedVdvs.length < selectedNoiDung.soLuongToiThieu
                             ? '#b45309'
                             : selectedNoiDung && selectedNoiDung.soLuongToiDa && selectedVdvs.length > selectedNoiDung.soLuongToiDa
-                            ? '#dc2626'
-                            : '#059669',
+                              ? '#dc2626'
+                              : '#059669',
                           border: '1px solid #e5e7eb',
                           fontSize: '11px',
                         }}
@@ -1056,7 +1287,7 @@ export default function DangKyGiaiDauPage() {
                     />
                     <Input
                       type="text"
-                      placeholder="Tìm VĐV theo tên, mã, đơn vị..."
+                      placeholder="Tìm VĐV trong đoàn theo tên, mã..."
                       value={formVdvSearch}
                       onChange={(e) => setFormVdvSearch(e.target.value)}
                       className="ps-5 rounded-pill border-secondary-subtle"
@@ -1103,11 +1334,14 @@ export default function DangKyGiaiDauPage() {
                 >
                   {filteredFormVdv.length === 0 ? (
                     <div className="text-secondary small text-center py-4">
-                      Không tìm thấy vận động viên nào phù hợp.
+                      {athletes.length === 0
+                        ? `Đoàn "${currentDonVi?.ten || ''}" chưa có VĐV nào. Vui lòng thêm VĐV vào đoàn trước.`
+                        : 'Không tìm thấy vận động viên nào phù hợp.'}
                     </div>
                   ) : (
                     filteredFormVdv.map((ath) => {
                       const checked = selectedVdvs.includes(ath.id);
+                      const isAlreadyRegistered = registeredVdvIdsInSelectedNoiDung.has(ath.id);
                       const isGenderMismatch = selectedNoiDung &&
                         selectedNoiDung.gioiTinh !== 'HonHop' &&
                         ath.gioiTinh !== selectedNoiDung.gioiTinh;
@@ -1117,8 +1351,13 @@ export default function DangKyGiaiDauPage() {
                           key={ath.id}
                           className="d-flex align-items-center gap-3 px-3 py-2 border-bottom"
                           style={{
-                            cursor: 'pointer',
-                            background: checked ? 'rgba(5,150,105,0.07)' : 'transparent',
+                            cursor: isAlreadyRegistered ? 'not-allowed' : 'pointer',
+                            opacity: isAlreadyRegistered ? 0.6 : 1,
+                            background: isAlreadyRegistered
+                              ? '#fef2f2'
+                              : checked
+                                ? 'rgba(5,150,105,0.07)'
+                                : 'transparent',
                             transition: 'background 0.15s',
                           }}
                           onClick={() => toggleVdv(ath.id)}
@@ -1129,14 +1368,16 @@ export default function DangKyGiaiDauPage() {
                               name="vdvSingleSelect"
                               className="form-check-input mt-0 flex-shrink-0"
                               checked={checked}
-                              onChange={() => {}}
+                              disabled={isAlreadyRegistered}
+                              onChange={() => { }}
                             />
                           ) : (
                             <input
                               type="checkbox"
                               className="form-check-input mt-0 flex-shrink-0"
                               checked={checked}
-                              onChange={() => {}}
+                              disabled={isAlreadyRegistered}
+                              onChange={() => { }}
                             />
                           )}
 
@@ -1151,12 +1392,17 @@ export default function DangKyGiaiDauPage() {
                           </div>
 
                           <div className="flex-grow-1 min-w-0">
-                            <div className="d-flex align-items-center gap-2">
+                            <div className="d-flex align-items-center gap-2 flex-wrap">
                               <span className="fw-semibold text-dark" style={{ fontSize: '13px' }}>
                                 {ath.hoTen}
                               </span>
-                              {isGenderMismatch && (
-                                <span className="badge bg-danger-subtle text-danger" style={{ fontSize: '10px' }}>
+                              {isAlreadyRegistered && (
+                                <span className="badge bg-danger-subtle text-danger border border-danger-subtle" style={{ fontSize: '10px' }}>
+                                  ⚠ Đã đăng ký nội dung này
+                                </span>
+                              )}
+                              {isGenderMismatch && !isAlreadyRegistered && (
+                                <span className="badge bg-warning-subtle text-warning-emphasis" style={{ fontSize: '10px' }}>
                                   ⚠ Lệch giới tính ({ath.gioiTinh})
                                 </span>
                               )}
@@ -1174,6 +1420,100 @@ export default function DangKyGiaiDauPage() {
                         </div>
                       );
                     })
+                  )}
+                </div>
+
+                {/* ── Danh sách VĐV đã chọn hiển thị xuống dưới ── */}
+                <div className="mt-3">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <Label className="fw-semibold small mb-0 text-dark d-flex align-items-center gap-1.5">
+                      <UserCheck size={15} className="text-success" />
+                      Vận động viên đã chọn thi đấu:
+                    </Label>
+                    <div className="d-flex align-items-center gap-2">
+                      <span
+                        className={`badge rounded-pill px-2.5 py-1 ${chosenAthletes.length > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light text-secondary border'
+                          }`}
+                        style={{ fontSize: '11px' }}
+                      >
+                        {chosenAthletes.length} VĐV
+                      </span>
+                      {chosenAthletes.length > 0 && (
+                        <button
+                          type="button"
+                          className="btn btn-link text-danger p-0 small text-decoration-none"
+                          style={{ fontSize: '12px' }}
+                          onClick={clearAll}
+                        >
+                          Bỏ chọn tất cả
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {chosenAthletes.length === 0 ? (
+                    <div
+                      className="rounded-3 p-3 text-center text-muted"
+                      style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', fontSize: '12px' }}
+                    >
+                      <Users size={22} className="mb-1 opacity-40 d-block mx-auto text-secondary" />
+                      Chưa có vận động viên nào được chọn. Hãy tích chọn từ danh sách ở trên.
+                    </div>
+                  ) : (
+                    <div
+                      className="d-flex flex-column gap-2 p-2 rounded-3 border"
+                      style={{ background: '#f8fafc', maxHeight: '190px', overflowY: 'auto' }}
+                    >
+                      {chosenAthletes.map((ath, idx) => (
+                        <div
+                          key={ath.id}
+                          className="d-flex align-items-center justify-content-between bg-white px-3 py-2 rounded-3 border shadow-sm"
+                          style={{ borderColor: '#e2e8f0' }}
+                        >
+                          <div className="d-flex align-items-center gap-2.5 min-w-0">
+                            <span
+                              className="badge rounded-pill bg-light text-secondary border px-2 py-0.5"
+                              style={{ fontSize: '11px', minWidth: '24px' }}
+                            >
+                              #{idx + 1}
+                            </span>
+                            <div
+                              className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                              style={{
+                                width: 28,
+                                height: 28,
+                                fontSize: '11px',
+                                background: ath.gioiTinh === 'Nam' ? '#2563eb' : '#db2777',
+                              }}
+                            >
+                              {ath.hoTen.split(' ').pop()?.charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="fw-semibold text-dark text-truncate" style={{ fontSize: '13px' }}>
+                                {ath.hoTen}
+                              </div>
+                              <div className="text-secondary" style={{ fontSize: '11px' }}>
+                                Mã: <span className="font-monospace text-dark">{ath.ma}</span> • Giới tính: {ath.gioiTinh}
+                                {ath.ngaySinh ? ` • Sinh: ${formatDate(ath.ngaySinh)}` : ''}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="btn btn-outline-danger btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center flex-shrink-0 ms-2"
+                            style={{ width: 26, height: 26 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleVdv(ath.id);
+                            }}
+                            title={`Bỏ chọn ${ath.hoTen}`}
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>

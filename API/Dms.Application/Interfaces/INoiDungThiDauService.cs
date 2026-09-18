@@ -48,9 +48,9 @@ namespace Dms.Application.Interfaces
 
         Task<IEnumerable<DangKyThiDauDto>> GetAllAsync(int? giaiDauId = null, int? noiDungThiDauId = null, int? donViId = null);
         Task<DangKyThiDauDto?> GetByIdAsync(int id);
-        Task<DangKyThiDauDto> CreateAsync(CreateUpdateDangKyThiDauDto dto, string? createdBy = null);
-        Task<DangKyThiDauDto?> UpdateAsync(int id, CreateUpdateDangKyThiDauDto dto, string? updatedBy = null);
-        Task<bool> DeleteAsync(int id);
+        Task<DangKyThiDauDto> CreateAsync(CreateUpdateDangKyThiDauDto dto, string? createdBy = null, bool isPrivileged = false);
+        Task<DangKyThiDauDto?> UpdateAsync(int id, CreateUpdateDangKyThiDauDto dto, string? updatedBy = null, bool isPrivileged = false);
+        Task<bool> DeleteAsync(int id, bool isPrivileged = false);
     }
 
     public interface ITranDauService
@@ -82,6 +82,7 @@ namespace Dms.Application.Interfaces
         Task<bool> ClearByNoiDungAsync(int noiDungThiDauId);
         Task<AutoScheduleResultDto> AutoScheduleAsync(AutoScheduleRequestDto request, string? createdBy = null);
         Task<ConflictCheckResultDto> CheckConflictAsync(ConflictCheckRequestDto request);
+        Task<TournamentConflictReportDto> CheckAllConflictsAsync(int giaiDauId);
     }
 
     public interface IBangDauService

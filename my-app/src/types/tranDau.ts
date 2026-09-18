@@ -96,6 +96,12 @@ export interface AutoScheduleRequest {
   taoBangDauNeuChuaCo: boolean;
   soDoiMoiBang: number;
   xoaLichCu: boolean;
+  tranhTrungLichVdv?: boolean;
+  soHiepDau?: number;
+  thoiGianMoiHiepPhut?: number;
+  thoiGianNghiToiThieuVdvPhut?: number;
+  canBangTaiTrongTai?: boolean;
+  canBangTaiSanDau?: boolean;
 }
 
 export interface AutoScheduleResult {
@@ -103,6 +109,10 @@ export interface AutoScheduleResult {
   totalMatchesCreated: number;
   message: string;
   matches: TranDau[];
+  warnings?: string[];
+  thongKeSanDau?: Record<string, number>;
+  thongKeTrongTai?: Record<string, number>;
+  soNgayThiDau?: number;
 }
 
 export interface ConflictCheckRequest {
@@ -114,7 +124,34 @@ export interface ConflictCheckRequest {
   dangKyThiDauIds?: number[];
 }
 
+export interface ConflictDetail {
+  loaiXungDot: 'VanDongVien' | 'SanDau' | 'TrongTai' | 'Doi';
+  thongBao: string;
+  vanDongVienId?: number;
+  tenVanDongVien?: string;
+  maVanDongVien?: string;
+  tenDoiHienTai?: string;
+  tranDauBiTrungId?: number;
+  tenTranBiTrung?: string;
+  tenMonTheThao?: string;
+  tenNoiDung?: string;
+  tenSanDau?: string;
+  thoiGianBatDau?: string;
+  thoiGianKetThuc?: string;
+}
+
 export interface ConflictCheckResult {
   hasConflict: boolean;
   conflicts: string[];
+  chiTietXungDot?: ConflictDetail[];
+}
+
+export interface TournamentConflictReport {
+  hasConflict: boolean;
+  giaiDauId: number;
+  tenGiaiDau?: string;
+  totalMatchesChecked: number;
+  totalConflicts: number;
+  conflicts: string[];
+  chiTietXungDot?: ConflictDetail[];
 }

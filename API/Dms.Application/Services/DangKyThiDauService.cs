@@ -97,12 +97,30 @@ namespace Dms.Application.Services
             return dtos.FirstOrDefault();
         }
 
-        public async Task<DangKyThiDauDto> CreateAsync(CreateUpdateDangKyThiDauDto dto, string? createdBy = null)
+        public async Task<DangKyThiDauDto> CreateAsync(CreateUpdateDangKyThiDauDto dto, string? createdBy = null, bool isPrivileged = false)
         {
             var noiDung = await _unitOfWork.NoiDungThiDaus.GetByIdAsync(dto.NoiDungThiDauId);
             if (noiDung == null || noiDung.IsDeleted == true)
             {
                 throw new InvalidOperationException("Nội dung thi đấu không tồn tại hoặc đã bị xóa.");
+            }
+
+            // Kiểm tra hạn đăng ký giải đấu
+            if (!isPrivileged)
+            {
+                var gdMon = await _unitOfWork.GiaiDauMonTheThaos.GetByIdAsync(noiDung.GiaiDauMonTheThaoId);
+                if (gdMon != null)
+                {
+                    var giaiDau = await _unitOfWork.GiaiDaus.GetByIdAsync(gdMon.GiaiDauId);
+                    if (giaiDau != null)
+                    {
+                        var deadline = giaiDau.HanDangKy ?? giaiDau.NgayBatDau;
+                        if (DateTime.Now > deadline || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.KetThuc || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.Huy)
+                        {
+                            throw new InvalidOperationException($"Giải đấu \"{giaiDau.Ten}\" đã hết hạn đăng ký thi đấu (Hạn chót: {deadline:dd/MM/yyyy HH:mm}). Không thể gửi thêm hồ sơ mới.");
+                        }
+                    }
+                }
             }
 
             var vdvIds = dto.VanDongVienIds?.Distinct().ToList() ?? new List<int>();
@@ -129,6 +147,42 @@ namespace Dms.Application.Services
                 if (noiDung.SoLuongToiDa.HasValue && vdvIds.Count > noiDung.SoLuongToiDa.Value)
                 {
                     throw new InvalidOperationException($"Nội dung '{noiDung.Ten}' chỉ cho phép tối đa {noiDung.SoLuongToiDa.Value} vận động viên (hiện có {vdvIds.Count}).");
+                }
+            }
+
+            // Kiểm tra trùng VĐV đã đăng ký trong nội dung thi đấu này của giải đấu
+            var activeRegistrations = (await _unitOfWork.DangKyThiDaus.FindAsync(
+                d => d.NoiDungThiDauId == dto.NoiDungThiDauId &&
+                     d.IsDeleted != true &&
+                     d.TrangThai != "TuChoi"
+            )).ToList();
+
+            var activeRegIds = activeRegistrations.Select(r => r.Id).ToList();
+            if (activeRegIds.Any())
+            {
+                var registeredDetails = await _unitOfWork.ChiTietDangKyThiDaus.FindAsync(
+                    c => activeRegIds.Contains(c.DangKyThiDauId) &&
+                         c.IsDeleted != true &&
+                         vdvIds.Contains(c.VanDongVienId)
+                );
+                var dupVdvIds = registeredDetails.Select(c => c.VanDongVienId).Distinct().ToList();
+
+                var activeDoiIds = activeRegistrations.Where(r => r.DoiId.HasValue).Select(r => r.DoiId!.Value).Distinct().ToList();
+                if (activeDoiIds.Any())
+                {
+                    var teamMembers = await _unitOfWork.ThanhVienDois.FindAsync(
+                        tv => activeDoiIds.Contains(tv.DoiId) &&
+                              tv.IsDeleted != true &&
+                              vdvIds.Contains(tv.VanDongVienId)
+                    );
+                    dupVdvIds = dupVdvIds.Union(teamMembers.Select(tv => tv.VanDongVienId)).Distinct().ToList();
+                }
+
+                if (dupVdvIds.Any())
+                {
+                    var dupVdvs = (await _unitOfWork.VanDongViens.FindAsync(v => dupVdvIds.Contains(v.Id))).ToList();
+                    var dupNames = string.Join(", ", dupVdvs.Select(v => v.HoTen));
+                    throw new InvalidOperationException($"Vận động viên [{dupNames}] đã được đăng ký tham gia nội dung \"{noiDung.Ten}\". Không thể đăng ký trùng.");
                 }
             }
 
@@ -230,10 +284,33 @@ namespace Dms.Application.Services
         }
 
 
-        public async Task<DangKyThiDauDto?> UpdateAsync(int id, CreateUpdateDangKyThiDauDto dto, string? updatedBy = null)
+        public async Task<DangKyThiDauDto?> UpdateAsync(int id, CreateUpdateDangKyThiDauDto dto, string? updatedBy = null, bool isPrivileged = false)
         {
             var entity = await _unitOfWork.DangKyThiDaus.GetByIdAsync(id);
             if (entity == null || entity.IsDeleted == true) return null;
+
+            // Kiểm tra hạn đăng ký giải đấu
+            if (!isPrivileged)
+            {
+                var targetNoiDungId = dto.NoiDungThiDauId != 0 ? dto.NoiDungThiDauId : entity.NoiDungThiDauId;
+                var noiDung = await _unitOfWork.NoiDungThiDaus.GetByIdAsync(targetNoiDungId);
+                if (noiDung != null)
+                {
+                    var gdMon = await _unitOfWork.GiaiDauMonTheThaos.GetByIdAsync(noiDung.GiaiDauMonTheThaoId);
+                    if (gdMon != null)
+                    {
+                        var giaiDau = await _unitOfWork.GiaiDaus.GetByIdAsync(gdMon.GiaiDauId);
+                        if (giaiDau != null)
+                        {
+                            var deadline = giaiDau.HanDangKy ?? giaiDau.NgayBatDau;
+                            if (DateTime.Now > deadline || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.KetThuc || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.Huy)
+                            {
+                                throw new InvalidOperationException($"Giải đấu \"{giaiDau.Ten}\" đã hết hạn đăng ký thi đấu (Hạn chót: {deadline:dd/MM/yyyy HH:mm}). Không thể chỉnh sửa hồ sơ.");
+                            }
+                        }
+                    }
+                }
+            }
 
             entity.NoiDungThiDauId = dto.NoiDungThiDauId;
             entity.DoiId = dto.DoiId;
@@ -247,8 +324,47 @@ namespace Dms.Application.Services
 
             _unitOfWork.DangKyThiDaus.Update(entity);
 
-            if (dto.VanDongVienIds != null)
+            if (dto.VanDongVienIds != null && dto.VanDongVienIds.Any())
             {
+                var targetNoiDungId = dto.NoiDungThiDauId != 0 ? dto.NoiDungThiDauId : entity.NoiDungThiDauId;
+                var activeRegistrations = (await _unitOfWork.DangKyThiDaus.FindAsync(
+                    d => d.NoiDungThiDauId == targetNoiDungId &&
+                         d.Id != id &&
+                         d.IsDeleted != true &&
+                         d.TrangThai != "TuChoi"
+                )).ToList();
+
+                var activeRegIds = activeRegistrations.Select(r => r.Id).ToList();
+                if (activeRegIds.Any())
+                {
+                    var newVdvIds = dto.VanDongVienIds.Distinct().ToList();
+                    var registeredDetails = await _unitOfWork.ChiTietDangKyThiDaus.FindAsync(
+                        c => activeRegIds.Contains(c.DangKyThiDauId) &&
+                             c.IsDeleted != true &&
+                             newVdvIds.Contains(c.VanDongVienId)
+                    );
+                    var dupVdvIds = registeredDetails.Select(c => c.VanDongVienId).Distinct().ToList();
+
+                    var activeDoiIds = activeRegistrations.Where(r => r.DoiId.HasValue).Select(r => r.DoiId!.Value).Distinct().ToList();
+                    if (activeDoiIds.Any())
+                    {
+                        var teamMembers = await _unitOfWork.ThanhVienDois.FindAsync(
+                            tv => activeDoiIds.Contains(tv.DoiId) &&
+                                  tv.IsDeleted != true &&
+                                  newVdvIds.Contains(tv.VanDongVienId)
+                        );
+                        dupVdvIds = dupVdvIds.Union(teamMembers.Select(tv => tv.VanDongVienId)).Distinct().ToList();
+                    }
+
+                    if (dupVdvIds.Any())
+                    {
+                        var dupVdvs = (await _unitOfWork.VanDongViens.FindAsync(v => dupVdvIds.Contains(v.Id))).ToList();
+                        var dupNames = string.Join(", ", dupVdvs.Select(v => v.HoTen));
+                        var nd = await _unitOfWork.NoiDungThiDaus.GetByIdAsync(targetNoiDungId);
+                        throw new InvalidOperationException($"Vận động viên [{dupNames}] đã được đăng ký tham gia nội dung \"{nd?.Ten}\". Không thể đăng ký trùng.");
+                    }
+                }
+
                 var existingDetails = await _unitOfWork.ChiTietDangKyThiDaus.FindAsync(c => c.DangKyThiDauId == id);
                 foreach (var d in existingDetails)
                 {
@@ -274,13 +390,96 @@ namespace Dms.Application.Services
             return await GetByIdAsync(id);
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id, bool isPrivileged = false)
         {
             var entity = await _unitOfWork.DangKyThiDaus.GetByIdAsync(id);
             if (entity == null || entity.IsDeleted == true) return false;
 
+            // Kiểm tra hạn đăng ký giải đấu
+            if (!isPrivileged)
+            {
+                var noiDung = await _unitOfWork.NoiDungThiDaus.GetByIdAsync(entity.NoiDungThiDauId);
+                if (noiDung != null)
+                {
+                    var gdMon = await _unitOfWork.GiaiDauMonTheThaos.GetByIdAsync(noiDung.GiaiDauMonTheThaoId);
+                    if (gdMon != null)
+                    {
+                        var giaiDau = await _unitOfWork.GiaiDaus.GetByIdAsync(gdMon.GiaiDauId);
+                        if (giaiDau != null)
+                        {
+                            var deadline = giaiDau.HanDangKy ?? giaiDau.NgayBatDau;
+                            if (DateTime.Now > deadline || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.KetThuc || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.Huy)
+                            {
+                                throw new InvalidOperationException($"Giải đấu \"{giaiDau.Ten}\" đã hết hạn đăng ký thi đấu (Hạn chót: {deadline:dd/MM/yyyy HH:mm}). Không thể xóa hoặc hủy hồ sơ.");
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Kiểm tra nếu hồ sơ đã gắn vào trận đấu đang diễn ra hoặc đã kết thúc
+            var matchParticipants = (await _unitOfWork.ThanhPhanTranDaus.FindAsync(
+                tp => tp.DangKyThiDauId == id && tp.IsDeleted != true
+            )).ToList();
+
+            if (matchParticipants.Any())
+            {
+                var tranDauIds = matchParticipants.Select(tp => tp.TranDauId).Distinct().ToList();
+                var tranDaus = (await _unitOfWork.TranDaus.FindAsync(t => tranDauIds.Contains(t.Id) && t.IsDeleted != true)).ToList();
+                if (tranDaus.Any(t => t.TrangThai == "KetThuc" || t.TrangThai == "DangDienRa"))
+                {
+                    throw new InvalidOperationException("Hồ sơ đăng ký này đã tham gia trận đấu đang diễn ra hoặc đã kết thúc, không thể xóa.");
+                }
+            }
+
             entity.IsDeleted = true;
             _unitOfWork.DangKyThiDaus.Update(entity);
+
+            // Xóa mềm ChiTietDangKyThiDau
+            var details = await _unitOfWork.ChiTietDangKyThiDaus.FindAsync(c => c.DangKyThiDauId == id);
+            foreach (var d in details)
+            {
+                d.IsDeleted = true;
+                _unitOfWork.ChiTietDangKyThiDaus.Update(d);
+            }
+
+            // Xóa mềm các thành phần trận đấu chưa diễn ra
+            foreach (var tp in matchParticipants)
+            {
+                tp.IsDeleted = true;
+                _unitOfWork.ThanhPhanTranDaus.Update(tp);
+            }
+
+            // Xóa mềm thành viên bảng đấu
+            var groupMembers = await _unitOfWork.ThanhVienBangs.FindAsync(tv => tv.DangKyThiDauId == id);
+            foreach (var tv in groupMembers)
+            {
+                tv.IsDeleted = true;
+                _unitOfWork.ThanhVienBangs.Update(tv);
+            }
+
+            // Nếu đội được tự động tạo (bắt đầu bằng DOI_), xóa đội nếu không còn hồ sơ nào khác dùng
+            if (entity.DoiId.HasValue)
+            {
+                var doi = await _unitOfWork.Dois.GetByIdAsync(entity.DoiId.Value);
+                if (doi != null && doi.Ma.StartsWith("DOI_"))
+                {
+                    var otherRegs = await _unitOfWork.DangKyThiDaus.FindAsync(r => r.DoiId == doi.Id && r.Id != id && r.IsDeleted != true);
+                    if (!otherRegs.Any())
+                    {
+                        doi.IsDeleted = true;
+                        _unitOfWork.Dois.Update(doi);
+
+                        var members = await _unitOfWork.ThanhVienDois.FindAsync(tv => tv.DoiId == doi.Id);
+                        foreach (var m in members)
+                        {
+                            m.IsDeleted = true;
+                            _unitOfWork.ThanhVienDois.Update(m);
+                        }
+                    }
+                }
+            }
+
             await _unitOfWork.CompleteAsync();
             return true;
         }
@@ -291,9 +490,11 @@ namespace Dms.Application.Services
             if (!list.Any()) return new List<DangKyThiDauDto>();
 
             var allVdvIds = list.SelectMany(d => d.ChiTietDangKyThiDaus.Select(c => c.VanDongVienId)).Distinct().ToList();
-            var vdvDict = allVdvIds.Any()
-                ? (await _unitOfWork.VanDongViens.FindAsync(v => allVdvIds.Contains(v.Id))).ToDictionary(v => v.Id, v => v.HoTen)
-                : new Dictionary<int, string>();
+            var vdvEntities = allVdvIds.Any()
+                ? (await _unitOfWork.VanDongViens.FindAsync(v => allVdvIds.Contains(v.Id))).ToList()
+                : new List<VanDongVien>();
+            var vdvDict = vdvEntities.ToDictionary(v => v.Id, v => v.HoTen);
+            var vdvDonViDict = vdvEntities.Where(v => v.DonViId.HasValue).ToDictionary(v => v.Id, v => v.DonViId!.Value);
 
             var result = new List<DangKyThiDauDto>();
             foreach (var d in list)
@@ -306,6 +507,16 @@ namespace Dms.Application.Services
                     .Select(id => vdvDict[id])
                     .ToList();
 
+                int? resolvedDonViId = d.Doi?.DonViId;
+                if (!resolvedDonViId.HasValue && vdvsInEntry.Any())
+                {
+                    var firstMatch = vdvsInEntry.FirstOrDefault(id => vdvDonViDict.ContainsKey(id));
+                    if (firstMatch != 0)
+                    {
+                        resolvedDonViId = vdvDonViDict[firstMatch];
+                    }
+                }
+
                 result.Add(new DangKyThiDauDto
                 {
                     Id = d.Id,
@@ -317,7 +528,7 @@ namespace Dms.Application.Services
                     TenMonTheThao = mon?.Ten,
                     DoiId = d.DoiId,
                     TenDoi = d.Doi?.Ten,
-                    DonViId = d.Doi?.DonViId,
+                    DonViId = resolvedDonViId,
                     SoDangKy = d.SoDangKy,
                     TenDangKy = d.TenDangKy ?? d.SoDangKy,
                     TrangThai = d.TrangThai,

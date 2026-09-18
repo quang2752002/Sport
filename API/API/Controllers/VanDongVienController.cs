@@ -36,7 +36,16 @@ namespace API.Controllers
         [Authorize(Policy = Permissions.VanDongVien.View)]
         public async Task<IActionResult> GetAll([FromQuery] int? donViId = null)
         {
-            var result = await _vanDongVienService.GetAllAsync(donViId);
+            int? effectiveDonViId = donViId;
+            if (!effectiveDonViId.HasValue && !User.IsInRole(AppRoles.Admin) && !User.IsInRole(AppRoles.Manager))
+            {
+                var claim = User.FindFirst("donViId")?.Value;
+                if (int.TryParse(claim, out var cid))
+                {
+                    effectiveDonViId = cid;
+                }
+            }
+            var result = await _vanDongVienService.GetAllAsync(effectiveDonViId);
             return Ok(result);
         }
 
@@ -126,11 +135,35 @@ namespace API.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Policy = Permissions.VanDongVien.Delete)]
+        [Authorize]
         public async Task<IActionResult> Delete(int id)
         {
+            var isAdminOrManager = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Manager);
+            var isDelegation = User.IsInRole(AppRoles.Delegation);
+            var hasPermission = User.Claims.Any(c => c.Type == "permission" && 
+                (c.Value == Permissions.VanDongVien.Delete || c.Value == Permissions.DonVi.ManageAthletes));
+
+            if (!isAdminOrManager && !hasPermission && !isDelegation)
+            {
+                return Forbid();
+            }
+
+            // Nếu không phải Admin/Manager, kiểm tra xem VĐV có thuộc đơn vị của user hay không
+            if (!isAdminOrManager)
+            {
+                var claimDonVi = User.FindFirst("donViId")?.Value;
+                if (int.TryParse(claimDonVi, out var userDonViId))
+                {
+                    var vdv = await _vanDongVienService.GetByIdAsync(id);
+                    if (vdv != null && vdv.DonViId.HasValue && vdv.DonViId.Value != userDonViId)
+                    {
+                        return BadRequest(new { message = "Bạn không có quyền xóa vận động viên của đơn vị khác." });
+                    }
+                }
+            }
+
             var success = await _vanDongVienService.DeleteAsync(id);
-            if (!success) return NotFound(new { message = "Không tìm thấy vận động viên để xóa." });
+            if (!success) return NotFound(new { message = "Không tìm thấy vận động viên để xóa hoặc VĐV đã bị xóa." });
             return Ok(new { message = "Đã xóa vận động viên thành công." });
         }
     }

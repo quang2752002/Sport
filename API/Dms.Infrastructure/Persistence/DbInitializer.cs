@@ -14,6 +14,20 @@ namespace Dms.Infrastructure.Persistence
             // Đảm bảo Database đã được tạo hoặc được migrate
             await context.Database.MigrateAsync();
 
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync(@"
+                    IF NOT EXISTS (
+                        SELECT 1 FROM sys.columns 
+                        WHERE object_id = OBJECT_ID('GiaiDau') AND name = 'HanDangKy'
+                    )
+                    BEGIN
+                        ALTER TABLE GiaiDau ADD HanDangKy DATETIME2 NULL;
+                    END
+                ");
+            }
+            catch { }
+
             // Khởi tạo các Role mặc định theo hệ thống thể thao giải đấu
             string[] roleNames = Dms.Application.Common.AppRoles.AllRoles;
             foreach (var roleName in roleNames)
@@ -132,8 +146,11 @@ namespace Dms.Infrastructure.Persistence
                     Dms.Application.Common.Permissions.VanDongVien.View,
                     Dms.Application.Common.Permissions.VanDongVien.Create,
                     Dms.Application.Common.Permissions.VanDongVien.Edit,
+                    Dms.Application.Common.Permissions.VanDongVien.Delete,
                     Dms.Application.Common.Permissions.DangKyThiDau.View,
                     Dms.Application.Common.Permissions.DangKyThiDau.Create,
+                    Dms.Application.Common.Permissions.DangKyThiDau.Edit,
+                    Dms.Application.Common.Permissions.DangKyThiDau.Delete,
                 }
             };
 

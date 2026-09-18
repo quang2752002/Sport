@@ -79,6 +79,7 @@ export default function DonViVanDongVienPage() {
 
   // Modal Xóa
   const [deletingVdv, setDeletingVdv] = useState<VanDongVien | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Load danh sách VĐV của đoàn (tham khảo nghiệp vụ tương tự /don-vi/dang-ky/1)
   const loadData = async () => {
@@ -297,15 +298,19 @@ export default function DonViVanDongVienPage() {
   const handleConfirmDelete = async () => {
     if (!deletingVdv) return;
     try {
+      setDeleting(true);
       await vanDongVienService.delete(deletingVdv.id);
       setVdvs((prev) => prev.filter((v) => v.id !== deletingVdv.id));
-      setAlertMsg({ type: 'success', text: `Đã xóa VĐV ${deletingVdv.hoTen} thành công.` });
-    } catch (err) {
-      console.warn('Lỗi khi xóa trên server, xóa local:', err);
-      setVdvs((prev) => prev.filter((v) => v.id !== deletingVdv.id));
-    } finally {
+      setAlertMsg({ type: 'success', text: `Đã xóa VĐV [${deletingVdv.hoTen}] thành công khỏi hệ thống.` });
       setDeletingVdv(null);
-      setTimeout(() => setAlertMsg(null), 4000);
+    } catch (err: any) {
+      console.error('Lỗi khi xóa VĐV:', err);
+      const msg = err?.response?.data?.message || 'Không thể xóa vận động viên này trên máy chủ. Vui lòng thử lại.';
+      setAlertMsg({ type: 'danger', text: msg });
+      setDeletingVdv(null);
+    } finally {
+      setDeleting(false);
+      setTimeout(() => setAlertMsg(null), 5000);
     }
   };
 
@@ -939,11 +944,12 @@ export default function DonViVanDongVienPage() {
           <small className="text-muted">Hành động này sẽ xóa hồ sơ VĐV khỏi hệ thống đoàn.</small>
         </ModalBody>
         <ModalFooter className="border-top justify-content-center">
-          <Button color="light" onClick={() => setDeletingVdv(null)} className="rounded-pill px-3">
+          <Button color="light" onClick={() => setDeletingVdv(null)} disabled={deleting} className="rounded-pill px-3">
             Hủy
           </Button>
-          <Button color="danger" onClick={handleConfirmDelete} className="rounded-pill px-3">
-            Xóa VĐV
+          <Button color="danger" onClick={handleConfirmDelete} disabled={deleting} className="rounded-pill px-3 d-flex align-items-center gap-1.5">
+            {deleting && <Spinner size="sm" />}
+            <span>{deleting ? 'Đang xóa...' : 'Xóa VĐV'}</span>
           </Button>
         </ModalFooter>
       </Modal>

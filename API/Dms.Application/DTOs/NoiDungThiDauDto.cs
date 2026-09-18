@@ -345,6 +345,17 @@ namespace Dms.Application.DTOs
         public bool TaoBangDauNeuChuaCo { get; set; } = true;
         public int SoDoiMoiBang { get; set; } = 4;
         public bool XoaLichCu { get; set; } = false;
+        public bool TranhTrungLichVdv { get; set; } = true;
+        /// <summary>Số hiệp đấu mỗi trận (0 = không tự động tạo hiệp)</summary>
+        public int SoHiepDau { get; set; } = 0;
+        /// <summary>Thời gian mỗi hiệp tính theo phút</summary>
+        public int ThoiGianMoiHiepPhut { get; set; } = 0;
+        /// <summary>Thời gian nghỉ tối thiểu của VĐV giữa 2 trận liên tiếp (phút)</summary>
+        public int ThoiGianNghiToiThieuVdvPhut { get; set; } = 60;
+        /// <summary>Bật chế độ phân bổ xoay tua cân bằng tải Trọng tài</summary>
+        public bool CanBangTaiTrongTai { get; set; } = true;
+        /// <summary>Bật chế độ chia đều mật độ thi đấu trên các sân</summary>
+        public bool CanBangTaiSanDau { get; set; } = true;
     }
 
     public class AutoScheduleResultDto
@@ -353,6 +364,10 @@ namespace Dms.Application.DTOs
         public int TotalMatchesCreated { get; set; }
         public string Message { get; set; } = string.Empty;
         public List<TranDauDto> Matches { get; set; } = new();
+        public List<string> Warnings { get; set; } = new();
+        public Dictionary<string, int>? ThongKeSanDau { get; set; }
+        public Dictionary<string, int>? ThongKeTrongTai { get; set; }
+        public int SoNgayThiDau { get; set; } = 1;
     }
 
     public class ConflictCheckRequestDto
@@ -365,10 +380,39 @@ namespace Dms.Application.DTOs
         public List<int>? DangKyThiDauIds { get; set; }
     }
 
+    public class ConflictDetailDto
+    {
+        public string LoaiXungDot { get; set; } = string.Empty; // "VanDongVien" | "SanDau" | "TrongTai" | "Doi"
+        public string ThongBao { get; set; } = string.Empty;
+        public int? VanDongVienId { get; set; }
+        public string? TenVanDongVien { get; set; }
+        public string? MaVanDongVien { get; set; }
+        public string? TenDoiHienTai { get; set; }
+        public int? TranDauBiTrungId { get; set; }
+        public string? TenTranBiTrung { get; set; }
+        public string? TenMonTheThao { get; set; }
+        public string? TenNoiDung { get; set; }
+        public string? TenSanDau { get; set; }
+        public DateTime? ThoiGianBatDau { get; set; }
+        public DateTime? ThoiGianKetThuc { get; set; }
+    }
+
     public class ConflictCheckResultDto
     {
         public bool HasConflict { get; set; }
         public List<string> Conflicts { get; set; } = new();
+        public List<ConflictDetailDto> ChiTietXungDot { get; set; } = new();
+    }
+
+    public class TournamentConflictReportDto
+    {
+        public bool HasConflict { get; set; }
+        public int GiaiDauId { get; set; }
+        public string? TenGiaiDau { get; set; }
+        public int TotalMatchesChecked { get; set; }
+        public int TotalConflicts { get; set; }
+        public List<string> Conflicts { get; set; } = new();
+        public List<ConflictDetailDto> ChiTietXungDot { get; set; } = new();
     }
 
     // ==================== HUY CHUONG DTOs ====================

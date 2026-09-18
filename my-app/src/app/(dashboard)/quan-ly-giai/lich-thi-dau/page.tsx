@@ -26,6 +26,12 @@ import {
   Info,
   Sliders,
   CalendarDays,
+  ShieldAlert,
+  UserX,
+  CheckCircle,
+  Building,
+  User,
+  Award,
 } from 'lucide-react';
 import {
   Row,
@@ -72,6 +78,8 @@ import {
   AutoScheduleRequest,
   CreateUpdateTranDau,
   AssignTrongTai,
+  ConflictDetail,
+  TournamentConflictReport,
 } from '@/types';
 import { HinhThucThiDauLabels } from '@/types/hinhThucThiDau';
 
@@ -91,15 +99,30 @@ export default function LichThiDauPage() {
   const [referees, setReferees] = useState<TrongTai[]>([]);
   const [registeredTeams, setRegisteredTeams] = useState<DangKyThiDau[]>([]);
 
+  // Tournament-wide data states
+  const [tournamentTeams, setTournamentTeams] = useState<DangKyThiDau[]>([]);
+  const [loadingTournamentTeams, setLoadingTournamentTeams] = useState<boolean>(false);
+  const [allTournamentMatches, setAllTournamentMatches] = useState<TranDau[]>([]);
+
   // 3. UI States
   const [loading, setLoading] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'list' | 'court' | 'referee' | 'groups'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'court' | 'referee' | 'groups' | 'teams'>('list');
   const [filterDate, setFilterDate] = useState<string>('');
   const [filterRoundId, setFilterRoundId] = useState<string>('');
   const [filterGroupId, setFilterGroupId] = useState<string>('');
   const [filterVenueId, setFilterVenueId] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
+
+  // Teams Tab UI states
+  const [teamScope, setTeamScope] = useState<'current_event' | 'tournament'>('current_event');
+  const [teamSearch, setTeamSearch] = useState<string>('');
+  const [teamFilterEventId, setTeamFilterEventId] = useState<string>('');
+  const [teamFilterDonVi, setTeamFilterDonVi] = useState<string>('');
+  const [teamFilterStatus, setTeamFilterStatus] = useState<string>('');
+  const [teamFilterScheduled, setTeamFilterScheduled] = useState<string>('');
+  const [selectedTeamDetail, setSelectedTeamDetail] = useState<DangKyThiDau | null>(null);
+  const [teamDetailModalOpen, setTeamDetailModalOpen] = useState<boolean>(false);
 
   // 4. Modal States
   const [autoScheduleModalOpen, setAutoScheduleModalOpen] = useState(false);
@@ -110,24 +133,36 @@ export default function LichThiDauPage() {
     endTime: string;
     matchDuration: number;
     breakDuration: number;
+    soHiepDau: number;
+    thoiGianMoiHiepPhut: number;
     selectedVenueIds: number[];
     selectedRefereeIds: number[];
     refereesPerMatch: number;
     autoCreateGroups: boolean;
     teamsPerGroup: number;
     clearOldMatches: boolean;
+    avoidAthleteConflict: boolean;
+    thoiGianNghiToiThieuVdvPhut: number;
+    canBangTaiSanDau: boolean;
+    canBangTaiTrongTai: boolean;
   }>({
     startDate: new Date().toISOString().split('T')[0],
     startTime: '08:00',
     endTime: '17:30',
-    matchDuration: 60,
+    matchDuration: 90,
     breakDuration: 15,
+    soHiepDau: 2,
+    thoiGianMoiHiepPhut: 45,
     selectedVenueIds: [],
     selectedRefereeIds: [],
     refereesPerMatch: 1,
     autoCreateGroups: true,
     teamsPerGroup: 4,
     clearOldMatches: true,
+    avoidAthleteConflict: true,
+    thoiGianNghiToiThieuVdvPhut: 60,
+    canBangTaiSanDau: true,
+    canBangTaiTrongTai: true,
   });
 
   // Manual Match Modal
@@ -165,7 +200,13 @@ export default function LichThiDauPage() {
 
   // Conflict state
   const [conflictWarning, setConflictWarning] = useState<string[]>([]);
+  const [chiTietConflictWarning, setChiTietConflictWarning] = useState<ConflictDetail[]>([]);
   const [checkingConflict, setCheckingConflict] = useState(false);
+
+  // Tournament Conflict Audit Modal
+  const [tournamentConflictModalOpen, setTournamentConflictModalOpen] = useState(false);
+  const [tournamentConflictReport, setTournamentConflictReport] = useState<TournamentConflictReport | null>(null);
+  const [checkingTournamentConflict, setCheckingTournamentConflict] = useState(false);
 
   // Group Distribution Modal
   const [groupModalOpen, setGroupModalOpen] = useState(false);
@@ -180,12 +221,17 @@ export default function LichThiDauPage() {
   const hasGroupStage = useMemo(() => {
     if (!currentEvent) return false;
     const ht = currentEvent.hinhThucThiDau;
-    return (
-      ht === 'VongBang' ||
-      ht === 'KetHopVongBangVaLoaiTrucTiep' ||
-      groups.length > 0
-    );
-  }, [currentEvent, groups]);
+    // Nếu là Loại trực tiếp thì TUYỆT ĐỐI KHÔNG chia bảng và KHÔNG có vòng bảng
+    if (ht === 'LoaiTrucTiep' || ht === 'NhanhThangNhanhThua') return false;
+    // Chỉ chia bảng với Vòng Bảng hoặc Kết Hợp Vòng Bảng & Loại Trực Tiếp
+    return ht === 'VongBang' || ht === 'KetHopVongBangVaLoaiTrucTiep';
+  }, [currentEvent]);
+
+  const isKnockout = useMemo(() => {
+    if (!currentEvent) return false;
+    const ht = currentEvent.hinhThucThiDau;
+    return ht === 'LoaiTrucTiep' || ht === 'NhanhThangNhanhThua' || !ht;
+  }, [currentEvent]);
 
   // Initial Load: Tournaments
   useEffect(() => {
@@ -202,6 +248,33 @@ export default function LichThiDauPage() {
     };
     loadTournaments();
   }, []);
+
+  // Load tournament-wide teams & matches
+  const loadTournamentData = useCallback(async () => {
+    if (!selectedTournamentId) {
+      setTournamentTeams([]);
+      setAllTournamentMatches([]);
+      return;
+    }
+    setLoadingTournamentTeams(true);
+    try {
+      const tId = Number(selectedTournamentId);
+      const [teamsRes, matchesRes] = await Promise.all([
+        dangKyThiDauService.getAll({ giaiDauId: tId }),
+        tranDauService.getAll({ giaiDauId: tId }).catch(() => []),
+      ]);
+      setTournamentTeams(teamsRes || []);
+      setAllTournamentMatches(matchesRes || []);
+    } catch (err) {
+      console.error('Lỗi khi tải danh sách đội toàn giải:', err);
+    } finally {
+      setLoadingTournamentTeams(false);
+    }
+  }, [selectedTournamentId]);
+
+  useEffect(() => {
+    loadTournamentData();
+  }, [loadTournamentData]);
 
   // When selected tournament changes -> Load events
   useEffect(() => {
@@ -267,13 +340,15 @@ export default function LichThiDauPage() {
         selectedVenueIds: compatibleVenues.map((v) => v.id),
         selectedRefereeIds: refereesRes.map((r) => r.id),
       }));
+
+      loadTournamentData();
     } catch (err) {
       console.error('Lỗi khi tải dữ liệu chi tiết của nội dung thi đấu:', err);
       toast.error('Không thể tải dữ liệu thi đấu.');
     } finally {
       setLoading(false);
     }
-  }, [selectedEventId, events]);
+  }, [selectedEventId, events, loadTournamentData]);
 
   useEffect(() => {
     refreshEventData();
@@ -351,14 +426,23 @@ export default function LichThiDauPage() {
         sanDauIds: autoScheduleConfig.selectedVenueIds,
         trongTaiIds: autoScheduleConfig.selectedRefereeIds,
         soTrongTaiMoiTran: Number(autoScheduleConfig.refereesPerMatch),
-        taoBangDauNeuChuaCo: autoScheduleConfig.autoCreateGroups,
+        taoBangDauNeuChuaCo: hasGroupStage ? autoScheduleConfig.autoCreateGroups : false,
         soDoiMoiBang: Number(autoScheduleConfig.teamsPerGroup),
         xoaLichCu: autoScheduleConfig.clearOldMatches,
+        tranhTrungLichVdv: autoScheduleConfig.avoidAthleteConflict,
+        thoiGianNghiToiThieuVdvPhut: Number(autoScheduleConfig.thoiGianNghiToiThieuVdvPhut),
+        canBangTaiSanDau: autoScheduleConfig.canBangTaiSanDau,
+        canBangTaiTrongTai: autoScheduleConfig.canBangTaiTrongTai,
+        soHiepDau: Number(autoScheduleConfig.soHiepDau),
+        thoiGianMoiHiepPhut: Number(autoScheduleConfig.thoiGianMoiHiepPhut),
       };
 
       const res = await tranDauService.autoSchedule(payload);
       if (res.success) {
         toast.success(res.message || `Đã xếp lịch thành công ${res.totalMatchesCreated} trận!`);
+        if (res.warnings && res.warnings.length > 0) {
+          toast.warning(`Lưu ý xếp lịch: ${res.warnings.join(' | ')}`);
+        }
         setAutoScheduleModalOpen(false);
         refreshEventData();
       } else {
@@ -376,6 +460,7 @@ export default function LichThiDauPage() {
   const handleOpenCreateMatch = () => {
     setEditingMatchId(null);
     setConflictWarning([]);
+    setChiTietConflictWarning([]);
     setMatchForm({
       roundId: rounds.length > 0 ? rounds[0].id : '',
       groupId: groups.length > 0 ? groups[0].id : '',
@@ -398,6 +483,7 @@ export default function LichThiDauPage() {
   const handleOpenEditMatch = (m: TranDau) => {
     setEditingMatchId(m.id);
     setConflictWarning([]);
+    setChiTietConflictWarning([]);
 
     const matchDateStr = m.thoiGianBatDau
       ? new Date(m.thoiGianBatDau).toISOString().split('T')[0]
@@ -432,9 +518,10 @@ export default function LichThiDauPage() {
   };
 
   // Check Conflict in Manual Match
-  const handleCheckConflict = async () => {
+  const handleCheckConflict = async (showSuccessToast = true): Promise<boolean> => {
     if (!matchForm.venueId || !matchForm.matchDate || !matchForm.startTime || !matchForm.endTime) {
-      return;
+      if (showSuccessToast) toast.warning('Vui lòng chọn Sân đấu, Ngày và Giờ thi đấu để kiểm tra.');
+      return false;
     }
     setCheckingConflict(true);
     try {
@@ -451,13 +538,20 @@ export default function LichThiDauPage() {
       });
 
       if (res.hasConflict) {
-        setConflictWarning(res.conflicts);
+        setConflictWarning(res.conflicts || []);
+        setChiTietConflictWarning(res.chiTietXungDot || []);
+        return true;
       } else {
         setConflictWarning([]);
-        toast.success('Không có xung đột nào về sân đấu, trọng tài hoặc đội thi đấu!');
+        setChiTietConflictWarning([]);
+        if (showSuccessToast) {
+          toast.success('Không có xung đột nào về Sân đấu, Trọng tài hoặc Vận động viên!');
+        }
+        return false;
       }
     } catch (err) {
       console.error('Lỗi khi kiểm tra xung đột:', err);
+      return false;
     } finally {
       setCheckingConflict(false);
     }
@@ -477,6 +571,17 @@ export default function LichThiDauPage() {
     if (matchForm.doi1Id === matchForm.doi2Id) {
       toast.warning('Hai đội thi đấu phải khác nhau.');
       return;
+    }
+
+    // Tự động kiểm tra xung đột VĐV / Sân / Trọng tài trước khi lưu
+    if (matchForm.venueId && matchForm.matchDate && matchForm.startTime && matchForm.endTime) {
+      const hasConflict = await handleCheckConflict(false);
+      if (hasConflict) {
+        const confirmSave = window.confirm(
+          'CẢNH BÁO: Phát hiện xung đột lịch thi đấu (Sân đấu, Trọng tài hoặc VĐV thi đấu nhiều môn)!\nBạn có chắc chắn vẫn muốn lưu trận đấu này không?'
+        );
+        if (!confirmSave) return;
+      }
     }
 
     try {
@@ -513,6 +618,25 @@ export default function LichThiDauPage() {
     } catch (err: any) {
       console.error('Lỗi lưu trận đấu:', err);
       toast.error(err?.response?.data?.message || 'Không thể lưu trận đấu.');
+    }
+  };
+
+  // Tournament Conflict Audit Handler
+  const handleCheckTournamentConflicts = async () => {
+    if (!selectedTournamentId) {
+      toast.warning('Vui lòng chọn một giải đấu để rà soát.');
+      return;
+    }
+    setCheckingTournamentConflict(true);
+    setTournamentConflictModalOpen(true);
+    try {
+      const report = await tranDauService.checkAllConflicts(Number(selectedTournamentId));
+      setTournamentConflictReport(report);
+    } catch (err: any) {
+      console.error('Lỗi khi kiểm tra xung đột giải đấu:', err);
+      toast.error('Không thể kiểm tra xung đột toàn giải.');
+    } finally {
+      setCheckingTournamentConflict(false);
     }
   };
 
@@ -571,6 +695,161 @@ export default function LichThiDauPage() {
     }
     return registeredTeams;
   }, [matchForm.groupId, groups, registeredTeams]);
+
+  // Event teams count map (number of teams per event)
+  const eventTeamsCountMap = useMemo(() => {
+    const map = new Map<number, number>();
+    tournamentTeams.forEach((t) => {
+      if (t.noiDungThiDauId) {
+        map.set(t.noiDungThiDauId, (map.get(t.noiDungThiDauId) || 0) + 1);
+      }
+    });
+    return map;
+  }, [tournamentTeams]);
+
+  // Team match count helper
+  const getTeamMatchCount = useCallback(
+    (teamId: number, scope: 'current_event' | 'tournament') => {
+      const sourceMatches = scope === 'current_event' ? matches : allTournamentMatches;
+      return sourceMatches.filter((m) => m.doi1DangKyId === teamId || m.doi2DangKyId === teamId).length;
+    },
+    [matches, allTournamentMatches]
+  );
+
+  // Team matches list helper
+  const getTeamMatchesList = useCallback(
+    (teamId: number, scope: 'current_event' | 'tournament') => {
+      const sourceMatches = scope === 'current_event' ? matches : allTournamentMatches;
+      return sourceMatches.filter((m) => m.doi1DangKyId === teamId || m.doi2DangKyId === teamId);
+    },
+    [matches, allTournamentMatches]
+  );
+
+  // Team metrics for Team Tab
+  const teamMetrics = useMemo(() => {
+    const source = teamScope === 'current_event' ? registeredTeams : tournamentTeams;
+    const totalTeams = source.length;
+    let totalVdv = 0;
+    let teamsWithMatches = 0;
+    let teamsWithoutMatches = 0;
+
+    source.forEach((t) => {
+      totalVdv += t.soVdv || t.vanDongVienNames?.length || 0;
+      const matchCount = getTeamMatchCount(t.id, teamScope);
+      if (matchCount > 0) {
+        teamsWithMatches++;
+      } else {
+        teamsWithoutMatches++;
+      }
+    });
+
+    return { totalTeams, totalVdv, teamsWithMatches, teamsWithoutMatches };
+  }, [teamScope, registeredTeams, tournamentTeams, getTeamMatchCount]);
+
+  // Distinct units for filter
+  const distinctUnits = useMemo(() => {
+    const source = teamScope === 'current_event' ? registeredTeams : tournamentTeams;
+    const units = new Set<string>();
+    source.forEach((t) => {
+      if (t.tenDonVi) units.add(t.tenDonVi);
+    });
+    return Array.from(units).sort();
+  }, [teamScope, registeredTeams, tournamentTeams]);
+
+  // Displayed teams with filtering & search
+  const displayedTeams = useMemo(() => {
+    const source = teamScope === 'current_event' ? registeredTeams : tournamentTeams;
+    return source.filter((t) => {
+      if (teamFilterEventId && t.noiDungThiDauId !== Number(teamFilterEventId)) return false;
+      if (teamFilterDonVi && t.tenDonVi !== teamFilterDonVi) return false;
+      if (teamFilterStatus && t.trangThai !== teamFilterStatus) return false;
+      if (teamSearch) {
+        const kw = teamSearch.toLowerCase();
+        const teamName = (t.tenDoi || t.tenDangKy || '').toLowerCase();
+        const regNo = (t.soDangKy || '').toLowerCase();
+        const unit = (t.tenDonVi || '').toLowerCase();
+        const athletes = (t.vanDongVienNames || []).join(' ').toLowerCase();
+        const eventName = (t.tenNoiDung || '').toLowerCase();
+        const sportName = (t.tenMonTheThao || '').toLowerCase();
+        if (
+          !teamName.includes(kw) &&
+          !regNo.includes(kw) &&
+          !unit.includes(kw) &&
+          !athletes.includes(kw) &&
+          !eventName.includes(kw) &&
+          !sportName.includes(kw)
+        ) {
+          return false;
+        }
+      }
+      const matchCount = getTeamMatchCount(t.id, teamScope);
+      if (teamFilterScheduled === 'has_matches' && matchCount === 0) return false;
+      if (teamFilterScheduled === 'no_matches' && matchCount > 0) return false;
+      return true;
+    });
+  }, [
+    teamScope,
+    registeredTeams,
+    tournamentTeams,
+    teamFilterEventId,
+    teamFilterDonVi,
+    teamFilterStatus,
+    teamFilterScheduled,
+    teamSearch,
+    getTeamMatchCount,
+  ]);
+
+  // Group lookup map for current event teams
+  const teamGroupMap = useMemo(() => {
+    const map = new Map<number, string>();
+    groups.forEach((g) => {
+      g.thanhViens?.forEach((tv) => {
+        if (tv.dangKyThiDauId) {
+          map.set(tv.dangKyThiDauId, g.ten);
+        }
+      });
+    });
+    return map;
+  }, [groups]);
+
+  // Handlers for teams
+  const handleViewTeamMatches = (team: DangKyThiDau) => {
+    if (team.noiDungThiDauId !== Number(selectedEventId)) {
+      setSelectedEventId(team.noiDungThiDauId);
+    }
+    setSearchKeyword(team.tenDoi || team.tenDangKy || '');
+    setActiveTab('list');
+  };
+
+  const handleQuickScheduleMatchForTeam = (team: DangKyThiDau) => {
+    if (team.noiDungThiDauId !== Number(selectedEventId)) {
+      setSelectedEventId(team.noiDungThiDauId);
+    }
+    setEditingMatchId(null);
+    setConflictWarning([]);
+    setChiTietConflictWarning([]);
+    setMatchForm({
+      roundId: rounds.length > 0 ? rounds[0].id : '',
+      groupId: '',
+      doi1Id: team.id,
+      doi2Id: '',
+      venueId: venues.length > 0 ? venues[0].id : '',
+      matchDate: uniqueDates[0] || new Date().toISOString().split('T')[0],
+      startTime: '08:30',
+      endTime: '09:30',
+      matchNumber: matches.length + 1,
+      matchName: `Trận ${matches.length + 1}`,
+      status: 'ChuaDau',
+      notes: '',
+      refereeAssignments: referees.length > 0 ? [{ trongTaiId: referees[0].id, vaiTro: 'TrongTaiChinh' }] : [],
+    });
+    setManualMatchModalOpen(true);
+  };
+
+  const handleOpenTeamDetail = (team: DangKyThiDau) => {
+    setSelectedTeamDetail(team);
+    setTeamDetailModalOpen(true);
+  };
 
   return (
     <div className="d-flex flex-column gap-4 pb-5">
@@ -649,11 +928,21 @@ export default function LichThiDauPage() {
               <strong className="text-white">{registeredTeams.length}</strong>
             </div>
 
-            <div className="d-flex align-items-center gap-1.5 text-white-50">
-              <Layers size={14} className="text-info" />
-              <span>Số bảng đấu:</span>
-              <strong className="text-white">{groups.length} bảng</strong>
-            </div>
+            {hasGroupStage && (
+              <div className="d-flex align-items-center gap-1.5 text-white-50">
+                <Layers size={14} className="text-info" />
+                <span>Số bảng đấu:</span>
+                <strong className="text-white">{groups.length} bảng</strong>
+              </div>
+            )}
+
+            {isKnockout && (
+              <div className="d-flex align-items-center gap-1.5 text-white-50">
+                <Award size={14} className="text-warning" />
+                <span>Thể thức:</span>
+                <strong className="text-warning">Loại trực tiếp (Knockout)</strong>
+              </div>
+            )}
 
             <div className="d-flex align-items-center gap-1.5 text-white-50">
               <MapPin size={14} className="text-danger" />
@@ -676,6 +965,98 @@ export default function LichThiDauPage() {
           </div>
         )}
       </div>
+
+      {/* 1.5. Events Overview & Selector Strip */}
+      {events.length > 0 && (
+        <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
+          <CardBody className="p-3">
+            <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+              <div className="d-flex align-items-center gap-2">
+                <div className="p-2 rounded-3 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center">
+                  <Trophy size={18} />
+                </div>
+                <div>
+                  <h6 className="fw-bold mb-0 text-dark">Nội Dung Thi Đấu Trong Giải ({events.length})</h6>
+                  <small className="text-muted">Chọn nội dung để xem lịch thi đấu, phân công sân và danh sách đội đăng ký</small>
+                </div>
+              </div>
+
+              <div className="d-flex align-items-center gap-2">
+                <Badge color="light" className="text-secondary border px-3 py-1.5 rounded-pill fw-medium">
+                  Tổng cộng: <strong className="text-dark">{tournamentTeams.length}</strong> đội đăng ký
+                </Badge>
+                <Button
+                  color="outline-primary"
+                  size="sm"
+                  className="rounded-pill px-3 py-1 fw-semibold d-flex align-items-center gap-1.5"
+                  style={{ fontSize: '12px' }}
+                  onClick={() => {
+                    setTeamScope('tournament');
+                    setActiveTab('teams');
+                  }}
+                >
+                  <Users size={14} />
+                  <span>Xem Tất Cả Đội ({tournamentTeams.length})</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Horizontal responsive list of event cards */}
+            <div className="d-flex gap-2.5 overflow-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
+              {events.map((ev) => {
+                const isSelected = ev.id === Number(selectedEventId);
+                const teamCount = eventTeamsCountMap.get(ev.id) ?? 0;
+                return (
+                  <div
+                    key={ev.id}
+                    onClick={() => setSelectedEventId(ev.id)}
+                    className={`p-3 rounded-3 cursor-pointer transition-all flex-shrink-0 d-flex flex-column justify-content-between ${
+                      isSelected
+                        ? 'border-2 border-primary bg-primary bg-opacity-10 shadow-sm'
+                        : 'border bg-white hover-shadow'
+                    }`}
+                    style={{
+                      minWidth: '220px',
+                      maxWidth: '280px',
+                      borderColor: isSelected ? '#2563eb' : '#e2e8f0',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <div>
+                      <div className="d-flex align-items-center justify-content-between gap-1 mb-1.5">
+                        <Badge color={isSelected ? 'primary' : 'secondary'} pill className="px-2 py-0.5" style={{ fontSize: '11px' }}>
+                          {ev.tenMonTheThao || 'Môn thi'}
+                        </Badge>
+                        {isSelected && (
+                          <Badge color="primary" pill className="p-1 d-flex align-items-center justify-content-center">
+                            <CheckCircle2 size={12} />
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="fw-bold text-dark text-truncate mb-1" title={ev.ten} style={{ fontSize: '13.5px' }}>
+                        {ev.ten}
+                      </div>
+                      <div className="text-muted small text-truncate mb-2" style={{ fontSize: '11.5px' }}>
+                        {HinhThucThiDauLabels[ev.hinhThucThiDau || ''] || ev.hinhThucThiDau || 'Loại trực tiếp'}
+                      </div>
+                    </div>
+
+                    <div className="d-flex align-items-center justify-content-between pt-2 border-top border-secondary border-opacity-10 mt-auto">
+                      <span className="d-flex align-items-center gap-1 small text-secondary" style={{ fontSize: '12px' }}>
+                        <Users size={13} className={teamCount > 0 ? 'text-primary' : 'text-muted'} />
+                        <strong className={teamCount > 0 ? 'text-dark' : 'text-muted'}>{teamCount}</strong> đội
+                      </span>
+                      <span className="small text-primary fw-medium" style={{ fontSize: '11px' }}>
+                        {isSelected ? 'Đang chọn' : 'Chọn xem'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardBody>
+        </Card>
+      )}
 
       {/* 2. 4 KPI Overview Cards */}
       <Row className="g-3">
@@ -794,6 +1175,18 @@ export default function LichThiDauPage() {
                   <span>Xóa Hết Lịch</span>
                 </Button>
               )}
+
+              <Button
+                color="warning"
+                className="rounded-pill px-3 py-2 fw-semibold d-flex align-items-center gap-1.5 text-dark shadow-sm ms-md-auto"
+                style={{ fontSize: '13px' }}
+                onClick={handleCheckTournamentConflicts}
+                disabled={!selectedTournamentId || checkingTournamentConflict}
+                title="Rà soát toàn bộ xung đột lịch thi đấu giữa các môn, sân và VĐV trong giải"
+              >
+                {checkingTournamentConflict ? <Spinner size="sm" /> : <ShieldAlert size={16} className="text-danger" />}
+                <span>Rà Soát Xung Đột Toàn Giải</span>
+              </Button>
             </div>
 
             {/* Quick search input */}
@@ -851,7 +1244,7 @@ export default function LichThiDauPage() {
             </Input>
 
             {/* Group filter (if group stage exists) */}
-            {groups.length > 0 && (
+            {hasGroupStage && groups.length > 0 && (
               <Input
                 type="select"
                 bsSize="sm"
@@ -979,6 +1372,19 @@ export default function LichThiDauPage() {
               </NavLink>
             </NavItem>
           )}
+
+          <NavItem>
+            <NavLink
+              className={`rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-2 cursor-pointer ${
+                activeTab === 'teams' ? 'active bg-primary text-white' : 'text-secondary bg-white border'
+              }`}
+              onClick={() => setActiveTab('teams')}
+              style={{ fontSize: '13px' }}
+            >
+              <Users size={15} />
+              <span>Đội Đăng Ký & VĐV ({teamScope === 'tournament' ? tournamentTeams.length : registeredTeams.length})</span>
+            </NavLink>
+          </NavItem>
         </Nav>
       </div>
 
@@ -993,6 +1399,90 @@ export default function LichThiDauPage() {
           {/* TAB 1: LIST VIEW */}
           {activeTab === 'list' && (
             <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
+              {/* Quick Registered Teams Preview strip */}
+              <div className="bg-light bg-opacity-75 border-bottom p-3">
+                <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-2">
+                  <div className="d-flex align-items-center gap-2">
+                    <Users size={16} className="text-primary" />
+                    <span className="fw-bold text-dark small">
+                      Các Đội Đăng Ký Trong Nội Dung Này ({registeredTeams.length} đội)
+                    </span>
+                    {searchKeyword && (
+                      <Badge color="info" pill className="cursor-pointer" onClick={() => setSearchKeyword('')}>
+                        Đang lọc: &quot;{searchKeyword}&quot; ✕
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="d-flex align-items-center gap-2">
+                    <Button
+                      color="link"
+                      size="sm"
+                      className="p-0 text-primary text-decoration-none fw-semibold small d-flex align-items-center gap-1"
+                      onClick={() => {
+                        setTeamScope('current_event');
+                        setActiveTab('teams');
+                      }}
+                    >
+                      <span>Xem danh sách chi tiết & VĐV</span>
+                      <ChevronRight size={14} />
+                    </Button>
+                  </div>
+                </div>
+
+                {registeredTeams.length === 0 ? (
+                  <div className="text-muted small fst-italic py-1">
+                    Chưa có đội nào đăng ký vào nội dung này.
+                  </div>
+                ) : (
+                  <div className="d-flex flex-wrap gap-2 pt-1">
+                    {registeredTeams.map((team) => {
+                      const teamName = team.tenDoi || team.tenDangKy || `Đội #${team.id}`;
+                      const matchCount = matches.filter((m) => m.doi1DangKyId === team.id || m.doi2DangKyId === team.id).length;
+                      const isFiltered = searchKeyword && teamName.toLowerCase().includes(searchKeyword.toLowerCase());
+                      const athleteNamesStr = team.vanDongVienNames && team.vanDongVienNames.length > 0
+                        ? team.vanDongVienNames.join(', ')
+                        : 'Chưa có VĐV';
+
+                      return (
+                        <div
+                          key={team.id}
+                          onClick={() => {
+                            if (searchKeyword === teamName) {
+                              setSearchKeyword('');
+                            } else {
+                              setSearchKeyword(teamName);
+                            }
+                          }}
+                          className={`d-inline-flex align-items-center gap-2 px-2.5 py-1 rounded-pill cursor-pointer border transition-all ${
+                            isFiltered
+                              ? 'bg-primary text-white border-primary shadow-sm'
+                              : 'bg-white text-dark hover-shadow'
+                          }`}
+                          style={{ fontSize: '12px' }}
+                          title={`VĐV: ${athleteNamesStr} | Đơn vị: ${team.tenDonVi || '--'} | Nhấn để lọc trận`}
+                        >
+                          <span className="fw-semibold">{teamName}</span>
+                          {team.tenDonVi && (
+                            <span className={isFiltered ? 'text-white-50' : 'text-muted'} style={{ fontSize: '11px' }}>
+                              ({team.tenDonVi})
+                            </span>
+                          )}
+                          <Badge
+                            color={isFiltered ? 'light' : matchCount > 0 ? 'success' : 'warning'}
+                            pill
+                            className={`px-1.5 py-0.5 ${isFiltered ? 'text-primary' : ''}`}
+                            style={{ fontSize: '10px' }}
+                          >
+                            {matchCount > 0 ? `${matchCount} trận` : 'Chưa đấu'}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               <div className="table-responsive">
                 <Table hover className="align-middle mb-0" style={{ fontSize: '13px' }}>
                   <thead className="table-light">
@@ -1506,6 +1996,386 @@ export default function LichThiDauPage() {
               </Row>
             </div>
           )}
+
+          {/* TAB 5: REGISTERED TEAMS & ATHLETES (Đội Đăng Ký & VĐV) */}
+          {activeTab === 'teams' && (
+            <div className="d-flex flex-column gap-3">
+              {/* Scope Switcher & Filter Toolbar */}
+              <Card className="border-0 shadow-sm rounded-4">
+                <CardBody className="p-3">
+                  <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                    {/* Scope buttons */}
+                    <div className="d-flex align-items-center gap-2">
+                      <Button
+                        color={teamScope === 'current_event' ? 'primary' : 'light'}
+                        size="sm"
+                        className={`rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-2 ${
+                          teamScope === 'current_event' ? 'text-white' : 'text-secondary border'
+                        }`}
+                        onClick={() => {
+                          setTeamScope('current_event');
+                          setTeamFilterEventId('');
+                        }}
+                      >
+                        <Users size={14} />
+                        <span>Nội dung đang chọn: {currentEvent?.ten || 'Chưa chọn'} ({registeredTeams.length})</span>
+                      </Button>
+
+                      <Button
+                        color={teamScope === 'tournament' ? 'primary' : 'light'}
+                        size="sm"
+                        className={`rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-2 ${
+                          teamScope === 'tournament' ? 'text-white' : 'text-secondary border'
+                        }`}
+                        onClick={() => setTeamScope('tournament')}
+                      >
+                        <Trophy size={14} />
+                        <span>Toàn bộ giải đấu ({tournamentTeams.length})</span>
+                      </Button>
+                    </div>
+
+                    {/* Search bar */}
+                    <div className="position-relative" style={{ minWidth: '280px' }}>
+                      <Search size={15} className="position-absolute text-muted" style={{ left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                      <Input
+                        type="text"
+                        placeholder="Tìm theo đội, VĐV, đơn vị, mã..."
+                        className="form-control form-control-sm rounded-pill ps-5"
+                        style={{ fontSize: '13px' }}
+                        value={teamSearch}
+                        onChange={(e) => setTeamSearch(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Filter row */}
+                  <div className="d-flex flex-wrap align-items-center gap-2 mt-3 pt-3 border-top">
+                    <span className="small text-muted fw-semibold d-flex align-items-center gap-1 me-1">
+                      <Filter size={13} /> Lọc đội:
+                    </span>
+
+                    {/* Event filter (active when in tournament view) */}
+                    {teamScope === 'tournament' && (
+                      <Input
+                        type="select"
+                        bsSize="sm"
+                        className="rounded-pill"
+                        style={{ width: 'auto', fontSize: '12px' }}
+                        value={teamFilterEventId}
+                        onChange={(e) => setTeamFilterEventId(e.target.value)}
+                      >
+                        <option value="">Tất cả nội dung ({events.length})</option>
+                        {events.map((ev) => (
+                          <option key={ev.id} value={ev.id}>
+                            {ev.ten} ({ev.tenMonTheThao || 'Môn'})
+                          </option>
+                        ))}
+                      </Input>
+                    )}
+
+                    {/* Unit filter */}
+                    {distinctUnits.length > 0 && (
+                      <Input
+                        type="select"
+                        bsSize="sm"
+                        className="rounded-pill"
+                        style={{ width: 'auto', fontSize: '12px' }}
+                        value={teamFilterDonVi}
+                        onChange={(e) => setTeamFilterDonVi(e.target.value)}
+                      >
+                        <option value="">Tất cả đơn vị ({distinctUnits.length})</option>
+                        {distinctUnits.map((u) => (
+                          <option key={u} value={u}>
+                            {u}
+                          </option>
+                        ))}
+                      </Input>
+                    )}
+
+                    {/* Status filter */}
+                    <Input
+                      type="select"
+                      bsSize="sm"
+                      className="rounded-pill"
+                      style={{ width: 'auto', fontSize: '12px' }}
+                      value={teamFilterStatus}
+                      onChange={(e) => setTeamFilterStatus(e.target.value)}
+                    >
+                      <option value="">Tất cả trạng thái duyệt</option>
+                      <option value="DaDuyet">Đã duyệt</option>
+                      <option value="ChoDuyet">Chờ duyệt</option>
+                      <option value="TuChoi">Từ chối</option>
+                    </Input>
+
+                    {/* Scheduling filter */}
+                    <Input
+                      type="select"
+                      bsSize="sm"
+                      className="rounded-pill"
+                      style={{ width: 'auto', fontSize: '12px' }}
+                      value={teamFilterScheduled}
+                      onChange={(e) => setTeamFilterScheduled(e.target.value)}
+                    >
+                      <option value="">Tất cả tình trạng xếp lịch</option>
+                      <option value="has_matches">Đã có lịch thi đấu</option>
+                      <option value="no_matches">Chưa có lịch thi đấu</option>
+                    </Input>
+
+                    {(teamSearch || teamFilterEventId || teamFilterDonVi || teamFilterStatus || teamFilterScheduled) && (
+                      <Button
+                        color="link"
+                        size="sm"
+                        className="text-danger p-0 ms-auto text-decoration-none small"
+                        onClick={() => {
+                          setTeamSearch('');
+                          setTeamFilterEventId('');
+                          setTeamFilterDonVi('');
+                          setTeamFilterStatus('');
+                          setTeamFilterScheduled('');
+                        }}
+                      >
+                        Xóa bộ lọc
+                      </Button>
+                    )}
+                  </div>
+                </CardBody>
+              </Card>
+
+              {/* Team Metric Cards */}
+              <Row className="g-3">
+                <Col xs={6} md={3}>
+                  <div className="bg-white rounded-4 p-3 border shadow-sm d-flex align-items-center gap-3">
+                    <div className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '42px', height: '42px', backgroundColor: '#eef2ff', color: '#4f46e5' }}>
+                      <Users size={20} />
+                    </div>
+                    <div>
+                      <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                        Tổng số đội đăng ký
+                      </span>
+                      <span className="fw-bold fs-5 text-dark">{teamMetrics.totalTeams}</span>
+                    </div>
+                  </div>
+                </Col>
+
+                <Col xs={6} md={3}>
+                  <div className="bg-white rounded-4 p-3 border shadow-sm d-flex align-items-center gap-3">
+                    <div className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '42px', height: '42px', backgroundColor: '#ecfdf5', color: '#059669' }}>
+                      <UserCheck size={20} />
+                    </div>
+                    <div>
+                      <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                        Tổng VĐV tham gia
+                      </span>
+                      <span className="fw-bold fs-5 text-success">{teamMetrics.totalVdv}</span>
+                    </div>
+                  </div>
+                </Col>
+
+                <Col xs={6} md={3}>
+                  <div className="bg-white rounded-4 p-3 border shadow-sm d-flex align-items-center gap-3">
+                    <div className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '42px', height: '42px', backgroundColor: '#f0fdfa', color: '#0d9488' }}>
+                      <CalendarDays size={20} />
+                    </div>
+                    <div>
+                      <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                        Đội đã xếp lịch
+                      </span>
+                      <span className="fw-bold fs-5 text-primary">{teamMetrics.teamsWithMatches}</span>
+                    </div>
+                  </div>
+                </Col>
+
+                <Col xs={6} md={3}>
+                  <div className="bg-white rounded-4 p-3 border shadow-sm d-flex align-items-center gap-3">
+                    <div className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '42px', height: '42px', backgroundColor: '#fffbeb', color: '#d97706' }}>
+                      <AlertTriangle size={20} />
+                    </div>
+                    <div>
+                      <span className="text-secondary small d-block" style={{ fontSize: '11px', fontWeight: 500 }}>
+                        Đội chưa có lịch
+                      </span>
+                      <span className="fw-bold fs-5 text-warning">{teamMetrics.teamsWithoutMatches}</span>
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+
+              {/* Data Table */}
+              <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
+                <div className="table-responsive">
+                  <Table hover className="align-middle mb-0" style={{ fontSize: '13px' }}>
+                    <thead className="table-light">
+                      <tr>
+                        <th className="py-3 px-3 text-center" style={{ width: '50px' }}>STT</th>
+                        <th className="py-3 px-3" style={{ minWidth: '100px' }}>Số ĐK</th>
+                        <th className="py-3 px-3" style={{ minWidth: '220px' }}>Tên Đội / Đăng Ký</th>
+                        <th className="py-3 px-3" style={{ minWidth: '160px' }}>Đơn Vị Chủ Quản</th>
+                        <th className="py-3 px-3" style={{ minWidth: '180px' }}>Môn & Nội Dung Thi Đấu</th>
+                        <th className="py-3 px-3" style={{ minWidth: '240px' }}>Vận Động Viên</th>
+                        {teamScope === 'current_event' && hasGroupStage && (
+                          <th className="py-3 px-3 text-center" style={{ minWidth: '110px' }}>Bảng Đấu</th>
+                        )}
+                        <th className="py-3 px-3 text-center" style={{ width: '120px' }}>Hồ Sơ</th>
+                        <th className="py-3 px-3 text-center" style={{ minWidth: '130px' }}>Lịch Đấu</th>
+                        <th className="py-3 px-3 text-center" style={{ width: '130px' }}>Thao Tác</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayedTeams.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} className="text-center py-5 text-muted">
+                            <div className="d-flex flex-column align-items-center justify-content-center">
+                              <Users size={44} className="text-secondary opacity-25 mb-2" />
+                              <p className="mb-1 fw-semibold text-dark">Không tìm thấy đội đăng ký nào</p>
+                              <small className="text-secondary">
+                                {teamSearch || teamFilterDonVi || teamFilterStatus || teamFilterScheduled
+                                  ? 'Thử thay đổi hoặc xóa các bộ lọc bên trên.'
+                                  : 'Chưa có hồ sơ đăng ký thi đấu nào trong phạm vi này.'}
+                              </small>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        displayedTeams.map((team, idx) => {
+                          const teamName = team.tenDoi || team.tenDangKy || `Đội #${team.id}`;
+                          const matchCount = getTeamMatchCount(team.id, teamScope);
+                          const athletes = team.vanDongVienNames || [];
+                          const groupName = teamGroupMap.get(team.id);
+
+                          return (
+                            <tr key={team.id}>
+                              <td className="text-center text-muted fw-bold">{idx + 1}</td>
+                              <td>
+                                <Badge color="light" className="text-dark border font-monospace px-2 py-1">
+                                  {team.soDangKy || `DK-${team.id}`}
+                                </Badge>
+                              </td>
+                              <td>
+                                <div className="d-flex flex-column">
+                                  <span className="fw-bold text-dark">{teamName}</span>
+                                  {team.ngayDangKy && (
+                                    <span className="text-muted" style={{ fontSize: '11px' }}>
+                                      ĐK: {new Date(team.ngayDangKy).toLocaleDateString('vi-VN')}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                                <span className="fw-medium text-dark">{team.tenDonVi || '--'}</span>
+                              </td>
+                              <td>
+                                <div className="d-flex flex-column gap-1">
+                                  <span className="fw-semibold text-dark">{team.tenNoiDung || '--'}</span>
+                                  {team.tenMonTheThao && (
+                                    <Badge color="primary" pill className="align-self-start px-2 py-0.5" style={{ fontSize: '10.5px' }}>
+                                      {team.tenMonTheThao}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                                {athletes.length === 0 ? (
+                                  <span className="text-muted fst-italic small">Chưa có VĐV</span>
+                                ) : (
+                                  <div className="d-flex flex-wrap gap-1 align-items-center">
+                                    {athletes.slice(0, 3).map((athName, aIdx) => (
+                                      <Badge
+                                        key={aIdx}
+                                        color="light"
+                                        className="text-dark border px-2 py-1 d-inline-flex align-items-center gap-1 rounded-pill"
+                                        style={{ fontSize: '11.5px', fontWeight: 500 }}
+                                      >
+                                        <User size={10} className="text-primary" />
+                                        <span>{athName}</span>
+                                      </Badge>
+                                    ))}
+                                    {athletes.length > 3 && (
+                                      <Badge
+                                        color="secondary"
+                                        pill
+                                        className="px-2 py-0.5 cursor-pointer"
+                                        style={{ fontSize: '10.5px' }}
+                                        onClick={() => handleOpenTeamDetail(team)}
+                                        title="Xem tất cả VĐV"
+                                      >
+                                        +{athletes.length - 3} VĐV
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                              {teamScope === 'current_event' && hasGroupStage && (
+                                <td className="text-center">
+                                  {groupName ? (
+                                    <Badge color="warning" pill className="px-2.5 py-1 text-dark fw-bold">
+                                      {groupName}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-muted small">Chưa chia bảng</span>
+                                  )}
+                                </td>
+                              )}
+                              <td className="text-center">
+                                <Badge
+                                  color={team.trangThai === 'DaDuyet' ? 'success' : team.trangThai === 'ChoDuyet' ? 'warning' : 'secondary'}
+                                  pill
+                                  className="px-2.5 py-1"
+                                  style={{ fontSize: '11px' }}
+                                >
+                                  {team.trangThai === 'DaDuyet' ? 'Đã duyệt' : team.trangThai === 'ChoDuyet' ? 'Chờ duyệt' : team.trangThai}
+                                </Badge>
+                              </td>
+                              <td className="text-center">
+                                {matchCount > 0 ? (
+                                  <Button
+                                    color="link"
+                                    size="sm"
+                                    className="p-0 text-success text-decoration-none fw-semibold d-inline-flex align-items-center gap-1"
+                                    onClick={() => handleViewTeamMatches(team)}
+                                    title="Nhấn để xem các trận đấu của đội này"
+                                  >
+                                    <Badge color="success" pill className="px-2 py-1">
+                                      {matchCount} trận đấu
+                                    </Badge>
+                                  </Button>
+                                ) : (
+                                  <Badge color="light" className="text-secondary border px-2 py-1" style={{ fontSize: '11px' }}>
+                                    Chưa xếp lịch
+                                  </Badge>
+                                )}
+                              </td>
+                              <td className="text-center">
+                                <div className="d-flex align-items-center justify-content-center gap-1">
+                                  <Button
+                                    color="light"
+                                    size="sm"
+                                    className="p-1 rounded-circle border"
+                                    title="Xem chi tiết đội & trận đấu"
+                                    onClick={() => handleOpenTeamDetail(team)}
+                                  >
+                                    <Eye size={14} className="text-primary" />
+                                  </Button>
+                                  <Button
+                                    color="light"
+                                    size="sm"
+                                    className="p-1 rounded-circle border"
+                                    title="Thêm trận đấu cho đội này"
+                                    onClick={() => handleQuickScheduleMatchForTeam(team)}
+                                  >
+                                    <Plus size={14} className="text-success" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
+              </Card>
+            </div>
+          )}
         </>
       )}
 
@@ -1520,13 +2390,26 @@ export default function LichThiDauPage() {
           </div>
         </ModalHeader>
         <ModalBody className="p-4">
-          <Alert color="primary" className="d-flex align-items-center gap-2 mb-3 py-2 px-3 rounded-3" style={{ fontSize: '12px' }}>
-            <Info size={16} className="flex-shrink-0 text-primary" />
+          <Alert color={isKnockout ? 'warning' : 'primary'} className="d-flex align-items-center gap-2 mb-3 py-2 px-3 rounded-3" style={{ fontSize: '12px' }}>
+            <Info size={16} className="flex-shrink-0" />
             <div>
-              Thuật toán tự động sinh lịch theo thể thức <strong>{HinhThucThiDauLabels[currentEvent?.hinhThucThiDau || ''] || 'Loại trực tiếp'}</strong>,
-              phân bổ tối ưu Sân đấu không bị trùng và xoay vòng Trọng tài điều hành.
+              {isKnockout ? (
+                <>
+                  Thể thức <strong>{HinhThucThiDauLabels[currentEvent?.hinhThucThiDau || ''] || 'Loại trực tiếp (Knockout)'}</strong>:{' '}
+                  Hệ thống <strong>không chia bảng đấu</strong>, mà bắt cặp đối đầu loại trực tiếp theo hạt giống (1 vs N, 2 vs N-1...)
+                  và tạo đủ cấu trúc nhánh đấu bracket (Vòng loại / Tứ kết → Bán kết → Chung kết). Các vòng sau sẽ là <em>placeholder</em> tự động điền đội khi có kết quả.
+                </>
+              ) : (
+                <>
+                  Thể thức <strong>{HinhThucThiDauLabels[currentEvent?.hinhThucThiDau || ''] || 'Vòng bảng'}</strong>:{' '}
+                  Hệ thống sẽ <strong>chia bảng đấu và áp dụng Round-Robin</strong> trong từng bảng,
+                  phân bổ tối ưu Sân đấu không bị trùng và xoay vòng Trọng tài điều hành.
+                </>
+              )}
             </div>
           </Alert>
+
+
 
           <Row className="g-3">
             {/* Start Date & Time */}
@@ -1561,19 +2444,19 @@ export default function LichThiDauPage() {
             </Col>
 
             {/* Match Duration & Break */}
-            <Col xs={6} md={6}>
+            <Col xs={6} md={3}>
               <Label className="small fw-semibold">Thời lượng mỗi trận (phút)</Label>
               <Input
                 type="number"
                 bsSize="sm"
                 min={15}
-                max={180}
+                max={360}
                 value={autoScheduleConfig.matchDuration}
                 onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, matchDuration: Number(e.target.value) })}
               />
             </Col>
 
-            <Col xs={6} md={6}>
+            <Col xs={6} md={3}>
               <Label className="small fw-semibold">Thời gian nghỉ giữa trận (phút)</Label>
               <Input
                 type="number"
@@ -1582,6 +2465,40 @@ export default function LichThiDauPage() {
                 max={60}
                 value={autoScheduleConfig.breakDuration}
                 onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, breakDuration: Number(e.target.value) })}
+              />
+            </Col>
+
+            {/* Hiệp đấu configuration */}
+            <Col xs={6} md={3}>
+              <Label className="small fw-semibold d-flex align-items-center gap-1">
+                <span>Số hiệp đấu</span>
+              </Label>
+              <Input
+                type="number"
+                bsSize="sm"
+                min={1}
+                max={10}
+                value={autoScheduleConfig.soHiepDau}
+                onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, soHiepDau: Number(e.target.value) })}
+              />
+            </Col>
+
+            <Col xs={6} md={3}>
+              <Label className="small fw-semibold">Thời gian mỗi hiệp (phút)</Label>
+              <Input
+                type="number"
+                bsSize="sm"
+                min={1}
+                max={90}
+                value={autoScheduleConfig.thoiGianMoiHiepPhut}
+                onChange={(e) => {
+                  const hiep = Number(e.target.value);
+                  setAutoScheduleConfig({
+                    ...autoScheduleConfig,
+                    thoiGianMoiHiepPhut: hiep,
+                    matchDuration: hiep * autoScheduleConfig.soHiepDau,
+                  });
+                }}
               />
             </Col>
 
@@ -1695,6 +2612,77 @@ export default function LichThiDauPage() {
               </div>
             </Col>
 
+            {/* Avoid athlete conflict checkbox & Rest time */}
+            <Col xs={12}>
+              <div className="p-2.5 rounded-3 border bg-light">
+                <div className="form-check mb-1">
+                  <Input
+                    type="checkbox"
+                    id="avoidAthleteConflict"
+                    className="ms-0 me-2"
+                    checked={autoScheduleConfig.avoidAthleteConflict}
+                    onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, avoidAthleteConflict: e.target.checked })}
+                  />
+                  <Label check htmlFor="avoidAthleteConflict" className="small text-primary fw-bold cursor-pointer">
+                    Tự động kiểm tra & tránh trùng khung giờ cho VĐV (Smart CSP)
+                  </Label>
+                </div>
+                <div className="text-muted small ps-4" style={{ fontSize: '11px', lineHeight: 1.4 }}>
+                  Hệ thống nhận diện cùng một VĐV khi trùng số CCCD (hoặc cùng mã VĐV), đối soát lịch toàn bộ các môn khác và tự động dời ca giờ tránh xung đột.
+                </div>
+
+                {autoScheduleConfig.avoidAthleteConflict && (
+                  <div className="d-flex align-items-center gap-2 mt-2 pt-2 border-top ps-4">
+                    <Label className="small fw-semibold mb-0" style={{ whiteSpace: 'nowrap' }}>
+                      Thời gian nghỉ tối thiểu giữa 2 trận:
+                    </Label>
+                    <Input
+                      type="number"
+                      bsSize="sm"
+                      style={{ width: '100px' }}
+                      min={0}
+                      max={240}
+                      step={15}
+                      value={autoScheduleConfig.thoiGianNghiToiThieuVdvPhut}
+                      onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, thoiGianNghiToiThieuVdvPhut: Number(e.target.value) })}
+                    />
+                    <span className="small text-muted">phút</span>
+                  </div>
+                )}
+              </div>
+            </Col>
+
+            {/* Load balancing options */}
+            <Col xs={12}>
+              <div className="p-2.5 rounded-3 border bg-light">
+                <div className="fw-semibold small text-dark mb-2">Tối ưu hóa phân bổ (Heuristic Constraints):</div>
+                <div className="d-flex flex-column gap-1.5">
+                  <div className="form-check">
+                    <Input
+                      type="checkbox"
+                      id="canBangTaiSanDau"
+                      checked={autoScheduleConfig.canBangTaiSanDau}
+                      onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, canBangTaiSanDau: e.target.checked })}
+                    />
+                    <Label check htmlFor="canBangTaiSanDau" className="small text-secondary cursor-pointer">
+                      Cân bằng tải các sân đấu (chia đều mật độ trận đấu trên các sân được chọn)
+                    </Label>
+                  </div>
+                  <div className="form-check">
+                    <Input
+                      type="checkbox"
+                      id="canBangTaiTrongTai"
+                      checked={autoScheduleConfig.canBangTaiTrongTai}
+                      onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, canBangTaiTrongTai: e.target.checked })}
+                    />
+                    <Label check htmlFor="canBangTaiTrongTai" className="small text-secondary cursor-pointer">
+                      Xoay tua phân công trọng tài (chia đều số trận cho các trọng tài làm nhiệm vụ)
+                    </Label>
+                  </div>
+                </div>
+              </div>
+            </Col>
+
             {/* Clear old matches checkbox */}
             <Col xs={12}>
               <div className="form-check">
@@ -1742,16 +2730,50 @@ export default function LichThiDauPage() {
         </ModalHeader>
         <ModalBody className="p-4">
           {conflictWarning.length > 0 && (
-            <Alert color="danger" className="py-2 px-3 rounded-3 mb-3" style={{ fontSize: '12px' }}>
-              <div className="fw-bold d-flex align-items-center gap-1.5 mb-1">
-                <AlertTriangle size={15} />
-                Phát hiện xung đột lịch thi đấu:
+            <Alert color="danger" className="py-2.5 px-3 rounded-3 mb-3 shadow-sm border-danger" style={{ fontSize: '12px' }}>
+              <div className="fw-bold d-flex align-items-center gap-2 mb-2 text-danger fs-6">
+                <AlertTriangle size={18} />
+                <span>Phát hiện {conflictWarning.length} xung đột lịch thi đấu:</span>
               </div>
-              <ul className="mb-0 ps-3">
-                {conflictWarning.map((c, i) => (
-                  <li key={i}>{c}</li>
-                ))}
-              </ul>
+
+              {chiTietConflictWarning.length > 0 ? (
+                <div className="d-flex flex-column gap-2 mb-1">
+                  {chiTietConflictWarning.map((c, i) => (
+                    <div key={i} className="p-2.5 bg-white rounded-2 border border-danger-subtle shadow-xs">
+                      <div className="d-flex flex-wrap align-items-center gap-1.5 mb-1">
+                        {c.loaiXungDot === 'VanDongVien' ? (
+                          <Badge color="danger" className="px-2 py-1 d-inline-flex align-items-center gap-1">
+                            <UserX size={12} /> Trùng Lịch VĐV
+                          </Badge>
+                        ) : c.loaiXungDot === 'SanDau' ? (
+                          <Badge color="warning" className="text-dark px-2 py-1 d-inline-flex align-items-center gap-1">
+                            <MapPin size={12} /> Trùng Sân Đấu
+                          </Badge>
+                        ) : c.loaiXungDot === 'TrongTai' ? (
+                          <Badge color="info" className="px-2 py-1 d-inline-flex align-items-center gap-1">
+                            <Shield size={12} /> Trùng Trọng Tài
+                          </Badge>
+                        ) : (
+                          <Badge color="secondary" className="px-2 py-1">Trùng Đội</Badge>
+                        )}
+
+                        {c.tenVanDongVien && (
+                          <span className="fw-bold text-dark">{c.tenVanDongVien} ({c.tenDoiHienTai || 'Đội'})</span>
+                        )}
+                      </div>
+                      <div className="text-dark ps-0.5" style={{ fontSize: '11.5px' }}>
+                        {c.thongBao}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <ul className="mb-0 ps-3">
+                  {conflictWarning.map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
+              )}
             </Alert>
           )}
 
@@ -1984,13 +3006,13 @@ export default function LichThiDauPage() {
               <Button
                 color="outline-secondary"
                 size="sm"
-                className="rounded-pill px-3 py-1 d-flex align-items-center gap-1.5"
+                className="rounded-pill px-3 py-1.5 d-flex align-items-center gap-1.5"
                 style={{ fontSize: '12px' }}
-                onClick={handleCheckConflict}
+                onClick={() => handleCheckConflict(true)}
                 disabled={checkingConflict}
               >
                 {checkingConflict ? <Spinner size="sm" /> : <AlertTriangle size={13} className="text-warning" />}
-                Kiểm tra trùng lịch (Sân / Trọng tài / Đội)
+                <span>Kiểm tra trùng lịch (Sân / Trọng tài / VĐV thi đấu nhiều môn)</span>
               </Button>
             </Col>
           </Row>
@@ -2043,6 +3065,312 @@ export default function LichThiDauPage() {
           <Button color="info" size="sm" className="rounded-pill px-4 fw-semibold text-white" onClick={handleAutoDistributeGroups}>
             Bắt Đầu Bốc Thăm
           </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL 4: TOURNAMENT CONFLICT AUDIT MODAL (Rà Soát Giải)  */}
+      {/* ======================================================== */}
+      <Modal isOpen={tournamentConflictModalOpen} toggle={() => setTournamentConflictModalOpen(!tournamentConflictModalOpen)} size="lg" centered>
+        <ModalHeader toggle={() => setTournamentConflictModalOpen(!tournamentConflictModalOpen)} className="border-bottom">
+          <div className="d-flex align-items-center gap-2">
+            <ShieldAlert size={20} className="text-warning" />
+            <span className="fw-bold fs-6">Rà Soát Toàn Bộ Xung Đột Lịch Thi Đấu Trong Giải</span>
+          </div>
+        </ModalHeader>
+        <ModalBody className="p-4" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+          {checkingTournamentConflict ? (
+            <div className="text-center py-5">
+              <Spinner color="primary" />
+              <p className="small text-muted mt-3 mb-0">Đang quét toàn bộ các trận đấu, sân thi đấu và đối soát danh sách VĐV giữa các môn...</p>
+            </div>
+          ) : tournamentConflictReport ? (
+            <div>
+              {/* Summary stat cards */}
+              <div className="row g-3 mb-4">
+                <div className="col-6 col-md-4">
+                  <div className="p-3 bg-light rounded-3 border text-center">
+                    <span className="small text-muted d-block mb-1">Tổng số trận đã rà soát</span>
+                    <span className="fw-bold fs-4 text-dark">{tournamentConflictReport.totalMatchesChecked}</span>
+                  </div>
+                </div>
+                <div className="col-6 col-md-4">
+                  <div className={`p-3 rounded-3 border text-center ${tournamentConflictReport.totalConflicts > 0 ? 'bg-danger-subtle border-danger' : 'bg-success-subtle border-success'}`}>
+                    <span className="small text-muted d-block mb-1">Số xung đột phát hiện</span>
+                    <span className={`fw-bold fs-4 ${tournamentConflictReport.totalConflicts > 0 ? 'text-danger' : 'text-success'}`}>
+                      {tournamentConflictReport.totalConflicts}
+                    </span>
+                  </div>
+                </div>
+                <div className="col-12 col-md-4">
+                  <div className="p-3 bg-light rounded-3 border text-center">
+                    <span className="small text-muted d-block mb-1">Trạng thái tổng quan</span>
+                    <Badge color={tournamentConflictReport.hasConflict ? 'danger' : 'success'} className="px-3 py-1.5 mt-1">
+                      {tournamentConflictReport.hasConflict ? 'Cần xử lý trùng lịch' : 'Hoàn toàn hợp lệ'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status details */}
+              {!tournamentConflictReport.hasConflict ? (
+                <Alert color="success" className="d-flex align-items-center gap-3 p-3 rounded-3 mb-0">
+                  <CheckCircle size={28} className="text-success flex-shrink-0" />
+                  <div>
+                    <div className="fw-bold fs-6">Lịch thi đấu hoàn hảo!</div>
+                    <div className="small">
+                      Không phát hiện bất kỳ sự trùng lặp nào về thời gian thi đấu của các Vận động viên (kể cả VĐV thi đấu nhiều môn), Sân thi đấu hoặc Trọng tài trong giải.
+                    </div>
+                  </div>
+                </Alert>
+              ) : (
+                <div className="d-flex flex-column gap-3">
+                  <div className="small fw-bold text-danger text-uppercase tracking-wider">
+                    Danh sách các xung đột cần khắc phục ({tournamentConflictReport.chiTietXungDot?.length || tournamentConflictReport.conflicts.length}):
+                  </div>
+
+                  {tournamentConflictReport.chiTietXungDot && tournamentConflictReport.chiTietXungDot.length > 0 ? (
+                    tournamentConflictReport.chiTietXungDot.map((item, idx) => (
+                      <div key={idx} className="p-3 rounded-3 border border-danger-subtle bg-white shadow-xs">
+                        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom">
+                          <div className="d-flex align-items-center gap-2">
+                            {item.loaiXungDot === 'VanDongVien' ? (
+                              <Badge color="danger" className="px-2 py-1 d-inline-flex align-items-center gap-1">
+                                <UserX size={12} /> Trùng Lịch VĐV
+                              </Badge>
+                            ) : item.loaiXungDot === 'SanDau' ? (
+                              <Badge color="warning" className="text-dark px-2 py-1 d-inline-flex align-items-center gap-1">
+                                <MapPin size={12} /> Trùng Sân Đấu
+                              </Badge>
+                            ) : (
+                              <Badge color="info" className="px-2 py-1 d-inline-flex align-items-center gap-1">
+                                <Shield size={12} /> Trùng Trọng Tài
+                              </Badge>
+                            )}
+
+                            {item.tenVanDongVien && (
+                              <span className="fw-bold text-dark fs-6">
+                                {item.tenVanDongVien}
+                                {item.tenDoiHienTai ? <span className="text-muted fw-normal ms-1">({item.tenDoiHienTai})</span> : null}
+                              </span>
+                            )}
+                          </div>
+
+                          {item.thoiGianBatDau && item.thoiGianKetThuc && (
+                            <span className="badge bg-light text-secondary border">
+                              <Calendar size={11} className="me-1" />
+                              {new Date(item.thoiGianBatDau).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - {new Date(item.thoiGianKetThuc).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="small text-dark mb-0">
+                          {item.thongBao}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <ul className="list-group list-group-flush">
+                      {tournamentConflictReport.conflicts.map((c, idx) => (
+                        <li key={idx} className="list-group-item list-group-item-danger small py-2">
+                          {c}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-center text-muted py-4">Chưa có báo cáo rà soát. Nhấn nút bên dưới để tiến hành kiểm tra.</p>
+          )}
+        </ModalBody>
+        <ModalFooter className="border-top">
+          <Button color="secondary" size="sm" className="rounded-pill px-3" onClick={() => setTournamentConflictModalOpen(false)}>
+            Đóng
+          </Button>
+          <Button
+            color="warning"
+            size="sm"
+            className="rounded-pill px-4 fw-semibold text-dark d-flex align-items-center gap-1.5"
+            onClick={handleCheckTournamentConflicts}
+            disabled={checkingTournamentConflict}
+          >
+            {checkingTournamentConflict ? <Spinner size="sm" /> : <RefreshCw size={14} />}
+            <span>Quét Lại Xung Đột</span>
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* MODAL 5: TEAM DETAIL & SCHEDULE MODAL */}
+      <Modal isOpen={teamDetailModalOpen} toggle={() => setTeamDetailModalOpen(!teamDetailModalOpen)} size="lg" centered>
+        <ModalHeader toggle={() => setTeamDetailModalOpen(!teamDetailModalOpen)} className="border-bottom">
+          <div className="d-flex align-items-center gap-2">
+            <Users size={18} className="text-primary" />
+            <span className="fw-bold fs-6">
+              Chi Tiết Đội Đăng Ký: {selectedTeamDetail?.tenDoi || selectedTeamDetail?.tenDangKy || ''}
+            </span>
+          </div>
+        </ModalHeader>
+        <ModalBody className="p-4">
+          {selectedTeamDetail && (
+            <div className="d-flex flex-column gap-4">
+              {/* Team Overview Card */}
+              <div className="p-3 rounded-3 bg-light border">
+                <Row className="g-3">
+                  <Col xs={12} sm={6} md={3}>
+                    <small className="text-muted d-block mb-1">Mã đăng ký</small>
+                    <span className="fw-bold font-monospace text-dark">
+                      {selectedTeamDetail.soDangKy || `DK-${selectedTeamDetail.id}`}
+                    </span>
+                  </Col>
+                  <Col xs={12} sm={6} md={3}>
+                    <small className="text-muted d-block mb-1">Đơn vị chủ quản</small>
+                    <span className="fw-semibold text-dark">{selectedTeamDetail.tenDonVi || '--'}</span>
+                  </Col>
+                  <Col xs={12} sm={6} md={3}>
+                    <small className="text-muted d-block mb-1">Môn thi đấu</small>
+                    <Badge color="primary" pill className="px-2 py-0.5">
+                      {selectedTeamDetail.tenMonTheThao || 'Môn thi'}
+                    </Badge>
+                  </Col>
+                  <Col xs={12} sm={6} md={3}>
+                    <small className="text-muted d-block mb-1">Trạng thái hồ sơ</small>
+                    <Badge
+                      color={selectedTeamDetail.trangThai === 'DaDuyet' ? 'success' : 'warning'}
+                      pill
+                      className="px-2 py-0.5"
+                    >
+                      {selectedTeamDetail.trangThai === 'DaDuyet' ? 'Đã duyệt' : 'Chờ duyệt'}
+                    </Badge>
+                  </Col>
+                  <Col xs={12} sm={6} md={6}>
+                    <small className="text-muted d-block mb-1">Nội dung thi đấu</small>
+                    <span className="fw-bold text-dark">{selectedTeamDetail.tenNoiDung || '--'}</span>
+                  </Col>
+                  <Col xs={12} sm={6} md={6}>
+                    <small className="text-muted d-block mb-1">Ngày đăng ký</small>
+                    <span className="text-dark">
+                      {selectedTeamDetail.ngayDangKy
+                        ? new Date(selectedTeamDetail.ngayDangKy).toLocaleDateString('vi-VN')
+                        : '--'}
+                    </span>
+                  </Col>
+                </Row>
+              </div>
+
+              {/* Athletes List */}
+              <div>
+                <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5">
+                  <UserCheck size={16} className="text-success" />
+                  <span>Danh Sách Vận Động Viên ({selectedTeamDetail.vanDongVienNames?.length || 0} VĐV)</span>
+                </h6>
+                {selectedTeamDetail.vanDongVienNames && selectedTeamDetail.vanDongVienNames.length > 0 ? (
+                  <div className="d-flex flex-wrap gap-2">
+                    {selectedTeamDetail.vanDongVienNames.map((name, i) => (
+                      <div
+                        key={i}
+                        className="p-2.5 rounded-3 bg-white border d-flex align-items-center gap-2 shadow-sm"
+                        style={{ minWidth: '180px' }}
+                      >
+                        <div
+                          className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                          style={{ width: '32px', height: '32px', backgroundColor: '#e0e7ff', color: '#4338ca', fontWeight: 'bold', fontSize: '12px' }}
+                        >
+                          {name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="fw-bold text-dark small">{name}</div>
+                          <div className="text-muted" style={{ fontSize: '11px' }}>Vận động viên thi đấu</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted small fst-italic">Chưa có thông tin VĐV cụ thể cho đội này.</p>
+                )}
+              </div>
+
+              {/* Scheduled Matches for this team */}
+              <div>
+                <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5">
+                  <Calendar size={16} className="text-primary" />
+                  <span>Lịch Thi Đấu Đã Bố Trí ({getTeamMatchesList(selectedTeamDetail.id, 'tournament').length} trận)</span>
+                </h6>
+                {getTeamMatchesList(selectedTeamDetail.id, 'tournament').length === 0 ? (
+                  <div className="p-4 rounded-3 bg-light text-center border">
+                    <Calendar size={32} className="text-muted opacity-50 mb-1" />
+                    <p className="mb-0 text-muted small">Đội này chưa có trận đấu nào được xếp lịch.</p>
+                  </div>
+                ) : (
+                  <div className="table-responsive">
+                    <Table size="sm" className="align-middle border rounded-3 mb-0" style={{ fontSize: '12px' }}>
+                      <thead className="table-light">
+                        <tr>
+                          <th>Trận / Vòng</th>
+                          <th>Cặp Đấu</th>
+                          <th>Sân Đấu</th>
+                          <th>Thời Gian</th>
+                          <th className="text-center">Trạng Thái</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getTeamMatchesList(selectedTeamDetail.id, 'tournament').map((m) => {
+                          const isTeam1 = m.doi1DangKyId === selectedTeamDetail.id;
+                          const opponentName = isTeam1 ? (m.tenDoi2 || 'Chờ xác định') : (m.tenDoi1 || 'Chờ xác định');
+                          const matchDateStr = m.thoiGianBatDau ? new Date(m.thoiGianBatDau).toLocaleDateString('vi-VN') : '--';
+                          const matchTimeStr = m.thoiGianBatDau ? new Date(m.thoiGianBatDau).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--';
+
+                          return (
+                            <tr key={m.id}>
+                              <td>
+                                <span className="fw-bold text-dark">{m.tenTran || `Trận #${m.soTran}`}</span>
+                                <span className="text-muted d-block" style={{ fontSize: '11px' }}>{m.tenVongDau || '--'}</span>
+                              </td>
+                              <td>
+                                <span className="fw-semibold text-primary">{selectedTeamDetail.tenDoi || selectedTeamDetail.tenDangKy}</span>
+                                <span className="text-muted px-1.5">vs</span>
+                                <span className="fw-semibold text-dark">{opponentName}</span>
+                              </td>
+                              <td>{m.tenSanDau || 'Chưa xếp sân'}</td>
+                              <td>
+                                <span>{matchDateStr}</span>
+                                <span className="text-muted d-block" style={{ fontSize: '11px' }}>{matchTimeStr}</span>
+                              </td>
+                              <td className="text-center">
+                                <Badge color={m.trangThai === 'DaKetThuc' ? 'secondary' : m.trangThai === 'DangDienRa' ? 'danger' : 'primary'} pill>
+                                  {m.trangThai === 'DaKetThuc' ? 'Kết thúc' : m.trangThai === 'DangDienRa' ? 'Đang đấu' : 'Chưa đấu'}
+                                </Badge>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </ModalBody>
+        <ModalFooter className="border-top">
+          <Button color="secondary" size="sm" className="rounded-pill px-3" onClick={() => setTeamDetailModalOpen(false)}>
+            Đóng
+          </Button>
+          {selectedTeamDetail && (
+            <Button
+              color="primary"
+              size="sm"
+              className="rounded-pill px-3 fw-semibold d-flex align-items-center gap-1.5"
+              onClick={() => {
+                setTeamDetailModalOpen(false);
+                handleQuickScheduleMatchForTeam(selectedTeamDetail);
+              }}
+            >
+              <Plus size={14} />
+              <span>Thêm Trận Đấu Nhanh</span>
+            </Button>
+          )}
         </ModalFooter>
       </Modal>
     </div>

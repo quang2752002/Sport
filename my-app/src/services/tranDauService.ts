@@ -7,6 +7,7 @@ import {
   AutoScheduleResult,
   ConflictCheckRequest,
   ConflictCheckResult,
+  TournamentConflictReport,
 } from '../types/tranDau';
 
 export const tranDauService = {
@@ -76,9 +77,15 @@ export const tranDauService = {
     return res.data;
   },
 
-  /** Kiểm tra xung đột lịch sân, trọng tài, đội */
+  /** Kiểm tra xung đột lịch sân, trọng tài, đội & VĐV */
   checkConflict: async (data: ConflictCheckRequest) => {
     const res = await api.post<ConflictCheckResult>('/api/trandau/check-conflict', data);
+    return res.data;
+  },
+
+  /** Rà soát kiểm tra toàn bộ xung đột lịch trong giải đấu */
+  checkAllConflicts: async (giaiDauId: number) => {
+    const res = await api.get<TournamentConflictReport>(`/api/trandau/check-all-conflicts/${giaiDauId}`);
     return res.data;
   },
 };

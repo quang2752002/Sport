@@ -118,5 +118,13 @@ namespace API.Controllers
             var result = await _tranDauService.CheckConflictAsync(request);
             return Ok(result);
         }
+
+        [HttpGet("check-all-conflicts/{giaiDauId:int}")]
+        [Authorize]
+        public async Task<IActionResult> CheckAllConflicts(int giaiDauId)
+        {
+            var result = await _tranDauService.CheckAllConflictsAsync(giaiDauId);
+            return Ok(result);
+        }
     }
 }

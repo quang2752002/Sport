@@ -31,6 +31,8 @@ namespace Dms.Domain.Entities
 
         public DateTime NgayKetThuc { get; set; }
 
+        public DateTime? HanDangKy { get; set; }
+
         [MaxLength(500)]
         public string? DiaDiem { get; set; }
 

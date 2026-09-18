@@ -41,7 +41,16 @@ namespace API.Controllers
             [FromQuery] int? noiDungThiDauId = null,
             [FromQuery] int? donViId = null)
         {
-            var result = await _dangKyThiDauService.GetAllAsync(giaiDauId, noiDungThiDauId, donViId);
+            int? effectiveDonViId = donViId;
+            if (!effectiveDonViId.HasValue && !User.IsInRole(AppRoles.Admin) && !User.IsInRole(AppRoles.Manager))
+            {
+                var claim = User.FindFirst("donViId")?.Value;
+                if (int.TryParse(claim, out var cid))
+                {
+                    effectiveDonViId = cid;
+                }
+            }
+            var result = await _dangKyThiDauService.GetAllAsync(giaiDauId, noiDungThiDauId, effectiveDonViId);
             return Ok(result);
         }
 
@@ -61,7 +70,8 @@ namespace API.Controllers
             try
             {
                 var username = User.FindFirst(ClaimTypes.Name)?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var result = await _dangKyThiDauService.CreateAsync(dto, username);
+                bool isPrivileged = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Manager);
+                var result = await _dangKyThiDauService.CreateAsync(dto, username, isPrivileged);
                 return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
             }
             catch (System.InvalidOperationException ex)
@@ -74,19 +84,49 @@ namespace API.Controllers
         [Authorize(Policy = Permissions.DangKyThiDau.Edit)]
         public async Task<IActionResult> Update(int id, [FromBody] CreateUpdateDangKyThiDauDto dto)
         {
-            var username = User.FindFirst(ClaimTypes.Name)?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var result = await _dangKyThiDauService.UpdateAsync(id, dto, username);
-            if (result == null) return NotFound(new { message = "Không tìm thấy hồ sơ để cập nhật." });
-            return Ok(result);
+            try
+            {
+                var username = User.FindFirst(ClaimTypes.Name)?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                bool isPrivileged = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Manager);
+                var result = await _dangKyThiDauService.UpdateAsync(id, dto, username, isPrivileged);
+                if (result == null) return NotFound(new { message = "Không tìm thấy hồ sơ để cập nhật." });
+                return Ok(result);
+            }
+            catch (System.InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpDelete("{id}")]
         [Authorize(Policy = Permissions.DangKyThiDau.Delete)]
         public async Task<IActionResult> Delete(int id)
         {
-            var success = await _dangKyThiDauService.DeleteAsync(id);
-            if (!success) return NotFound(new { message = "Không tìm thấy hồ sơ để xóa." });
-            return Ok(new { message = "Xóa hồ sơ đăng ký thành công." });
+            try
+            {
+                bool isPrivileged = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Manager);
+                if (!isPrivileged)
+                {
+                    var existing = await _dangKyThiDauService.GetByIdAsync(id);
+                    if (existing == null) return NotFound(new { message = "Không tìm thấy hồ sơ để xóa." });
+                    var claim = User.FindFirst("donViId")?.Value;
+                    if (int.TryParse(claim, out var cid))
+                    {
+                        if (existing.DonViId.HasValue && existing.DonViId != cid)
+                        {
+                            return Forbid();
+                        }
+                    }
+                }
+
+                var success = await _dangKyThiDauService.DeleteAsync(id, isPrivileged);
+                if (!success) return NotFound(new { message = "Không tìm thấy hồ sơ để xóa." });
+                return Ok(new { message = "Xóa hồ sơ đăng ký thành công." });
+            }
+            catch (System.InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

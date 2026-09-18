@@ -37,6 +37,7 @@ namespace Dms.Application.DTOs
         public string? MoTa { get; set; }
         public DateTime NgayBatDau { get; set; }
         public DateTime NgayKetThuc { get; set; }
+        public DateTime? HanDangKy { get; set; }
         public string? DiaDiem { get; set; }
 
         // Giá trị Enum
@@ -84,6 +85,7 @@ namespace Dms.Application.DTOs
         public string? MoTa { get; set; }
         public DateTime NgayBatDau { get; set; }
         public DateTime NgayKetThuc { get; set; }
+        public DateTime? HanDangKy { get; set; }
         public string? DiaDiem { get; set; }
         public PhamViGiaiDau PhamVi { get; set; } = PhamViGiaiDau.TatCa;
         public TrangThaiGiaiDau TrangThai { get; set; } = TrangThaiGiaiDau.Nhap;

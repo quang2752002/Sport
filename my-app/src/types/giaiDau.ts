@@ -58,6 +58,7 @@ export interface GiaiDau {
   moTa?: string;
   ngayBatDau: string;
   ngayKetThuc: string;
+  hanDangKy?: string;
   diaDiem?: string;
   phamVi: PhamViGiaiDau;
   trangThai: TrangThaiGiaiDau;
@@ -90,6 +91,7 @@ export interface CreateUpdateGiaiDau {
   moTa?: string;
   ngayBatDau: string;
   ngayKetThuc: string;
+  hanDangKy?: string;
   diaDiem?: string;
   phamVi: PhamViGiaiDau;
   trangThai: TrangThaiGiaiDau;

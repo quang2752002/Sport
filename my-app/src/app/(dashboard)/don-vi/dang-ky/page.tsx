@@ -125,8 +125,14 @@ export default function ChonGiaiDauPage() {
       });
   }, [tournaments, search, filterStatus]);
 
+  const isExpired = (t: GiaiDau) => {
+    const deadline = t.hanDangKy || t.ngayBatDau;
+    if (!deadline) return false;
+    return new Date() > new Date(deadline);
+  };
+
   const canRegister = (t: GiaiDau) =>
-    t.trangThai === TrangThaiGiaiDau.SapDienRa || t.trangThai === TrangThaiGiaiDau.DangDienRa;
+    (t.trangThai === TrangThaiGiaiDau.SapDienRa || t.trangThai === TrangThaiGiaiDau.DangDienRa) && !isExpired(t);
 
   return (
     <div className="d-flex flex-column gap-4">
@@ -229,16 +235,19 @@ export default function ChonGiaiDauPage() {
               const registrable = canRegister(t);
               const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+              const expired = isExpired(t);
+              const canEnter = registrable || expired;
+
               return (
                 <div className="col-12 col-md-6 col-xl-4" key={t.id}>
                   <div
                     className="card border-0 shadow-sm h-100 rounded-4 overflow-hidden"
                     style={{
                       transition: 'transform 0.22s ease, box-shadow 0.22s ease',
-                      cursor: registrable ? 'pointer' : 'default',
+                      cursor: canEnter ? 'pointer' : 'default',
                     }}
                     onMouseEnter={(e) => {
-                      if (registrable) {
+                      if (canEnter) {
                         (e.currentTarget as HTMLElement).style.transform = 'translateY(-4px)';
                         (e.currentTarget as HTMLElement).style.boxShadow =
                           '0 12px 32px rgba(0,0,0,0.12)';
@@ -249,7 +258,7 @@ export default function ChonGiaiDauPage() {
                       (e.currentTarget as HTMLElement).style.boxShadow = '';
                     }}
                     onClick={() => {
-                      if (registrable) router.push(`/don-vi/dang-ky/${t.id}`);
+                      if (canEnter) router.push(`/don-vi/dang-ky/${t.id}`);
                     }}
                   >
                     {/* Banner image hoặc gradient placeholder */}
@@ -332,6 +341,15 @@ export default function ChonGiaiDauPage() {
                         </span>
                       </div>
 
+                      {/* Hạn chót đăng ký */}
+                      <div className={`d-flex align-items-center gap-1 small ${expired ? 'text-danger fw-semibold' : 'text-secondary'}`}>
+                        <Clock size={13} />
+                        <span>
+                          Hạn ĐK: {formatDate(t.hanDangKy || t.ngayBatDau)}
+                          {expired && ' (Đã hết hạn)'}
+                        </span>
+                      </div>
+
                       {/* Địa điểm */}
                       {t.diaDiem && (
                         <div className="d-flex align-items-center gap-1 text-secondary small">
@@ -350,10 +368,21 @@ export default function ChonGiaiDauPage() {
                     </div>
 
                     {/* Card footer – CTA */}
-                    <div
-                      className="px-3 pb-3"
-                    >
-                      {registrable ? (
+                    <div className="px-3 pb-3">
+                      {expired ? (
+                        <button
+                          className="btn btn-outline-secondary btn-sm w-100 rounded-3 d-flex align-items-center justify-content-center gap-2 fw-medium"
+                          style={{ fontSize: '13px' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/don-vi/dang-ky/${t.id}`);
+                          }}
+                        >
+                          <FileCheck2 size={15} />
+                          Đã hết hạn (Xem hồ sơ)
+                          <ChevronRight size={14} />
+                        </button>
+                      ) : registrable ? (
                         <button
                           className="btn btn-success btn-sm w-100 rounded-3 d-flex align-items-center justify-content-center gap-2 fw-semibold"
                           style={{ fontSize: '13px' }}
@@ -375,8 +404,8 @@ export default function ChonGiaiDauPage() {
                           {t.trangThai === TrangThaiGiaiDau.KetThuc
                             ? 'Giải đấu đã kết thúc'
                             : t.trangThai === TrangThaiGiaiDau.Huy
-                            ? 'Giải đấu đã hủy'
-                            : 'Chưa mở đăng ký'}
+                              ? 'Giải đấu đã hủy'
+                              : 'Chưa mở đăng ký'}
                         </button>
                       )}
                     </div>

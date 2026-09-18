@@ -46,6 +46,7 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
     moTa: '',
     ngayBatDau: '',
     ngayKetThuc: '',
+    hanDangKy: '',
     diaDiem: '',
     phamVi: PhamViGiaiDau.TatCa,
     trangThai: TrangThaiGiaiDau.Nhap,
@@ -157,6 +158,7 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
             hinhAnh: giaiDauData.hinhAnh || '',
             ngayBatDau: formatDate(giaiDauData.ngayBatDau),
             ngayKetThuc: formatDate(giaiDauData.ngayKetThuc),
+            hanDangKy: formatDate(giaiDauData.hanDangKy),
             diaDiem: giaiDauData.diaDiem || '',
             phamVi: giaiDauData.phamVi,
             trangThai: giaiDauData.trangThai,
@@ -447,7 +449,7 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                     </FormGroup>
                   </Col>
 
-                  <Col md={6}>
+                  <Col md={4}>
                     <FormGroup>
                       <Label className="fw-semibold small">
                         Ngày bắt đầu <span className="text-danger">*</span>
@@ -462,7 +464,7 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                       />
                     </FormGroup>
                   </Col>
-                  <Col md={6}>
+                  <Col md={4}>
                     <FormGroup>
                       <Label className="fw-semibold small">
                         Ngày kết thúc <span className="text-danger">*</span>
@@ -475,6 +477,23 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                         onChange={(e) => setFormData({ ...formData, ngayKetThuc: e.target.value })}
                         className="rounded-3"
                       />
+                    </FormGroup>
+                  </Col>
+                  <Col md={4}>
+                    <FormGroup>
+                      <Label className="fw-semibold small">
+                        Hạn chót đăng ký
+                      </Label>
+                      <Input
+                        id="input_hanDangKy"
+                        type="date"
+                        value={formData.hanDangKy || ''}
+                        onChange={(e) => setFormData({ ...formData, hanDangKy: e.target.value })}
+                        className="rounded-3"
+                      />
+                      <small className="text-muted d-block mt-1" style={{ fontSize: '11px' }}>
+                        Mặc định bằng ngày bắt đầu nếu để trống. Quá hạn các đoàn không thể nộp/sửa/xóa hồ sơ.
+                      </small>
                     </FormGroup>
                   </Col>
 
