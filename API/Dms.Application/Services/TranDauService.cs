@@ -826,6 +826,16 @@ namespace Dms.Application.Services
             {
                 // === Thể thức Loại trực tiếp (Single Elimination Bracket) - Bắt cặp theo cây thi đấu chuẩn ===
                 var teamIds = dangKyList.Select(d => d.Id).ToList();
+
+                // --- XÁO TRỘN NGẪU NHIÊN (Fisher-Yates Shuffle) ---
+                // Mỗi lần chạy xếp lịch, thứ tự ghép cặp sẽ được random hoàn toàn.
+                var rng = new Random();
+                for (int i = teamIds.Count - 1; i > 0; i--)
+                {
+                    int j = rng.Next(i + 1);
+                    (teamIds[i], teamIds[j]) = (teamIds[j], teamIds[i]);
+                }
+
                 int n = teamIds.Count;
 
                 // --- QUY TẮC SỐ ĐỘI LẺ (PLAY-OFF / VÒNG SƠ LOẠI) ---
