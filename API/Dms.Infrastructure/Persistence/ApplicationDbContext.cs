@@ -49,6 +49,7 @@ namespace Dms.Infrastructure.Persistence
         public DbSet<LichSuChuyenDoi> LichSuChuyenDois => Set<LichSuChuyenDoi>();
         public DbSet<DieuLeGiaiDau> DieuLeGiaiDaus => Set<DieuLeGiaiDau>();
         public DbSet<DieuLeMonTheThao> DieuLeMonTheThaos => Set<DieuLeMonTheThao>();
+        public DbSet<CauHinhLichThiDau> CauHinhLichThiDaus => Set<CauHinhLichThiDau>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

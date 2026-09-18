@@ -758,7 +758,10 @@ namespace Dms.Application.Services
                     await _unitOfWork.CompleteAsync();
                 }
             }
-
+            /*
+             Xếp cặp lấy đội thắng -> vòng trong (chưa cần xác định bán kết hay tứ kết) - Khi nào còn 4 đội - Gọi là bán kết (2 cặp) -> trung kết (tranh huy chương vàng/ tranh huy chương đồng)
+             
+             */
             // Xây dựng danh sách các cặp đấu (Fixture item)
             // Mỗi fixture: { VongDauTen, BangDauId, Doi1Id, Doi2Id, TenTran }
             var fixtures = new List<MatchFixture>();
@@ -824,6 +827,30 @@ namespace Dms.Application.Services
                 // === Thể thức Loại trực tiếp (Single Elimination Bracket) - Bắt cặp theo cây thi đấu chuẩn ===
                 var teamIds = dangKyList.Select(d => d.Id).ToList();
                 int n = teamIds.Count;
+
+                // --- QUY TẮC SỐ ĐỘI LẺ (PLAY-OFF / VÒNG SƠ LOẠI) ---
+                if (n % 2 != 0 && n >= 3)
+                {
+                    int playOffTeam1 = teamIds[n - 2];
+                    int playOffTeam2 = teamIds[n - 1];
+
+                    fixtures.Add(new MatchFixture
+                    {
+                        VongTen = "Vòng sơ loại (Play-off)",
+                        VongThuTu = 0, // Vòng 0 thi đấu trước Vòng 1
+                        BangDauId = null,
+                        Doi1DangKyId = playOffTeam1,
+                        Doi2DangKyId = playOffTeam2,
+                        TenTran = "Trận 1 - Vòng sơ loại (Play-off)"
+                    });
+
+                    // Sau trận Play-off, dùng placeholder 0 (TBD) để đại diện cho đội thắng chưa xác định.
+                    // KHÔNG dùng playOffTeam1 thật vì sẽ khiến đội đó bị xếp sẵn vào Vòng 1 trước khi có kết quả.
+                    var round1TeamIds = teamIds.Take(n - 2).ToList();
+                    round1TeamIds.Add(0); // 0 = "Chờ xác định" (đội thắng Play-off)
+                    teamIds = round1TeamIds;
+                    n = teamIds.Count; // n lúc này = N-1 (số chẵn)
+                }
 
                 // Bracket size là lũy thừa 2 nhỏ nhất >= n (ví dụ: 6 đội -> bracket 8; 4 đội -> bracket 4)
                 int bracketSize = 1;
@@ -998,16 +1025,65 @@ namespace Dms.Application.Services
                 vongDauMap[v.VongTen] = existingVong;
             }
 
-            // 8. Thuật toán phân bổ Sân đấu, Thời gian và Trọng tài thông minh (CSP + Heuristics)
-            DateTime currentDate = request.NgayBatDau.Date;
-            TimeSpan startTime = TimeSpan.ParseExact(string.IsNullOrWhiteSpace(request.GioBatDauMoiNgay) ? "08:00" : request.GioBatDauMoiNgay, "hh\\:mm", CultureInfo.InvariantCulture);
-            TimeSpan endTime = TimeSpan.ParseExact(string.IsNullOrWhiteSpace(request.GioKetThucMoiNgay) ? "17:30" : request.GioKetThucMoiNgay, "hh\\:mm", CultureInfo.InvariantCulture);
-            int matchMinutes = request.ThoiLuongTranPhut > 0 ? request.ThoiLuongTranPhut : 60;
-            int breakMinutes = request.NghiGiuaTranPhut >= 0 ? request.NghiGiuaTranPhut : 15;
-            TimeSpan slotDuration = TimeSpan.FromMinutes(matchMinutes + breakMinutes);
-            int minRestMinutes = request.ThoiGianNghiToiThieuVdvPhut > 0 ? request.ThoiGianNghiToiThieuVdvPhut : 60;
+            // 8. Thuật toán CSP Engine 2 Tầng: Macro-Scheduler & Micro Slot Scanner
+            int monTheThaoId = noiDung.GiaiDauMonTheThao?.MonTheThaoId ?? 0;
+            CauHinhLichThiDau? cauHinh = null;
+            if (monTheThaoId > 0)
+            {
+                var chItems = await _unitOfWork.CauHinhLichThiDaus.FindAsync(c => c.MonTheThaoId == monTheThaoId && c.IsDeleted != true);
+                cauHinh = chItems.FirstOrDefault();
+            }
 
-            // Nạp danh sách VĐV của các fixture (bỏ qua id 0 của các placeholder)
+            // Merge tham số override từ Modal request với cấu hình mặc định DB của Môn thể thao
+            int effSoTranToiDaMoiDoiMoiNgay = request.SoTranToiDaMoiDoiMoiNgay > 0 ? request.SoTranToiDaMoiDoiMoiNgay : (cauHinh?.SoTranToiDaMoiDoiMoiNgay ?? 1);
+            bool effMoiVongMotNgay = request.MoiVongMotNgay;
+            bool effUuTienChungKetNgayCuoi = request.UuTienChungKetNgayCuoi;
+            bool effChiaCaThiDau = request.ChiaCaThiDau;
+            int effThoiGianDemDiChuyenPhut = request.ThoiGianDemDiChuyenPhut > 0 ? request.ThoiGianDemDiChuyenPhut : (cauHinh?.ThoiGianDemDiChuyenPhut ?? 30);
+            int effMaxTTPerDay = request.SoTranToiDaMoiTrongTaiMoiNgay > 0 ? request.SoTranToiDaMoiTrongTaiMoiNgay : (cauHinh?.SoTranToiDaMoiTrongTaiMoiNgay ?? 4);
+            int effThoiGianDemDonSanPhut = request.ThoiGianDemDonSanPhut >= 0 ? request.ThoiGianDemDonSanPhut : (cauHinh?.ThoiGianDemDonSanPhut ?? 15);
+
+            TimeSpan caSangStart = TimeSpan.ParseExact(string.IsNullOrWhiteSpace(request.GioBatDauMoiNgay) ? (cauHinh?.CaSangBatDau ?? "08:00") : request.GioBatDauMoiNgay, "hh\\:mm", CultureInfo.InvariantCulture);
+            TimeSpan caSangEnd = TimeSpan.ParseExact(cauHinh?.CaSangKetThuc ?? "11:30", "hh\\:mm", CultureInfo.InvariantCulture);
+            TimeSpan caChieuStart = TimeSpan.ParseExact(cauHinh?.CaChieuBatDau ?? "14:00", "hh\\:mm", CultureInfo.InvariantCulture);
+            TimeSpan caChieuEnd = TimeSpan.ParseExact(string.IsNullOrWhiteSpace(request.GioKetThucMoiNgay) ? (cauHinh?.CaChieuKetThuc ?? "17:30") : request.GioKetThucMoiNgay, "hh\\:mm", CultureInfo.InvariantCulture);
+            TimeSpan? caToStart = !string.IsNullOrEmpty(cauHinh?.CaToBatDau) ? TimeSpan.ParseExact(cauHinh.CaToBatDau, "hh\\:mm", CultureInfo.InvariantCulture) : null;
+            TimeSpan? caToEnd = !string.IsNullOrEmpty(cauHinh?.CaToKetThuc) ? TimeSpan.ParseExact(cauHinh.CaToKetThuc, "hh\\:mm", CultureInfo.InvariantCulture) : null;
+
+            int matchMinutes = request.ThoiLuongTranPhut > 0 ? request.ThoiLuongTranPhut : (cauHinh?.ThoiLuongTranMacDinhPhut > 0 ? cauHinh.ThoiLuongTranMacDinhPhut : 60);
+            int breakMinutes = request.NghiGiuaTranPhut >= 0 ? request.NghiGiuaTranPhut : 15;
+            TimeSpan slotDuration = TimeSpan.FromMinutes(matchMinutes + effThoiGianDemDonSanPhut);
+            int minRestMinutes = request.ThoiGianNghiToiThieuVdvPhut > 0 ? request.ThoiGianNghiToiThieuVdvPhut : (cauHinh?.NghiToiThieuGiua2TranPhut ?? 60);
+
+            // --- MACRO-SCHEDULER: Phân bổ Vòng đấu vào Ngày thi đấu cụ thể ---
+            var giaiDau = noiDung.GiaiDauMonTheThao?.GiaiDau;
+            DateTime tournamentStart = request.NgayBatDau.Date;
+            DateTime tournamentEnd = giaiDau != null ? giaiDau.NgayKetThuc.Date : tournamentStart;
+            if (tournamentEnd < tournamentStart) tournamentEnd = tournamentStart;
+
+            int totalDaysAvailable = (int)(tournamentEnd - tournamentStart).TotalDays + 1;
+            var distinctRoundOrders = fixtures.Select(f => f.VongThuTu).Distinct().OrderBy(x => x).ToList();
+
+            var roundTargetDate = new Dictionary<int, DateTime>();
+            if (effMoiVongMotNgay && totalDaysAvailable > 1 && distinctRoundOrders.Count > 1)
+            {
+                for (int idx = 0; idx < distinctRoundOrders.Count; idx++)
+                {
+                    int rOrder = distinctRoundOrders[idx];
+                    if (effUuTienChungKetNgayCuoi && idx == distinctRoundOrders.Count - 1)
+                    {
+                        roundTargetDate[rOrder] = tournamentEnd;
+                    }
+                    else
+                    {
+                        double fraction = (double)idx / Math.Max(1, distinctRoundOrders.Count - 1);
+                        int dayOffset = (int)Math.Floor(fraction * (totalDaysAvailable - 1));
+                        roundTargetDate[rOrder] = tournamentStart.AddDays(dayOffset);
+                    }
+                }
+            }
+
+            // Nạp danh sách VĐV của các fixture
             var allFixturesDkIds = fixtures.SelectMany(f => new[] { f.Doi1DangKyId, f.Doi2DangKyId }).Where(id => id > 0).Distinct().ToList();
             var fixtureVdvMap = await GetVdvsForDangKyListAsync(allFixturesDkIds);
 
@@ -1016,9 +1092,11 @@ namespace Dms.Application.Services
             var vdvBusy = new Dictionary<string, List<(DateTime start, DateTime end)>>();
             var refereeBusy = new Dictionary<int, List<(DateTime start, DateTime end)>>();
 
-            // Thống kê tải để cân bằng (Load Balancing)
+            // Thống kê tải
             var courtMatchCount = new Dictionary<int, int>();
             var refereeMatchCount = new Dictionary<int, int>();
+            var refereeMatchCountPerDay = new Dictionary<int, Dictionary<DateTime, int>>();
+            var doiMatchCountPerDay = new Dictionary<int, Dictionary<DateTime, int>>();
 
             foreach (var s in sanDauList)
             {
@@ -1029,6 +1107,7 @@ namespace Dms.Application.Services
             {
                 refereeBusy[tt.Id] = new List<(DateTime start, DateTime end)>();
                 refereeMatchCount[tt.Id] = 0;
+                refereeMatchCountPerDay[tt.Id] = new Dictionary<DateTime, int>();
             }
 
             // Nạp các trận đấu đang có trong giải đấu để tránh trùng với lịch môn khác
@@ -1037,7 +1116,7 @@ namespace Dms.Application.Services
                 1, 4000,
                 predicate: t => t.IsDeleted != true &&
                                 t.ThoiGianBatDau.HasValue && t.ThoiGianKetThuc.HasValue &&
-                                t.ThoiGianBatDau.Value.Date >= currentDate.Date &&
+                                t.ThoiGianBatDau.Value.Date >= tournamentStart.Date &&
                                 (!currentGiaiDauId.HasValue || t.NoiDungThiDau.GiaiDauMonTheThao.GiaiDauId == currentGiaiDauId.Value),
                 orderBy: null,
                 t => t.ThanhPhanTranDaus,
@@ -1071,7 +1150,6 @@ namespace Dms.Application.Services
                     var emDks = em.ThanhPhanTranDaus.Where(tp => tp.IsDeleted != true).Select(tp => tp.DangKyThiDauId);
                     foreach (var dkId in emDks)
                     {
-                        // Khóa bận theo Đội
                         string teamKey = $"team_{dkId}";
                         if (!vdvBusy.ContainsKey(teamKey)) vdvBusy[teamKey] = new List<(DateTime, DateTime)>();
                         vdvBusy[teamKey].Add((emStart, emEnd));
@@ -1098,28 +1176,25 @@ namespace Dms.Application.Services
             int matchCounter = currentMaxSoTran + 1;
             var createdTranList = new List<TranDau>();
 
-            // Theo dõi thời gian kết thúc lớn nhất của từng vòng đấu (ràng buộc vòng sau không được diễn ra trước vòng trước)
             var roundMaxEndTime = new Dictionary<int, DateTime>();
-            // Theo dõi thời điểm kết thúc trận gần nhất của VĐV để bảo đảm thời gian nghỉ
             var vdvLastEndTime = new Dictionary<string, DateTime>();
 
             foreach (var f in fixtures)
             {
-                // Danh sách VĐV của cặp đấu này (định danh bằng IdentityKey: trùng CCCD hoặc cùng Id)
                 var fVdvs = (fixtureVdvMap.GetValueOrDefault(f.Doi1DangKyId) ?? new List<VdvParticipantInfo>())
                     .Union(fixtureVdvMap.GetValueOrDefault(f.Doi2DangKyId) ?? new List<VdvParticipantInfo>())
                     .ToList();
                 var fVdvKeys = fVdvs.Select(v => v.IdentityKey).Distinct().ToList();
-                // Bổ sung khóa định danh Đội để chống xếp trùng giờ và đảm bảo khoảng nghỉ thể lực cho cả Đội
                 if (f.Doi1DangKyId > 0) fVdvKeys.Add($"team_{f.Doi1DangKyId}");
                 if (f.Doi2DangKyId > 0) fVdvKeys.Add($"team_{f.Doi2DangKyId}");
 
-                // Xác định thời điểm sớm nhất có thể xếp trận này:
-                // 1) Ngày bắt đầu giải + startTime
-                DateTime earliestAllowed = request.NgayBatDau.Date.Add(startTime);
+                // --- Xác định earliestAllowed dựa trên Macro Target Date ---
+                DateTime earliestAllowed = roundTargetDate.TryGetValue(f.VongThuTu, out var targetDate) 
+                    ? targetDate.Date.Add(caSangStart)
+                    : tournamentStart.Add(caSangStart);
 
-                // 2) Tiền đề vòng đấu (Round Precedence): Vòng f.VongThuTu không được thi đấu trước khi vòng trước kết thúc (+ thời gian nghỉ)
-                if (f.VongThuTu > 1)
+                // Ràng buộc thứ tự vòng đấu (Round Precedence)
+                if (f.VongThuTu > 0)
                 {
                     var prevMaxEnd = roundMaxEndTime
                         .Where(kv => kv.Key < f.VongThuTu)
@@ -1137,7 +1212,7 @@ namespace Dms.Application.Services
                     }
                 }
 
-                // 3) Thời gian nghỉ của VĐV từ trận trước đó
+                // Thời gian nghỉ của VĐV
                 if (request.TranhTrungLichVdv && minRestMinutes > 0 && fVdvKeys.Any())
                 {
                     var athleteRestEnd = fVdvKeys
@@ -1151,34 +1226,85 @@ namespace Dms.Application.Services
                     }
                 }
 
-                // Bắt đầu tìm kiếm khung giờ (searchSlot) từ earliestAllowed
                 DateTime searchSlot = earliestAllowed;
                 bool scheduled = false;
-                int maxDaysLookahead = 30;
-                DateTime maxDate = request.NgayBatDau.Date.AddDays(maxDaysLookahead);
                 int attempts = 0;
+                DateTime maxLookaheadDate = tournamentEnd.AddDays(14);
 
-                while (!scheduled && searchSlot.Date <= maxDate && attempts < 2000)
+                while (!scheduled && searchSlot.Date <= maxLookaheadDate && attempts < 2000)
                 {
                     attempts++;
 
-                    // Nếu giờ hiện tại nhỏ hơn startTime trong ngày -> đưa về startTime
-                    if (searchSlot.TimeOfDay < startTime)
+                    // --- CHIA CA THI ĐẤU (SÁNG / CHIỀU / TỐI) ---
+                    var tod = searchSlot.TimeOfDay;
+                    if (effChiaCaThiDau)
                     {
-                        searchSlot = searchSlot.Date.Add(startTime);
-                    }
+                        if (tod < caSangStart)
+                        {
+                            searchSlot = searchSlot.Date.Add(caSangStart);
+                            tod = caSangStart;
+                        }
 
-                    // Nếu thời gian trận vượt quá giờ kết thúc trong ngày (endTime) -> sang ngày hôm sau lúc startTime
-                    if (searchSlot.TimeOfDay.Add(TimeSpan.FromMinutes(matchMinutes)) > endTime)
+                        // Nếu lỡ lọt vào khoảng nghỉ trưa (ví dụ 11:30 - 14:00) -> nhảy lên đầu Ca Chiều
+                        if (tod >= caSangEnd && tod < caChieuStart)
+                        {
+                            searchSlot = searchSlot.Date.Add(caChieuStart);
+                            tod = caChieuStart;
+                        }
+
+                        // Nếu trận kết thúc vượt quá Ca Chiều
+                        if (tod.Add(TimeSpan.FromMinutes(matchMinutes)) > caChieuEnd && tod >= caChieuStart)
+                        {
+                            if (caToStart.HasValue && caToEnd.HasValue && tod < caToStart.Value)
+                            {
+                                searchSlot = searchSlot.Date.Add(caToStart.Value);
+                                tod = caToStart.Value;
+                            }
+                            else
+                            {
+                                // Sang ca sáng ngày hôm sau
+                                searchSlot = searchSlot.Date.AddDays(1).Add(caSangStart);
+                                continue;
+                            }
+                        }
+                    }
+                    else
                     {
-                        searchSlot = searchSlot.Date.AddDays(1).Add(startTime);
-                        continue;
+                        if (tod < caSangStart) searchSlot = searchSlot.Date.Add(caSangStart);
+                        if (tod.Add(TimeSpan.FromMinutes(matchMinutes)) > caChieuEnd)
+                        {
+                            searchSlot = searchSlot.Date.AddDays(1).Add(caSangStart);
+                            continue;
+                        }
                     }
 
                     var matchStart = searchSlot;
                     var matchEnd = searchSlot.AddMinutes(matchMinutes);
 
-                    // 1. Kiểm tra VĐV có bận không (Hard constraint & Rest constraint)
+                    // --- RÀNG BUỘC SỐ TRẬN TỐI ĐA MỖI ĐỘI MỖI NGÀY ---
+                    bool teamExceededMaxPerDay = false;
+                    foreach (var teamId in new[] { f.Doi1DangKyId, f.Doi2DangKyId })
+                    {
+                        if (teamId > 0)
+                        {
+                            if (!doiMatchCountPerDay.ContainsKey(teamId)) doiMatchCountPerDay[teamId] = new Dictionary<DateTime, int>();
+                            int cnt = doiMatchCountPerDay[teamId].GetValueOrDefault(matchStart.Date, 0);
+                            if (cnt >= effSoTranToiDaMoiDoiMoiNgay)
+                            {
+                                teamExceededMaxPerDay = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (teamExceededMaxPerDay)
+                    {
+                        // Đội đã đá đủ số trận trong ngày -> nhảy sang ngày hôm sau
+                        searchSlot = searchSlot.Date.AddDays(1).Add(caSangStart);
+                        continue;
+                    }
+
+                    // --- RÀNG BUỘC VĐV BẬN & BUFFER DI CHUYỂN MÔN KHÁC ---
                     bool hasVdvConflict = false;
                     if (request.TranhTrungLichVdv && fVdvKeys.Any())
                     {
@@ -1186,14 +1312,16 @@ namespace Dms.Application.Services
                         {
                             if (vdvBusy.TryGetValue(vKey, out var vBusyList))
                             {
-                                // Trùng giờ trực tiếp
-                                if (vBusyList.Any(iv => iv.start < matchEnd && iv.end > matchStart))
+                                double bufferMin = vKey.StartsWith("team_") ? 0 : effThoiGianDemDiChuyenPhut;
+                                var forbiddenStart = matchStart.AddMinutes(-bufferMin);
+                                var forbiddenEnd = matchEnd.AddMinutes(bufferMin);
+
+                                if (vBusyList.Any(iv => iv.start < forbiddenEnd && iv.end > forbiddenStart))
                                 {
                                     hasVdvConflict = true;
                                     break;
                                 }
 
-                                // Vi phạm thời gian nghỉ tối thiểu giữa 2 trận trong cùng ngày
                                 if (minRestMinutes > 0)
                                 {
                                     if (vBusyList.Any(iv => iv.start.Date == matchStart.Date &&
@@ -1214,14 +1342,14 @@ namespace Dms.Application.Services
                         continue;
                     }
 
-                    // 2. Kiểm tra Sân khả dụng (áp dụng cân bằng tải nếu được cấu hình)
+                    // --- RÀNG BUỘC SÂN ĐẤU ---
                     var availableCourts = new List<SanDau>();
                     if (sanDauList.Any())
                     {
                         foreach (var s in sanDauList)
                         {
                             if (!courtBusy.TryGetValue(s.Id, out var cBusyList) ||
-                                !cBusyList.Any(iv => iv.start < matchEnd && iv.end > matchStart))
+                                !cBusyList.Any(iv => iv.start < matchEnd.AddMinutes(effThoiGianDemDonSanPhut) && iv.end > matchStart))
                             {
                                 availableCourts.Add(s);
                             }
@@ -1229,7 +1357,6 @@ namespace Dms.Application.Services
 
                         if (!availableCourts.Any())
                         {
-                            // Toàn bộ các sân đều bận ở slot này -> thử slot tiếp theo
                             searchSlot = searchSlot.Add(slotDuration);
                             continue;
                         }
@@ -1238,48 +1365,39 @@ namespace Dms.Application.Services
                     SanDau? candSan = null;
                     if (availableCourts.Any())
                     {
-                        if (request.CanBangTaiSanDau)
-                        {
-                            candSan = availableCourts.OrderBy(s => courtMatchCount.GetValueOrDefault(s.Id, 0)).First();
-                        }
-                        else
-                        {
-                            candSan = availableCourts.First();
-                        }
+                        candSan = request.CanBangTaiSanDau
+                            ? availableCourts.OrderBy(s => courtMatchCount.GetValueOrDefault(s.Id, 0)).First()
+                            : availableCourts.First();
                     }
-                    int candSanId = candSan?.Id ?? 0;
 
-                    // 3. Phân công Trọng tài khả dụng (áp dụng xoay tua cân bằng tải)
+                    // --- RÀNG BUỘC TRỌNG TÀI ---
                     var assignedReferees = new List<TrongTai>();
                     if (trongTaiList.Any())
                     {
                         int soTt = Math.Min(request.SoTrongTaiMoiTran, trongTaiList.Count);
                         var availableReferees = trongTaiList.Where(tt =>
-                            !refereeBusy.TryGetValue(tt.Id, out var rBusyList) ||
-                            !rBusyList.Any(iv => iv.start < matchEnd && iv.end > matchStart)
-                        ).ToList();
+                        {
+                            if (refereeBusy.TryGetValue(tt.Id, out var rBusyList) &&
+                                rBusyList.Any(iv => iv.start < matchEnd && iv.end > matchStart))
+                                return false;
+
+                            int dayCount = refereeMatchCountPerDay.GetValueOrDefault(tt.Id, new Dictionary<DateTime, int>())
+                                                                 .GetValueOrDefault(matchStart.Date, 0);
+                            return dayCount < effMaxTTPerDay;
+                        }).ToList();
 
                         if (availableReferees.Count < soTt)
                         {
-                            // Chưa đủ trọng tài rảnh ở slot này -> thử slot tiếp theo
                             searchSlot = searchSlot.Add(slotDuration);
                             continue;
                         }
 
-                        if (request.CanBangTaiTrongTai)
-                        {
-                            assignedReferees = availableReferees
-                                .OrderBy(tt => refereeMatchCount.GetValueOrDefault(tt.Id, 0))
-                                .Take(soTt)
-                                .ToList();
-                        }
-                        else
-                        {
-                            assignedReferees = availableReferees.Take(soTt).ToList();
-                        }
+                        assignedReferees = request.CanBangTaiTrongTai
+                            ? availableReferees.OrderBy(tt => refereeMatchCount.GetValueOrDefault(tt.Id, 0)).Take(soTt).ToList()
+                            : availableReferees.Take(soTt).ToList();
                     }
 
-                    // === TÌM ĐƯỢC SLOT PHÙ HỢP! TẠO TRẬN ĐẤU ===
+                    // === TẠO TRẬN ĐẤU ===
                     var tran = new TranDau
                     {
                         NoiDungThiDauId = request.NoiDungThiDauId,
@@ -1375,11 +1493,27 @@ namespace Dms.Application.Services
                     await _unitOfWork.CompleteAsync();
 
                     // Cập nhật timeline bận và đếm tải
+                    int candSanId = candSan?.Id ?? 0;
                     if (candSanId > 0)
                     {
                         if (!courtBusy.ContainsKey(candSanId)) courtBusy[candSanId] = new List<(DateTime, DateTime)>();
                         courtBusy[candSanId].Add((matchStart, matchEnd));
                         courtMatchCount[candSanId] = courtMatchCount.GetValueOrDefault(candSanId, 0) + 1;
+                    }
+
+                    foreach (var teamId in new[] { f.Doi1DangKyId, f.Doi2DangKyId })
+                    {
+                        if (teamId > 0)
+                        {
+                            if (!doiMatchCountPerDay.ContainsKey(teamId)) doiMatchCountPerDay[teamId] = new Dictionary<DateTime, int>();
+                            doiMatchCountPerDay[teamId][matchStart.Date] = doiMatchCountPerDay[teamId].GetValueOrDefault(matchStart.Date, 0) + 1;
+                        }
+                    }
+
+                    foreach (var tt in assignedReferees)
+                    {
+                        if (!refereeMatchCountPerDay.ContainsKey(tt.Id)) refereeMatchCountPerDay[tt.Id] = new Dictionary<DateTime, int>();
+                        refereeMatchCountPerDay[tt.Id][matchStart.Date] = refereeMatchCountPerDay[tt.Id].GetValueOrDefault(matchStart.Date, 0) + 1;
                     }
 
                     foreach (var vKey in fVdvKeys)

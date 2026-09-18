@@ -17,3 +17,4 @@ export * from './hinhThucThiDau';
 export * from './tranDau';
 export * from './bangDau';
 export * from './vongDau';
+export * from './cauHinhLichThiDau';

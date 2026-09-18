@@ -356,6 +356,24 @@ namespace Dms.Application.DTOs
         public bool CanBangTaiTrongTai { get; set; } = true;
         /// <summary>Bật chế độ chia đều mật độ thi đấu trên các sân</summary>
         public bool CanBangTaiSanDau { get; set; } = true;
+
+        // --- CSP Smart Engine Parameters ---
+        /// <summary>Số trận tối đa mỗi đội/VĐV thi đấu trong 1 ngày</summary>
+        public int SoTranToiDaMoiDoiMoiNgay { get; set; } = 1;
+        /// <summary>Mỗi vòng đấu thi đấu vào 1 ngày riêng biệt</summary>
+        public bool MoiVongMotNgay { get; set; } = true;
+        /// <summary>Khoảng cách giữa các vòng đấu (giờ)</summary>
+        public int KhoangCachGiuaCacVongGio { get; set; } = 12;
+        /// <summary>Ưu tiên xếp trận Chung kết vào ngày bế mạc giải</summary>
+        public bool UuTienChungKetNgayCuoi { get; set; } = true;
+        /// <summary>Chia ca sáng / chiều (tránh giờ trưa)</summary>
+        public bool ChiaCaThiDau { get; set; } = true;
+        /// <summary>Buffer di chuyển VĐV thi đấu nhiều môn (phút)</summary>
+        public int ThoiGianDemDiChuyenPhut { get; set; } = 30;
+        /// <summary>Số trận tối đa mỗi trọng tài bắt trong 1 ngày</summary>
+        public int SoTranToiDaMoiTrongTaiMoiNgay { get; set; } = 4;
+        /// <summary>Thời gian đệm dọn sân / vệ sinh giữa các trận (phút)</summary>
+        public int ThoiGianDemDonSanPhut { get; set; } = 15;
     }
 
     public class AutoScheduleResultDto

@@ -39,6 +39,7 @@ namespace Dms.Domain.Interfaces
         IGenericRepository<LichSuChuyenDoi> LichSuChuyenDois { get; }
         IGenericRepository<DieuLeGiaiDau> DieuLeGiaiDaus { get; }
         IGenericRepository<DieuLeMonTheThao> DieuLeMonTheThaos { get; }
+        IGenericRepository<CauHinhLichThiDau> CauHinhLichThiDaus { get; }
 
         Task<int> CompleteAsync();
     }

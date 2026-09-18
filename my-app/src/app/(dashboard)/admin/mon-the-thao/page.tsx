@@ -19,8 +19,8 @@ import {
   Label,
   Badge,
 } from 'reactstrap';
-import { monTheThaoService, danhMucMonTheThaoService } from '@/services';
-import { MonTheThao, CreateUpdateMonTheThao, DanhMucMonTheThao } from '@/types';
+import { monTheThaoService, danhMucMonTheThaoService, cauHinhLichThiDauService } from '@/services';
+import { MonTheThao, CreateUpdateMonTheThao, DanhMucMonTheThao, CreateUpdateCauHinhLichThiDauRequest } from '@/types';
 import { PaginationComponent } from '@/components/common/PaginationComponent';
 import { useAuth } from '@/context/AuthContext';
 import { Permissions } from '@/constants/permissions';
@@ -59,6 +59,129 @@ export default function AdminMonTheThaoPage() {
   // Modal Xóa
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingItem, setDeletingItem] = useState<MonTheThao | null>(null);
+
+  // Modal Cấu hình Xếp lịch
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configSubmitting, setConfigSubmitting] = useState(false);
+  const [selectedMonForConfig, setSelectedMonForConfig] = useState<MonTheThao | null>(null);
+  const [configData, setConfigData] = useState<CreateUpdateCauHinhLichThiDauRequest>({
+    monTheThaoId: 0,
+    moiVongMotNgay: true,
+    khoangCachGiuaCacVongGio: 12,
+    uuTienChungKetNgayCuoi: true,
+    soTranToiDaMoiDoiMoiNgay: 1,
+    nghiToiThieuGiua2TranPhut: 120,
+    chiaCaThiDau: true,
+    caSangBatDau: '08:00',
+    caSangKetThuc: '11:30',
+    caChieuBatDau: '14:00',
+    caChieuKetThuc: '17:30',
+    caToBatDau: '',
+    caToKetThuc: '',
+    thoiGianDemDonSanPhut: 15,
+    soTranToiDaMoiTrongTaiMoiNgay: 4,
+    nghiToiThieuTrongTaiPhut: 15,
+    thoiGianDemDiChuyenPhut: 30,
+    thoiLuongTranMacDinhPhut: 60,
+    soHiepDauMacDinh: 0,
+    thoiGianMoiHiepPhut: 0,
+    ghiChu: '',
+  });
+
+  const handleOpenConfigModal = async (item: MonTheThao) => {
+    setSelectedMonForConfig(item);
+    setConfigLoading(true);
+    setConfigModalOpen(true);
+    try {
+      const existing = await cauHinhLichThiDauService.getByMonTheThao(item.id);
+      if (existing) {
+        setConfigData({
+          monTheThaoId: item.id,
+          moiVongMotNgay: existing.moiVongMotNgay,
+          khoangCachGiuaCacVongGio: existing.khoangCachGiuaCacVongGio,
+          uuTienChungKetNgayCuoi: existing.uuTienChungKetNgayCuoi,
+          soTranToiDaMoiDoiMoiNgay: existing.soTranToiDaMoiDoiMoiNgay,
+          nghiToiThieuGiua2TranPhut: existing.nghiToiThieuGiua2TranPhut,
+          chiaCaThiDau: existing.chiaCaThiDau,
+          caSangBatDau: existing.caSangBatDau || '08:00',
+          caSangKetThuc: existing.caSangKetThuc || '11:30',
+          caChieuBatDau: existing.caChieuBatDau || '14:00',
+          caChieuKetThuc: existing.caChieuKetThuc || '17:30',
+          caToBatDau: existing.caToBatDau || '',
+          caToKetThuc: existing.caToKetThuc || '',
+          thoiGianDemDonSanPhut: existing.thoiGianDemDonSanPhut,
+          soTranToiDaMoiTrongTaiMoiNgay: existing.soTranToiDaMoiTrongTaiMoiNgay,
+          nghiToiThieuTrongTaiPhut: existing.nghiToiThieuTrongTaiPhut,
+          thoiGianDemDiChuyenPhut: existing.thoiGianDemDiChuyenPhut,
+          thoiLuongTranMacDinhPhut: existing.thoiLuongTranMacDinhPhut,
+          soHiepDauMacDinh: existing.soHiepDauMacDinh,
+          thoiGianMoiHiepPhut: existing.thoiGianMoiHiepPhut,
+          ghiChu: existing.ghiChu || '',
+        });
+      } else {
+        setConfigData({
+          monTheThaoId: item.id,
+          moiVongMotNgay: true,
+          khoangCachGiuaCacVongGio: 12,
+          uuTienChungKetNgayCuoi: true,
+          soTranToiDaMoiDoiMoiNgay: 1,
+          nghiToiThieuGiua2TranPhut: 120,
+          chiaCaThiDau: true,
+          caSangBatDau: '08:00',
+          caSangKetThuc: '11:30',
+          caChieuBatDau: '14:00',
+          caChieuKetThuc: '17:30',
+          caToBatDau: '',
+          caToKetThuc: '',
+          thoiGianDemDonSanPhut: 15,
+          soTranToiDaMoiTrongTaiMoiNgay: 4,
+          nghiToiThieuTrongTaiPhut: 15,
+          thoiGianDemDiChuyenPhut: 30,
+          thoiLuongTranMacDinhPhut: 60,
+          soHiepDauMacDinh: 0,
+          thoiGianMoiHiepPhut: 0,
+          ghiChu: '',
+        });
+      }
+    } catch (err) {
+      console.error('Lỗi khi tải cấu hình xếp lịch:', err);
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const handleSaveConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMonForConfig) return;
+    setConfigSubmitting(true);
+    try {
+      await cauHinhLichThiDauService.upsert(configData);
+      alert(`Đã lưu cấu hình xếp lịch cho môn "${selectedMonForConfig.ten}" thành công!`);
+      setConfigModalOpen(false);
+    } catch (err: any) {
+      console.error('Lỗi khi lưu cấu hình xếp lịch:', err);
+      alert(err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi lưu cấu hình.');
+    } finally {
+      setConfigSubmitting(false);
+    }
+  };
+
+  const handleResetConfig = async () => {
+    if (!selectedMonForConfig) return;
+    if (!confirm(`Bạn có chắc chắn muốn đặt lại cấu hình xếp lịch cho môn "${selectedMonForConfig.ten}" về mặc định hệ thống?`)) return;
+    setConfigSubmitting(true);
+    try {
+      await cauHinhLichThiDauService.delete(selectedMonForConfig.id);
+      alert(`Đã đặt lại cấu hình môn "${selectedMonForConfig.ten}" về mặc định.`);
+      setConfigModalOpen(false);
+    } catch (err: any) {
+      console.error('Lỗi khi reset cấu hình:', err);
+      alert(err?.response?.data?.message || 'Không thể đặt lại cấu hình.');
+    } finally {
+      setConfigSubmitting(false);
+    }
+  };
 
   // Load danh mục môn để lọc và chọn trong dropdown
   useEffect(() => {
@@ -372,6 +495,15 @@ export default function AdminMonTheThaoPage() {
                         <td>{renderTrangThai(item.trangThai)}</td>
                         <td className="text-end">
                           <div className="d-flex justify-content-end gap-1">
+                            <Button
+                              size="sm"
+                              color="light"
+                              className="btn-icon text-dark"
+                              title="⚙️ Cấu hình xếp lịch thi đấu"
+                              onClick={() => handleOpenConfigModal(item)}
+                            >
+                              <i className="bi bi-gear-fill"></i>
+                            </Button>
                             {canEdit && (
                               <Button
                                 size="sm"
@@ -544,6 +676,269 @@ export default function AdminMonTheThaoPage() {
               {submitting ? <Spinner size="sm" /> : 'Đồng Ý Xóa'}
             </Button>
           </ModalFooter>
+        </Modal>
+        {/* MODAL CẤU HÌNH XẾP LỊCH THEO MÔN */}
+        <Modal isOpen={configModalOpen} toggle={() => setConfigModalOpen(!configModalOpen)} size="lg" centered backdrop="static">
+          <ModalHeader toggle={() => setConfigModalOpen(!configModalOpen)} className="border-bottom bg-light">
+            <div className="d-flex align-items-center gap-2">
+              <i className="bi bi-gear-wide-connected text-primary fs-5"></i>
+              <span>Cấu Hình Xếp Lịch Thi Đấu Mặc Định: <strong>{selectedMonForConfig?.ten}</strong></span>
+            </div>
+          </ModalHeader>
+          <Form onSubmit={handleSaveConfig}>
+            <ModalBody className="p-4" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
+              {configLoading ? (
+                <div className="text-center py-5">
+                  <Spinner color="primary" />
+                  <p className="mt-2 text-muted small">Đang tải cấu hình xếp lịch...</p>
+                </div>
+              ) : (
+                <Row className="g-3">
+                  {/* Section 1: Dàn Trải Lịch Thi Đấu */}
+                  <Col xs={12}>
+                    <div className="p-3 rounded-3 bg-light border">
+                      <h6 className="fw-bold text-primary mb-3 d-flex align-items-center gap-2">
+                        <i className="bi bi-calendar-range"></i> 1. Quy Tắc Dàn Trải Lịch Thi Đấu
+                      </h6>
+                      <Row className="g-3">
+                        <Col md={6}>
+                          <FormGroup switch className="mb-0">
+                            <Input
+                              type="switch"
+                              id="moiVongMotNgay"
+                              checked={configData.moiVongMotNgay}
+                              onChange={(e) => setConfigData({ ...configData, moiVongMotNgay: e.target.checked })}
+                            />
+                            <Label check for="moiVongMotNgay" className="fw-semibold small ms-2">
+                              Mỗi vòng thi đấu 1 ngày riêng biệt
+                            </Label>
+                          </FormGroup>
+                        </Col>
+                        <Col md={6}>
+                          <FormGroup switch className="mb-0">
+                            <Input
+                              type="switch"
+                              id="uuTienChungKetNgayCuoi"
+                              checked={configData.uuTienChungKetNgayCuoi}
+                              onChange={(e) => setConfigData({ ...configData, uuTienChungKetNgayCuoi: e.target.checked })}
+                            />
+                            <Label check for="uuTienChungKetNgayCuoi" className="fw-semibold small ms-2">
+                              Ưu tiên xếp Chung kết vào ngày bế mạc
+                            </Label>
+                          </FormGroup>
+                        </Col>
+                        <Col md={6}>
+                          <Label className="small fw-semibold">Khoảng cách giữa các vòng (giờ)</Label>
+                          <Input
+                            type="number"
+                            bsSize="sm"
+                            min={1}
+                            max={48}
+                            value={configData.khoangCachGiuaCacVongGio}
+                            onChange={(e) => setConfigData({ ...configData, khoangCachGiuaCacVongGio: Number(e.target.value) })}
+                          />
+                        </Col>
+                      </Row>
+                    </div>
+                  </Col>
+
+                  {/* Section 2: Giảm Tải Thể Lực VĐV */}
+                  <Col xs={12}>
+                    <div className="p-3 rounded-3 bg-light border">
+                      <h6 className="fw-bold text-danger mb-3 d-flex align-items-center gap-2">
+                        <i className="bi bi-heart-pulse"></i> 2. Giảm Tải Thể Lực VĐV & Giới Hạn Trận
+                      </h6>
+                      <Row className="g-3">
+                        <Col md={6}>
+                          <Label className="small fw-semibold">Số trận tối đa / đội (VĐV) / 1 ngày</Label>
+                          <Input
+                            type="number"
+                            bsSize="sm"
+                            min={1}
+                            max={5}
+                            value={configData.soTranToiDaMoiDoiMoiNgay}
+                            onChange={(e) => setConfigData({ ...configData, soTranToiDaMoiDoiMoiNgay: Number(e.target.value) })}
+                          />
+                          <span className="text-muted" style={{ fontSize: '11px' }}>
+                            Khống chế không cho 1 đội/VĐV thi quá số trận này trong cùng 1 ngày.
+                          </span>
+                        </Col>
+                        <Col md={6}>
+                          <Label className="small fw-semibold">Thời gian nghỉ tối thiểu giữa 2 trận (phút)</Label>
+                          <Input
+                            type="number"
+                            bsSize="sm"
+                            min={15}
+                            max={360}
+                            step={15}
+                            value={configData.nghiToiThieuGiua2TranPhut}
+                            onChange={(e) => setConfigData({ ...configData, nghiToiThieuGiua2TranPhut: Number(e.target.value) })}
+                          />
+                        </Col>
+                      </Row>
+                    </div>
+                  </Col>
+
+                  {/* Section 3: Ca Thi Đấu */}
+                  <Col xs={12}>
+                    <div className="p-3 rounded-3 bg-light border">
+                      <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                        <i className="bi bi-clock-history text-warning"></i> 3. Khung Giờ Ca Thi Đấu (Sáng / Chiều)
+                      </h6>
+                      <FormGroup switch className="mb-3">
+                        <Input
+                          type="switch"
+                          id="chiaCaThiDau"
+                          checked={configData.chiaCaThiDau}
+                          onChange={(e) => setConfigData({ ...configData, chiaCaThiDau: e.target.checked })}
+                        />
+                        <Label check for="chiaCaThiDau" className="fw-semibold small ms-2">
+                          Bật chế độ chia ca (tránh giờ nghỉ trưa 11:30–14:00)
+                        </Label>
+                      </FormGroup>
+
+                      {configData.chiaCaThiDau && (
+                        <Row className="g-3">
+                          <Col md={6}>
+                            <Label className="small fw-semibold">Ca Sáng</Label>
+                            <div className="d-flex align-items-center gap-2">
+                              <Input
+                                type="time"
+                                bsSize="sm"
+                                value={configData.caSangBatDau}
+                                onChange={(e) => setConfigData({ ...configData, caSangBatDau: e.target.value })}
+                              />
+                              <span>→</span>
+                              <Input
+                                type="time"
+                                bsSize="sm"
+                                value={configData.caSangKetThuc}
+                                onChange={(e) => setConfigData({ ...configData, caSangKetThuc: e.target.value })}
+                              />
+                            </div>
+                          </Col>
+                          <Col md={6}>
+                            <Label className="small fw-semibold">Ca Chiều</Label>
+                            <div className="d-flex align-items-center gap-2">
+                              <Input
+                                type="time"
+                                bsSize="sm"
+                                value={configData.caChieuBatDau}
+                                onChange={(e) => setConfigData({ ...configData, caChieuBatDau: e.target.value })}
+                              />
+                              <span>→</span>
+                              <Input
+                                type="time"
+                                bsSize="sm"
+                                value={configData.caChieuKetThuc}
+                                onChange={(e) => setConfigData({ ...configData, caChieuKetThuc: e.target.value })}
+                              />
+                            </div>
+                          </Col>
+                        </Row>
+                      )}
+                    </div>
+                  </Col>
+
+                  {/* Section 4: Sân đấu & Trọng tài & VĐV Đa Môn */}
+                  <Col xs={12}>
+                    <div className="p-3 rounded-3 bg-light border">
+                      <h6 className="fw-bold text-success mb-3 d-flex align-items-center gap-2">
+                        <i className="bi bi-shield-check"></i> 4. Sân Đấu, Trọng Tài & VĐV Đa Môn
+                      </h6>
+                      <Row className="g-3">
+                        <Col md={4}>
+                          <Label className="small fw-semibold">Đệm dọn sân giữa các trận (phút)</Label>
+                          <Input
+                            type="number"
+                            bsSize="sm"
+                            min={0}
+                            max={60}
+                            value={configData.thoiGianDemDonSanPhut}
+                            onChange={(e) => setConfigData({ ...configData, thoiGianDemDonSanPhut: Number(e.target.value) })}
+                          />
+                        </Col>
+                        <Col md={4}>
+                          <Label className="small fw-semibold">Max trận / 1 Trọng tài / ngày</Label>
+                          <Input
+                            type="number"
+                            bsSize="sm"
+                            min={1}
+                            max={10}
+                            value={configData.soTranToiDaMoiTrongTaiMoiNgay}
+                            onChange={(e) => setConfigData({ ...configData, soTranToiDaMoiTrongTaiMoiNgay: Number(e.target.value) })}
+                          />
+                        </Col>
+                        <Col md={4}>
+                          <Label className="small fw-semibold">Buffer di chuyển VĐV đa môn (phút)</Label>
+                          <Input
+                            type="number"
+                            bsSize="sm"
+                            min={0}
+                            max={120}
+                            value={configData.thoiGianDemDiChuyenPhut}
+                            onChange={(e) => setConfigData({ ...configData, thoiGianDemDiChuyenPhut: Number(e.target.value) })}
+                          />
+                        </Col>
+                      </Row>
+                    </div>
+                  </Col>
+
+                  {/* Section 5: Giá trị mặc định cho Modal xếp lịch */}
+                  <Col xs={12}>
+                    <div className="p-3 rounded-3 bg-light border">
+                      <h6 className="fw-bold text-secondary mb-3 d-flex align-items-center gap-2">
+                        <i className="bi bi-sliders"></i> 5. Giá Trị Mặc Định Điền Sẵn Khi Mở Modal Xếp Lịch
+                      </h6>
+                      <Row className="g-3">
+                        <Col md={4}>
+                          <Label className="small fw-semibold">Thời lượng trận (phút)</Label>
+                          <Input
+                            type="number"
+                            bsSize="sm"
+                            value={configData.thoiLuongTranMacDinhPhut}
+                            onChange={(e) => setConfigData({ ...configData, thoiLuongTranMacDinhPhut: Number(e.target.value) })}
+                          />
+                        </Col>
+                        <Col md={4}>
+                          <Label className="small fw-semibold">Số hiệp đấu</Label>
+                          <Input
+                            type="number"
+                            bsSize="sm"
+                            value={configData.soHiepDauMacDinh}
+                            onChange={(e) => setConfigData({ ...configData, soHiepDauMacDinh: Number(e.target.value) })}
+                          />
+                        </Col>
+                        <Col md={4}>
+                          <Label className="small fw-semibold">Thời gian 1 hiệp (phút)</Label>
+                          <Input
+                            type="number"
+                            bsSize="sm"
+                            value={configData.thoiGianMoiHiepPhut}
+                            onChange={(e) => setConfigData({ ...configData, thoiGianMoiHiepPhut: Number(e.target.value) })}
+                          />
+                        </Col>
+                      </Row>
+                    </div>
+                  </Col>
+                </Row>
+              )}
+            </ModalBody>
+            <ModalFooter className="border-top d-flex justify-content-between">
+              <Button color="outline-danger" size="sm" type="button" onClick={handleResetConfig} disabled={configSubmitting}>
+                <i className="bi bi-arrow-counterclockwise me-1"></i> Đặt Lại Mặc Định
+              </Button>
+              <div className="d-flex gap-2">
+                <Button color="secondary" size="sm" outline onClick={() => setConfigModalOpen(false)} disabled={configSubmitting}>
+                  Hủy
+                </Button>
+                <Button color="primary" size="sm" type="submit" disabled={configSubmitting} className="fw-semibold px-4">
+                  {configSubmitting ? <Spinner size="sm" /> : <i className="bi bi-save me-1"></i>}
+                  Lưu Cấu Hình
+                </Button>
+              </div>
+            </ModalFooter>
+          </Form>
         </Modal>
       </Col>
     </Row>

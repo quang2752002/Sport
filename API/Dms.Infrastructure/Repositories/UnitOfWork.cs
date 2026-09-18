@@ -42,6 +42,7 @@ namespace Dms.Infrastructure.Repositories
         private IGenericRepository<LichSuChuyenDoi>? _lichSuChuyenDois;
         private IGenericRepository<DieuLeGiaiDau>? _dieuLeGiaiDaus;
         private IGenericRepository<DieuLeMonTheThao>? _dieuLeMonTheThaos;
+        private IGenericRepository<CauHinhLichThiDau>? _cauHinhLichThiDaus;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -146,6 +147,9 @@ namespace Dms.Infrastructure.Repositories
 
         public IGenericRepository<DieuLeMonTheThao> DieuLeMonTheThaos => 
             _dieuLeMonTheThaos ??= new GenericRepository<DieuLeMonTheThao>(_context);
+
+        public IGenericRepository<CauHinhLichThiDau> CauHinhLichThiDaus => 
+            _cauHinhLichThiDaus ??= new GenericRepository<CauHinhLichThiDau>(_context);
 
         public async Task<int> CompleteAsync()
         {

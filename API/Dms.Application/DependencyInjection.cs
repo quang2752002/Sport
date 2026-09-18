@@ -29,6 +29,7 @@ namespace Dms.Application
             services.AddScoped<Dms.Application.Interfaces.ITranDauService, Dms.Application.Services.TranDauService>();
             services.AddScoped<Dms.Application.Interfaces.IBangDauService, Dms.Application.Services.BangDauService>();
             services.AddScoped<Dms.Application.Interfaces.IVongDauService, Dms.Application.Services.VongDauService>();
+            services.AddScoped<Dms.Application.Interfaces.ICauHinhLichThiDauService, Dms.Application.Services.CauHinhLichThiDauService>();
             
             return services;
         }

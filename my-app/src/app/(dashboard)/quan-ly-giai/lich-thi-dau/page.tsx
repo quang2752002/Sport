@@ -65,6 +65,7 @@ import {
   tranDauService,
   bangDauService,
   vongDauService,
+  cauHinhLichThiDauService,
 } from '@/services';
 import {
   GiaiDau,
@@ -335,11 +336,36 @@ export default function LichThiDauPage() {
         ? venuesRes.filter((v) => !v.monTheThaoId || v.monTheThaoId === monId)
         : venuesRes;
 
-      setAutoScheduleConfig((prev) => ({
-        ...prev,
-        selectedVenueIds: compatibleVenues.map((v) => v.id),
-        selectedRefereeIds: refereesRes.map((r) => r.id),
-      }));
+      if (monId) {
+        cauHinhLichThiDauService.getByMonTheThao(monId).then((config) => {
+          if (config) {
+            setAutoScheduleConfig((prev) => ({
+              ...prev,
+              startTime: config.caSangBatDau || prev.startTime,
+              endTime: config.caChieuKetThuc || prev.endTime,
+              matchDuration: config.thoiLuongTranMacDinhPhut || prev.matchDuration,
+              breakDuration: config.thoiGianDemDonSanPhut ?? prev.breakDuration,
+              soHiepDau: config.soHiepDauMacDinh || prev.soHiepDau,
+              thoiGianMoiHiepPhut: config.thoiGianMoiHiepPhut || prev.thoiGianMoiHiepPhut,
+              thoiGianNghiToiThieuVdvPhut: config.nghiToiThieuGiua2TranPhut || prev.thoiGianNghiToiThieuVdvPhut,
+              selectedVenueIds: compatibleVenues.map((v) => v.id),
+              selectedRefereeIds: refereesRes.map((r) => r.id),
+            }));
+          } else {
+            setAutoScheduleConfig((prev) => ({
+              ...prev,
+              selectedVenueIds: compatibleVenues.map((v) => v.id),
+              selectedRefereeIds: refereesRes.map((r) => r.id),
+            }));
+          }
+        });
+      } else {
+        setAutoScheduleConfig((prev) => ({
+          ...prev,
+          selectedVenueIds: compatibleVenues.map((v) => v.id),
+          selectedRefereeIds: refereesRes.map((r) => r.id),
+        }));
+      }
 
       loadTournamentData();
     } catch (err) {
@@ -1558,7 +1584,12 @@ export default function LichThiDauPage() {
                                 <div className="d-flex align-items-center justify-content-between">
                                   <div className="d-flex align-items-center gap-2">
                                     <span className="badge rounded-circle bg-primary text-white p-1" style={{ width: '18px', height: '18px', fontSize: '10px' }}>1</span>
-                                    <span className="fw-semibold text-dark">{m.tenDoi1 || 'Chờ xác định'}</span>
+                                    <span className={`fw-semibold ${!m.doi1DangKyId ? 'text-primary fst-italic' : 'text-dark'}`}>
+                                      {m.tenDoi1 || 'Chờ xác định'}
+                                    </span>
+                                    {!m.doi1DangKyId && m.tenDoi1 && (
+                                      <Badge color="info" pill className="px-1.5 py-0.5 fw-normal" style={{ fontSize: '9px' }}>Nhánh đấu</Badge>
+                                    )}
                                   </div>
                                   {m.donViDoi1 && <small className="text-muted" style={{ fontSize: '11px' }}>({m.donViDoi1})</small>}
                                 </div>
@@ -1570,7 +1601,12 @@ export default function LichThiDauPage() {
                                 <div className="d-flex align-items-center justify-content-between">
                                   <div className="d-flex align-items-center gap-2">
                                     <span className="badge rounded-circle bg-danger text-white p-1" style={{ width: '18px', height: '18px', fontSize: '10px' }}>2</span>
-                                    <span className="fw-semibold text-dark">{m.tenDoi2 || 'Chờ xác định'}</span>
+                                    <span className={`fw-semibold ${!m.doi2DangKyId ? 'text-danger fst-italic' : 'text-dark'}`}>
+                                      {m.tenDoi2 || 'Chờ xác định'}
+                                    </span>
+                                    {!m.doi2DangKyId && m.tenDoi2 && (
+                                      <Badge color="info" pill className="px-1.5 py-0.5 fw-normal" style={{ fontSize: '9px' }}>Nhánh đấu</Badge>
+                                    )}
                                   </div>
                                   {m.donViDoi2 && <small className="text-muted" style={{ fontSize: '11px' }}>({m.donViDoi2})</small>}
                                 </div>
@@ -2396,8 +2432,9 @@ export default function LichThiDauPage() {
               {isKnockout ? (
                 <>
                   Thể thức <strong>{HinhThucThiDauLabels[currentEvent?.hinhThucThiDau || ''] || 'Loại trực tiếp (Knockout)'}</strong>:{' '}
-                  Hệ thống <strong>không chia bảng đấu</strong>, mà bắt cặp đối đầu loại trực tiếp theo hạt giống (1 vs N, 2 vs N-1...)
-                  và tạo đủ cấu trúc nhánh đấu bracket (Vòng loại / Tứ kết → Bán kết → Chung kết). Các vòng sau sẽ là <em>placeholder</em> tự động điền đội khi có kết quả.
+                  Hệ thống <strong>không chia bảng đấu</strong>, mà bắt cặp đối đầu loại trực tiếp:
+                  Xếp cặp lấy đội thắng vào vòng trong (<strong>Vòng loại → Bán kết 2 cặp (khi còn 4 đội) → Chung kết (Tranh HCV và Tranh HCĐ)</strong>).
+                  Các nhánh sau tự động bảo đảm khoảng nghỉ và phân bổ sân bãi, trọng tài tối ưu.
                 </>
               ) : (
                 <>

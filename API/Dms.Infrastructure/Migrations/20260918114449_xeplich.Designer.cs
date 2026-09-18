@@ -4,6 +4,7 @@ using Dms.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dms.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260918114449_xeplich")]
+    partial class xeplich
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -156,111 +158,6 @@ namespace Dms.Infrastructure.Migrations
                     b.HasIndex("NoiDungThiDauId");
 
                     b.ToTable("BangDau");
-                });
-
-            modelBuilder.Entity("Dms.Domain.Entities.CauHinhLichThiDau", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
-
-                    b.Property<string>("CaChieuBatDau")
-                        .IsRequired()
-                        .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
-
-                    b.Property<string>("CaChieuKetThuc")
-                        .IsRequired()
-                        .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
-
-                    b.Property<string>("CaSangBatDau")
-                        .IsRequired()
-                        .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
-
-                    b.Property<string>("CaSangKetThuc")
-                        .IsRequired()
-                        .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
-
-                    b.Property<string>("CaToBatDau")
-                        .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
-
-                    b.Property<string>("CaToKetThuc")
-                        .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
-
-                    b.Property<bool>("ChiaCaThiDau")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("Created")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GhiChu")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool?>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("KhoangCachGiuaCacVongGio")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("LastModified")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("MoiVongMotNgay")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("MonTheThaoId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("NghiToiThieuGiua2TranPhut")
-                        .HasColumnType("int");
-
-                    b.Property<int>("NghiToiThieuTrongTaiPhut")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SoHiepDauMacDinh")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SoTranToiDaMoiDoiMoiNgay")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SoTranToiDaMoiTrongTaiMoiNgay")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ThoiGianDemDiChuyenPhut")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ThoiGianDemDonSanPhut")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ThoiGianMoiHiepPhut")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ThoiLuongTranMacDinhPhut")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("UuTienChungKetNgayCuoi")
-                        .HasColumnType("bit");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MonTheThaoId")
-                        .IsUnique();
-
-                    b.ToTable("CauHinhLichThiDau");
                 });
 
             modelBuilder.Entity("Dms.Domain.Entities.ChiTietDangKyThiDau", b =>
@@ -2243,17 +2140,6 @@ namespace Dms.Infrastructure.Migrations
                     b.Navigation("NoiDungThiDau");
                 });
 
-            modelBuilder.Entity("Dms.Domain.Entities.CauHinhLichThiDau", b =>
-                {
-                    b.HasOne("Dms.Domain.Entities.MonTheThao", "MonTheThao")
-                        .WithOne("CauHinhLichThiDau")
-                        .HasForeignKey("Dms.Domain.Entities.CauHinhLichThiDau", "MonTheThaoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("MonTheThao");
-                });
-
             modelBuilder.Entity("Dms.Domain.Entities.ChiTietDangKyThiDau", b =>
                 {
                     b.HasOne("Dms.Domain.Entities.DangKyThiDau", "DangKyThiDau")
@@ -2811,8 +2697,6 @@ namespace Dms.Infrastructure.Migrations
 
             modelBuilder.Entity("Dms.Domain.Entities.MonTheThao", b =>
                 {
-                    b.Navigation("CauHinhLichThiDau");
-
                     b.Navigation("DieuLeMonTheThaos");
 
                     b.Navigation("GiaiDauMonTheThaos");

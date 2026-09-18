@@ -56,6 +56,10 @@ namespace Dms.Application.Mappings
             CreateMap<CreateUpdateDanhMucMonTheThaoDto, DanhMucMonTheThao>();
 
             // MonTheThao
+            CreateMap<CauHinhLichThiDau, CauHinhLichThiDauDto>()
+                .ForMember(dest => dest.TenMonTheThao, opt => opt.MapFrom(src => src.MonTheThao != null ? src.MonTheThao.Ten : null));
+            CreateMap<CreateUpdateCauHinhLichThiDauDto, CauHinhLichThiDau>();
+
             CreateMap<MonTheThao, MonTheThaoDto>()
                 .ForMember(dest => dest.TenDanhMuc, opt => opt.MapFrom(src => src.DanhMuc != null ? src.DanhMuc.Ten : null));
             CreateMap<CreateUpdateMonTheThaoDto, MonTheThao>();

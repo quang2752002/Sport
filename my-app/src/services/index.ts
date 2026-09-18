@@ -14,3 +14,4 @@ export * from './noiDungThiDauService';
 export * from './tranDauService';
 export * from './bangDauService';
 export * from './vongDauService';
+export * from './cauHinhLichThiDauService';

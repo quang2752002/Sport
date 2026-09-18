@@ -33,5 +33,6 @@ namespace Dms.Domain.Entities
         public virtual ICollection<GiaiDauMonTheThao> GiaiDauMonTheThaos { get; set; } = new List<GiaiDauMonTheThao>();
         public virtual ICollection<DieuLeMonTheThao> DieuLeMonTheThaos { get; set; } = new List<DieuLeMonTheThao>();
         public virtual ICollection<SanDau> SanDaus { get; set; } = new List<SanDau>();
+        public virtual CauHinhLichThiDau? CauHinhLichThiDau { get; set; }
     }
 }
