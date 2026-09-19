@@ -72,10 +72,17 @@ namespace API.Controllers
         [Authorize(Policy = Permissions.GiaiDau.Edit)]
         public async Task<IActionResult> Update(int id, [FromBody] CreateUpdateGiaiDauDto dto)
         {
-            var username = User.FindFirst(ClaimTypes.Name)?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var result = await _giaiDauService.UpdateAsync(id, dto, username);
-            if (result == null) return NotFound(new { message = "Không tìm thấy giải đấu để cập nhật." });
-            return Ok(result);
+            try
+            {
+                var username = User.FindFirst(ClaimTypes.Name)?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var result = await _giaiDauService.UpdateAsync(id, dto, username);
+                if (result == null) return NotFound(new { message = "Không tìm thấy giải đấu để cập nhật." });
+                return Ok(result);
+            }
+            catch (System.InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpPost("upload-banner")]

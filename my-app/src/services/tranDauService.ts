@@ -17,6 +17,7 @@ export const tranDauService = {
     pageSize?: number;
     keyword?: string;
     giaiDauId?: number;
+    giaiDauMonTheThaoId?: number;
     noiDungThiDauId?: number;
     vongDauId?: number;
     bangDauId?: number;
@@ -24,20 +25,29 @@ export const tranDauService = {
     ngay?: string;
     trangThai?: string;
   }) => {
-    const res = await api.get<PagedResult<TranDau>>('/api/trandau/paged', { params });
+    const query = {
+      ...params,
+      giaiDauMonTheThaoId: params?.giaiDauMonTheThaoId ?? params?.noiDungThiDauId,
+    };
+    const res = await api.get<PagedResult<TranDau>>('/api/trandau/paged', { params: query });
     return res.data;
   },
 
   /** Lấy toàn bộ trận đấu theo bộ lọc */
   getAll: async (params?: {
     giaiDauId?: number;
+    giaiDauMonTheThaoId?: number;
     noiDungThiDauId?: number;
     vongDauId?: number;
     bangDauId?: number;
     sanDauId?: number;
     ngay?: string;
   }) => {
-    const res = await api.get<TranDau[]>('/api/trandau', { params });
+    const query = {
+      ...params,
+      giaiDauMonTheThaoId: params?.giaiDauMonTheThaoId ?? params?.noiDungThiDauId,
+    };
+    const res = await api.get<TranDau[]>('/api/trandau', { params: query });
     return res.data;
   },
 
@@ -65,9 +75,9 @@ export const tranDauService = {
     return res.data;
   },
 
-  /** Xóa toàn bộ lịch thi đấu của nội dung */
-  clearByNoiDung: async (noiDungThiDauId: number) => {
-    const res = await api.delete(`/api/trandau/clear-by-noidung/${noiDungThiDauId}`);
+  /** Xóa toàn bộ lịch thi đấu của môn thể thao trong giải */
+  clearByNoiDung: async (giaiDauMonTheThaoId: number) => {
+    const res = await api.delete(`/api/trandau/clear-by-giai-dau-mon/${giaiDauMonTheThaoId}`);
     return res.data;
   },
 

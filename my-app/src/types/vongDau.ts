@@ -1,6 +1,7 @@
 export interface VongDau {
   id: number;
-  noiDungThiDauId: number;
+  giaiDauMonTheThaoId?: number;
+  noiDungThiDauId?: number;
   tenNoiDung?: string;
   ma?: string;
   ten: string;
@@ -12,7 +13,8 @@ export interface VongDau {
 }
 
 export interface CreateUpdateVongDau {
-  noiDungThiDauId: number;
+  giaiDauMonTheThaoId?: number;
+  noiDungThiDauId?: number;
   ma?: string;
   ten: string;
   thuTu: number;

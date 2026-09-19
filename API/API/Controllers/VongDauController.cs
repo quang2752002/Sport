@@ -20,9 +20,9 @@ namespace API.Controllers
 
         [HttpGet]
         [Authorize]
-        public async Task<IActionResult> GetAll([FromQuery] int? noiDungThiDauId = null)
+        public async Task<IActionResult> GetAll([FromQuery] int? giaiDauMonTheThaoId = null)
         {
-            var result = await _vongDauService.GetAllAsync(noiDungThiDauId);
+            var result = await _vongDauService.GetAllAsync(giaiDauMonTheThaoId);
             return Ok(result);
         }
 

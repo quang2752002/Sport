@@ -27,7 +27,7 @@ namespace API.Controllers
             [FromQuery] int pageSize = 20,
             [FromQuery] string? keyword = null,
             [FromQuery] int? giaiDauId = null,
-            [FromQuery] int? noiDungThiDauId = null,
+            [FromQuery] int? giaiDauMonTheThaoId = null,
             [FromQuery] int? vongDauId = null,
             [FromQuery] int? bangDauId = null,
             [FromQuery] int? sanDauId = null,
@@ -35,7 +35,7 @@ namespace API.Controllers
             [FromQuery] string? trangThai = null)
         {
             var result = await _tranDauService.GetPagedAsync(
-                pageIndex, pageSize, keyword, giaiDauId, noiDungThiDauId, vongDauId, bangDauId, sanDauId, ngay, trangThai);
+                pageIndex, pageSize, keyword, giaiDauId, giaiDauMonTheThaoId, vongDauId, bangDauId, sanDauId, ngay, trangThai);
             return Ok(result);
         }
 
@@ -43,13 +43,13 @@ namespace API.Controllers
         [Authorize]
         public async Task<IActionResult> GetAll(
             [FromQuery] int? giaiDauId = null,
-            [FromQuery] int? noiDungThiDauId = null,
+            [FromQuery] int? giaiDauMonTheThaoId = null,
             [FromQuery] int? vongDauId = null,
             [FromQuery] int? bangDauId = null,
             [FromQuery] int? sanDauId = null,
             [FromQuery] DateTime? ngay = null)
         {
-            var result = await _tranDauService.GetAllAsync(giaiDauId, noiDungThiDauId, vongDauId, bangDauId, sanDauId, ngay);
+            var result = await _tranDauService.GetAllAsync(giaiDauId, giaiDauMonTheThaoId, vongDauId, bangDauId, sanDauId, ngay);
             return Ok(result);
         }
 
@@ -90,12 +90,12 @@ namespace API.Controllers
             return Ok(new { message = "Đã xóa trận đấu thành công." });
         }
 
-        [HttpDelete("clear-by-noidung/{noiDungThiDauId:int}")]
+        [HttpDelete("clear-by-giai-dau-mon/{giaiDauMonTheThaoId:int}")]
         [Authorize]
-        public async Task<IActionResult> ClearByNoiDung(int noiDungThiDauId)
+        public async Task<IActionResult> ClearByGiaiDauMon(int giaiDauMonTheThaoId)
         {
-            await _tranDauService.ClearByNoiDungAsync(noiDungThiDauId);
-            return Ok(new { message = "Đã xóa toàn bộ lịch thi đấu của nội dung này." });
+            await _tranDauService.ClearByGiaiDauMonTheThaoAsync(giaiDauMonTheThaoId);
+            return Ok(new { message = "Đã xóa toàn bộ lịch thi đấu của môn này." });
         }
 
         [HttpPost("auto-generate")]

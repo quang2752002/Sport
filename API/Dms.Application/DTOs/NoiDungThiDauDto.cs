@@ -112,8 +112,7 @@ namespace Dms.Application.DTOs
     public class DangKyThiDauDto
     {
         public int Id { get; set; }
-        public int NoiDungThiDauId { get; set; }
-        public string? TenNoiDung { get; set; }
+        public int GiaiDauMonTheThaoId { get; set; }
         public int? GiaiDauId { get; set; }
         public string? TenGiaiDau { get; set; }
         public int? MonTheThaoId { get; set; }
@@ -136,7 +135,7 @@ namespace Dms.Application.DTOs
 
     public class CreateUpdateDangKyThiDauDto
     {
-        public int NoiDungThiDauId { get; set; }
+        public int GiaiDauMonTheThaoId { get; set; }
         public int? DoiId { get; set; }
         /// <summary>Nếu true: backend tự tạo Doi mới từ TenDoi + VanDongVienIds rồi gán DoiId</summary>
         public bool TuDongTaoDoi { get; set; } = false;
@@ -176,8 +175,8 @@ namespace Dms.Application.DTOs
     public class BangDauDto
     {
         public int Id { get; set; }
-        public int NoiDungThiDauId { get; set; }
-        public string? TenNoiDung { get; set; }
+        public int GiaiDauMonTheThaoId { get; set; }
+        public string? TenMonTheThao { get; set; }
         public string Ma { get; set; } = string.Empty;
         public string Ten { get; set; } = string.Empty;
         public int ThuTu { get; set; }
@@ -189,7 +188,7 @@ namespace Dms.Application.DTOs
 
     public class CreateUpdateBangDauDto
     {
-        public int NoiDungThiDauId { get; set; }
+        public int GiaiDauMonTheThaoId { get; set; }
         public string Ma { get; set; } = string.Empty;
         public string Ten { get; set; } = string.Empty;
         public int ThuTu { get; set; } = 1;
@@ -204,7 +203,7 @@ namespace Dms.Application.DTOs
 
     public class AutoDistributeBangDto
     {
-        public int NoiDungThiDauId { get; set; }
+        public int GiaiDauMonTheThaoId { get; set; }
         public int SoBang { get; set; } = 2;
         public string TienToBang { get; set; } = "Bảng ";
     }
@@ -212,8 +211,8 @@ namespace Dms.Application.DTOs
     public class VongDauDto
     {
         public int Id { get; set; }
-        public int NoiDungThiDauId { get; set; }
-        public string? TenNoiDung { get; set; }
+        public int GiaiDauMonTheThaoId { get; set; }
+        public string? TenMonTheThao { get; set; }
         public string Ma { get; set; } = string.Empty;
         public string Ten { get; set; } = string.Empty;
         public int ThuTu { get; set; }
@@ -225,7 +224,7 @@ namespace Dms.Application.DTOs
 
     public class CreateUpdateVongDauDto
     {
-        public int NoiDungThiDauId { get; set; }
+        public int GiaiDauMonTheThaoId { get; set; }
         public string Ma { get; set; } = string.Empty;
         public string Ten { get; set; } = string.Empty;
         public int ThuTu { get; set; } = 1;
@@ -270,8 +269,7 @@ namespace Dms.Application.DTOs
     public class TranDauDto
     {
         public int Id { get; set; }
-        public int NoiDungThiDauId { get; set; }
-        public string? TenNoiDung { get; set; }
+        public int GiaiDauMonTheThaoId { get; set; }
         public int? GiaiDauId { get; set; }
         public string? TenGiaiDau { get; set; }
         public int? MonTheThaoId { get; set; }
@@ -310,7 +308,7 @@ namespace Dms.Application.DTOs
 
     public class CreateUpdateTranDauDto
     {
-        public int NoiDungThiDauId { get; set; }
+        public int GiaiDauMonTheThaoId { get; set; }
         public int VongDauId { get; set; }
         public int? BangDauId { get; set; }
         public int? SanDauId { get; set; }
@@ -333,7 +331,7 @@ namespace Dms.Application.DTOs
     // ==================== AUTO SCHEDULE & CONFLICT CHECK DTOs ====================
     public class AutoScheduleRequestDto
     {
-        public int NoiDungThiDauId { get; set; }
+        public int GiaiDauMonTheThaoId { get; set; }
         public DateTime NgayBatDau { get; set; } = DateTime.Today;
         public string GioBatDauMoiNgay { get; set; } = "08:00";
         public string GioKetThucMoiNgay { get; set; } = "17:30";
@@ -344,6 +342,10 @@ namespace Dms.Application.DTOs
         public int SoTrongTaiMoiTran { get; set; } = 1;
         public bool TaoBangDauNeuChuaCo { get; set; } = true;
         public int SoDoiMoiBang { get; set; } = 4;
+        /// <summary>Số đội mỗi bảng vào vòng trong Knockout (1: Chỉ Nhất bảng; 2: Nhất và Nhì bảng. Mặc định: 2)</summary>
+        public int SoDoiMoiBangVaoVongTrong { get; set; } = 2;
+        /// <summary>Số đội thứ 3 có thành tích tốt nhất lấy thêm vào vòng Knockout (Mặc định: 0)</summary>
+        public int SoDoiThu3TotNhat { get; set; } = 0;
         public bool XoaLichCu { get; set; } = false;
         public bool TranhTrungLichVdv { get; set; } = true;
         /// <summary>Số hiệp đấu mỗi trận (0 = không tự động tạo hiệp)</summary>
@@ -439,8 +441,8 @@ namespace Dms.Application.DTOs
         public int Id { get; set; }
         public int GiaiDauId { get; set; }
         public string? TenGiaiDau { get; set; }
-        public int NoiDungThiDauId { get; set; }
-        public string? TenNoiDung { get; set; }
+        public int GiaiDauMonTheThaoId { get; set; }
+        public string? TenMonTheThao { get; set; }
         public int DangKyThiDauId { get; set; }
         public string? TenDangKy { get; set; }
         public int LoaiHuyChuongId { get; set; }
@@ -455,7 +457,7 @@ namespace Dms.Application.DTOs
     public class CreateUpdateHuyChuongDto
     {
         public int GiaiDauId { get; set; }
-        public int NoiDungThiDauId { get; set; }
+        public int GiaiDauMonTheThaoId { get; set; }
         public int DangKyThiDauId { get; set; }
         public int LoaiHuyChuongId { get; set; }
         public int XepHang { get; set; } = 1;

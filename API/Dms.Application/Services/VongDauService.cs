@@ -18,23 +18,23 @@ namespace Dms.Application.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<IEnumerable<VongDauDto>> GetAllAsync(int? noiDungThiDauId = null)
+        public async Task<IEnumerable<VongDauDto>> GetAllAsync(int? giaiDauMonTheThaoId = null)
         {
             var paged = await _unitOfWork.VongDaus.GetPagedAsync(
                 pageIndex: 1,
                 pageSize: 500,
                 predicate: v => v.IsDeleted != true &&
-                                (!noiDungThiDauId.HasValue || v.NoiDungThiDauId == noiDungThiDauId.Value),
+                                (!giaiDauMonTheThaoId.HasValue || v.GiaiDauMonTheThaoId == giaiDauMonTheThaoId.Value),
                 orderBy: q => q.OrderBy(v => v.ThuTu).ThenBy(v => v.Id),
-                v => v.NoiDungThiDau,
+                v => v.GiaiDauMonTheThao,
                 v => v.TranDaus
             );
 
             return paged.Items.Select(v => new VongDauDto
             {
                 Id = v.Id,
-                NoiDungThiDauId = v.NoiDungThiDauId,
-                TenNoiDung = v.NoiDungThiDau?.Ten,
+                GiaiDauMonTheThaoId = v.GiaiDauMonTheThaoId,
+                TenMonTheThao = v.GiaiDauMonTheThao?.MonTheThao?.Ten,
                 Ma = $"VONG_{v.Id}",
                 Ten = v.Ten,
                 ThuTu = v.ThuTu,
@@ -52,7 +52,8 @@ namespace Dms.Application.Services
                 pageSize: 1,
                 predicate: v => v.Id == id && v.IsDeleted != true,
                 orderBy: null,
-                v => v.NoiDungThiDau,
+                v => v.GiaiDauMonTheThao,
+                v => v.GiaiDauMonTheThao.MonTheThao,
                 v => v.TranDaus
             );
 
@@ -62,8 +63,8 @@ namespace Dms.Application.Services
             return new VongDauDto
             {
                 Id = v.Id,
-                NoiDungThiDauId = v.NoiDungThiDauId,
-                TenNoiDung = v.NoiDungThiDau?.Ten,
+                GiaiDauMonTheThaoId = v.GiaiDauMonTheThaoId,
+                TenMonTheThao = v.GiaiDauMonTheThao?.MonTheThao?.Ten,
                 Ma = $"VONG_{v.Id}",
                 Ten = v.Ten,
                 ThuTu = v.ThuTu,
@@ -78,7 +79,7 @@ namespace Dms.Application.Services
         {
             var entity = new VongDau
             {
-                NoiDungThiDauId = dto.NoiDungThiDauId,
+                GiaiDauMonTheThaoId = dto.GiaiDauMonTheThaoId,
                 Ten = dto.Ten.Trim(),
                 ThuTu = dto.ThuTu,
                 LoaiVong = string.IsNullOrWhiteSpace(dto.LoaiVongDau) ? "VongBang" : dto.LoaiVongDau,

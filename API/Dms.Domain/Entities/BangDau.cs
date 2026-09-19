@@ -8,9 +8,9 @@ namespace Dms.Domain.Entities
     [Table("BangDau")]
     public class BangDau : BaseEntity
     {
-        public int NoiDungThiDauId { get; set; }
-        [ForeignKey(nameof(NoiDungThiDauId))]
-        public virtual NoiDungThiDau NoiDungThiDau { get; set; } = null!;
+        public int GiaiDauMonTheThaoId { get; set; }
+        [ForeignKey(nameof(GiaiDauMonTheThaoId))]
+        public virtual GiaiDauMonTheThao GiaiDauMonTheThao { get; set; } = null!;
 
         [Required]
         [MaxLength(50)]

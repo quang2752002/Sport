@@ -12,9 +12,9 @@ namespace Dms.Domain.Entities
         [ForeignKey(nameof(GiaiDauId))]
         public virtual GiaiDau GiaiDau { get; set; } = null!;
 
-        public int NoiDungThiDauId { get; set; }
-        [ForeignKey(nameof(NoiDungThiDauId))]
-        public virtual NoiDungThiDau NoiDungThiDau { get; set; } = null!;
+        public int GiaiDauMonTheThaoId { get; set; }
+        [ForeignKey(nameof(GiaiDauMonTheThaoId))]
+        public virtual GiaiDauMonTheThao GiaiDauMonTheThao { get; set; } = null!;
 
         public int DangKyThiDauId { get; set; }
         [ForeignKey(nameof(DangKyThiDauId))]

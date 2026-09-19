@@ -85,7 +85,8 @@ namespace Dms.Application.Services
                                     MoTa = x.MoTa ?? m.MoTa,
                                     LaMonDongDoi = m.LaMonDongDoi,
                                     TenDanhMuc = tenDM,
-                                    HinhThucThiDau = m.HinhThucThiDau.ToString()
+                                    HinhThucThiDau = m.HinhThucThiDau.ToString(),
+                                    GioiTinh = m.GioiTinh
                                 };
                             })
                             .ToList();
@@ -139,7 +140,8 @@ namespace Dms.Application.Services
                                     MoTa = x.MoTa ?? m.MoTa,
                                     LaMonDongDoi = m.LaMonDongDoi,
                                     TenDanhMuc = tenDM,
-                                    HinhThucThiDau = m.HinhThucThiDau.ToString()
+                                    HinhThucThiDau = m.HinhThucThiDau.ToString(),
+                                    GioiTinh = m.GioiTinh
                                 };
                             })
                             .ToList();
@@ -199,7 +201,8 @@ namespace Dms.Application.Services
                             MoTa = x.MoTa ?? m.MoTa,
                             LaMonDongDoi = m.LaMonDongDoi,
                             TenDanhMuc = tenDM,
-                            HinhThucThiDau = m.HinhThucThiDau.ToString()
+                            HinhThucThiDau = m.HinhThucThiDau.ToString(),
+                            GioiTinh = m.GioiTinh
                         };
                     })
                     .ToList();
@@ -362,36 +365,66 @@ namespace Dms.Application.Services
                 }
             }
 
-            // 2. Cập nhật lại danh sách môn thể thao tổ chức (Diff sync để không xóa các môn đã có NộiDungThiDau)
+            // 2. Cập nhật lại danh sách môn thể thao tổ chức (Diff sync có kiểm tra ràng buộc thi đấu)
             var existingMons = (await _unitOfWork.GiaiDauMonTheThaos.FindAsync(gm => gm.GiaiDauId == id)).ToList();
             var targetMonIds = (dto.MonTheThaoIds ?? new List<int>()).Distinct().ToList();
 
-            // Xóa các môn không còn được chọn (chỉ xóa nếu không có nội dung thi đấu hoặc cascade)
-            var monsToRemove = existingMons.Where(m => !targetMonIds.Contains(m.MonTheThaoId)).ToList();
+            // Xử lý các môn không còn được chọn (bị bỏ tích)
+            var monsToRemove = existingMons.Where(m => m.IsDeleted != true && !targetMonIds.Contains(m.MonTheThaoId)).ToList();
             foreach (var toRemove in monsToRemove)
             {
-                // Kiểm tra xem môn này có nội dung thi đấu phụ thuộc không
-                var hasNoiDungs = (await _unitOfWork.NoiDungThiDaus.FindAsync(nd => nd.GiaiDauMonTheThaoId == toRemove.Id)).Any();
-                if (!hasNoiDungs)
+                var hasDangKy = (await _unitOfWork.DangKyThiDaus.FindAsync(dk => dk.GiaiDauMonTheThaoId == toRemove.Id && dk.IsDeleted != true)).Any();
+                var hasTranDau = (await _unitOfWork.TranDaus.FindAsync(td => td.GiaiDauMonTheThaoId == toRemove.Id && td.IsDeleted != true)).Any();
+                var hasBangDau = (await _unitOfWork.BangDaus.FindAsync(bd => bd.GiaiDauMonTheThaoId == toRemove.Id && bd.IsDeleted != true)).Any();
+
+                if (hasDangKy || hasTranDau || hasBangDau)
                 {
-                    _unitOfWork.GiaiDauMonTheThaos.Delete(toRemove);
+                    var mon = (await _unitOfWork.MonTheThaos.FindAsync(m => m.Id == toRemove.MonTheThaoId)).FirstOrDefault();
+                    var tenMon = mon?.Ten ?? $"ID {toRemove.MonTheThaoId}";
+                    var details = new List<string>();
+                    if (hasDangKy) details.Add("hồ sơ đội/VĐV đăng ký");
+                    if (hasTranDau) details.Add("trận đấu đã xếp lịch");
+                    if (hasBangDau) details.Add("bảng đấu");
+
+                    throw new InvalidOperationException(
+                        $"Không thể bỏ chọn môn '{tenMon}' vì đang có {string.Join(", ", details)}. " +
+                        $"Vui lòng xóa các dữ liệu thi đấu này trước khi bỏ chọn môn."
+                    );
                 }
+
+                // Xóa mềm liên kết GiaiDauMonTheThao
+                toRemove.IsDeleted = true;
+                toRemove.LastModified = DateTime.UtcNow;
+                toRemove.LastModifiedBy = updatedBy;
+                _unitOfWork.GiaiDauMonTheThaos.Update(toRemove);
             }
 
-            // Thêm các môn mới được chọn
-            var existingMonIds = existingMons.Select(m => m.MonTheThaoId).ToList();
-            var monsToAdd = targetMonIds.Where(mId => !existingMonIds.Contains(mId)).ToList();
-            foreach (var monId in monsToAdd)
+            // Thêm mới hoặc khôi phục các môn được chọn
+            foreach (var monId in targetMonIds)
             {
-                await _unitOfWork.GiaiDauMonTheThaos.AddAsync(new GiaiDauMonTheThao
+                var existingGdm = existingMons.FirstOrDefault(m => m.MonTheThaoId == monId);
+                if (existingGdm != null)
                 {
-                    GiaiDauId = entity.Id,
-                    MonTheThaoId = monId,
-                    Created = DateTime.UtcNow,
-                    CreatedBy = updatedBy,
-                    IsDeleted = false,
-                    TrangThai = true
-                });
+                    if (existingGdm.IsDeleted == true)
+                    {
+                        existingGdm.IsDeleted = false;
+                        existingGdm.LastModified = DateTime.UtcNow;
+                        existingGdm.LastModifiedBy = updatedBy;
+                        _unitOfWork.GiaiDauMonTheThaos.Update(existingGdm);
+                    }
+                }
+                else
+                {
+                    await _unitOfWork.GiaiDauMonTheThaos.AddAsync(new GiaiDauMonTheThao
+                    {
+                        GiaiDauId = entity.Id,
+                        MonTheThaoId = monId,
+                        Created = DateTime.UtcNow,
+                        CreatedBy = updatedBy,
+                        IsDeleted = false,
+                        TrangThai = true
+                    });
+                }
             }
 
             // 3. Cập nhật lại danh sách điều lệ giải đấu

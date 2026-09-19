@@ -74,6 +74,7 @@ namespace Dms.Application.DTOs
         public bool LaMonDongDoi { get; set; }
         public string? TenDanhMuc { get; set; }
         public string? HinhThucThiDau { get; set; }
+        public string? GioiTinh { get; set; }
     }
 
     public class CreateUpdateGiaiDauDto

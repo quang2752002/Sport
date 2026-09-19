@@ -26,14 +26,14 @@ namespace Dms.Application.Services
             int pageSize,
             string? keyword = null,
             int? giaiDauId = null,
-            int? noiDungThiDauId = null,
+            int? giaiDauMonTheThaoId = null,
             int? vongDauId = null,
             int? bangDauId = null,
             int? sanDauId = null,
             DateTime? ngay = null,
             string? trangThai = null)
         {
-            var all = await GetAllAsync(giaiDauId, noiDungThiDauId, vongDauId, bangDauId, sanDauId, ngay);
+            var all = await GetAllAsync(giaiDauId, giaiDauMonTheThaoId, vongDauId, bangDauId, sanDauId, ngay);
 
             if (!string.IsNullOrWhiteSpace(keyword))
             {
@@ -62,7 +62,7 @@ namespace Dms.Application.Services
 
         public async Task<IEnumerable<TranDauDto>> GetAllAsync(
             int? giaiDauId = null,
-            int? noiDungThiDauId = null,
+            int? giaiDauMonTheThaoId = null,
             int? vongDauId = null,
             int? bangDauId = null,
             int? sanDauId = null,
@@ -72,16 +72,15 @@ namespace Dms.Application.Services
                 pageIndex: 1,
                 pageSize: 2000,
                 predicate: t => t.IsDeleted != true &&
-                                (!noiDungThiDauId.HasValue || t.NoiDungThiDauId == noiDungThiDauId.Value) &&
+                                (!giaiDauMonTheThaoId.HasValue || t.GiaiDauMonTheThaoId == giaiDauMonTheThaoId.Value) &&
                                 (!vongDauId.HasValue || t.VongDauId == vongDauId.Value) &&
                                 (!bangDauId.HasValue || t.BangDauId == bangDauId.Value) &&
                                 (!sanDauId.HasValue || t.SanDauId == sanDauId.Value) &&
                                 (!ngay.HasValue || (t.ThoiGianDuKien.HasValue && t.ThoiGianDuKien.Value.Date == ngay.Value.Date)),
                 orderBy: q => q.OrderBy(t => t.ThoiGianDuKien).ThenBy(t => t.SoTran),
-                t => t.NoiDungThiDau,
-                t => t.NoiDungThiDau.GiaiDauMonTheThao,
-                t => t.NoiDungThiDau.GiaiDauMonTheThao.GiaiDau,
-                t => t.NoiDungThiDau.GiaiDauMonTheThao.MonTheThao,
+                t => t.GiaiDauMonTheThao,
+                t => t.GiaiDauMonTheThao.GiaiDau,
+                t => t.GiaiDauMonTheThao.MonTheThao,
                 t => t.VongDau,
                 t => t.BangDau!,
                 t => t.SanDau!,
@@ -94,7 +93,7 @@ namespace Dms.Application.Services
 
             if (giaiDauId.HasValue)
             {
-                items = items.Where(t => t.NoiDungThiDau?.GiaiDauMonTheThao?.GiaiDauId == giaiDauId.Value);
+                items = items.Where(t => t.GiaiDauMonTheThao?.GiaiDauId == giaiDauId.Value);
             }
 
             var tranList = items.ToList();
@@ -161,12 +160,11 @@ namespace Dms.Application.Services
                 result.Add(new TranDauDto
                 {
                     Id = t.Id,
-                    NoiDungThiDauId = t.NoiDungThiDauId,
-                    TenNoiDung = t.NoiDungThiDau?.Ten,
-                    GiaiDauId = t.NoiDungThiDau?.GiaiDauMonTheThao?.GiaiDauId,
-                    TenGiaiDau = t.NoiDungThiDau?.GiaiDauMonTheThao?.GiaiDau?.Ten,
-                    MonTheThaoId = t.NoiDungThiDau?.GiaiDauMonTheThao?.MonTheThaoId,
-                    TenMonTheThao = t.NoiDungThiDau?.GiaiDauMonTheThao?.MonTheThao?.Ten,
+                    GiaiDauMonTheThaoId = t.GiaiDauMonTheThaoId,
+                    GiaiDauId = t.GiaiDauMonTheThao?.GiaiDauId,
+                    TenGiaiDau = t.GiaiDauMonTheThao?.GiaiDau?.Ten,
+                    MonTheThaoId = t.GiaiDauMonTheThao?.MonTheThaoId,
+                    TenMonTheThao = t.GiaiDauMonTheThao?.MonTheThao?.Ten,
                     VongDauId = t.VongDauId,
                     TenVongDau = t.VongDau?.Ten,
                     BangDauId = t.BangDauId,
@@ -182,11 +180,13 @@ namespace Dms.Application.Services
                     TrangThai = t.TrangThai,
                     GhiChu = t.GhiChu,
                     Doi1DangKyId = doi1?.DangKyThiDauId,
-                    TenDoi1 = doi1?.TenDoi ?? doi1?.TenDangKy,
                     DonViDoi1 = doi1?.TenDonVi,
                     Doi2DangKyId = doi2?.DangKyThiDauId,
-                    TenDoi2 = doi2?.TenDoi ?? doi2?.TenDangKy,
                     DonViDoi2 = doi2?.TenDonVi,
+
+                    // Trích xuất placeholder nếu đội chưa xác định (để hiển thị nhánh đấu như Nhất Bảng A, Thắng Tứ kết 1...)
+                    TenDoi1 = doi1?.TenDoi ?? doi1?.TenDangKy ?? GetPlaceholderTeam(t.GhiChu, t.TenTran, 1),
+                    TenDoi2 = doi2?.TenDoi ?? doi2?.TenDangKy ?? GetPlaceholderTeam(t.GhiChu, t.TenTran, 2),
                     ThanhPhanTranDaus = thanhPhanDtos,
                     DanhSachTrongTai = trongTaiDtos,
                     Created = t.Created,
@@ -209,7 +209,7 @@ namespace Dms.Application.Services
             var t = paged.Items.FirstOrDefault();
             if (t == null) return null;
 
-            var list = await GetAllAsync(noiDungThiDauId: t.NoiDungThiDauId);
+            var list = await GetAllAsync(giaiDauMonTheThaoId: t.GiaiDauMonTheThaoId);
             return list.FirstOrDefault(x => x.Id == id);
         }
 
@@ -217,7 +217,7 @@ namespace Dms.Application.Services
         {
             var entity = new TranDau
             {
-                NoiDungThiDauId = dto.NoiDungThiDauId,
+                GiaiDauMonTheThaoId = dto.GiaiDauMonTheThaoId,
                 VongDauId = dto.VongDauId,
                 BangDauId = dto.BangDauId,
                 SanDauId = dto.SanDauId,
@@ -418,9 +418,9 @@ namespace Dms.Application.Services
             return true;
         }
 
-        public async Task<bool> ClearByNoiDungAsync(int noiDungThiDauId)
+        public async Task<bool> ClearByGiaiDauMonTheThaoAsync(int giaiDauMonTheThaoId)
         {
-            var trans = (await _unitOfWork.TranDaus.FindAsync(t => t.NoiDungThiDauId == noiDungThiDauId)).ToList();
+            var trans = (await _unitOfWork.TranDaus.FindAsync(t => t.GiaiDauMonTheThaoId == giaiDauMonTheThaoId)).ToList();
             foreach (var t in trans)
             {
                 // 1. Xóa KetQuaHiepDau & HiepDau (tránh lỗi FK_HiepDau_TranDau_TranDauId)
@@ -456,7 +456,7 @@ namespace Dms.Application.Services
             await _unitOfWork.CompleteAsync();
 
             // 5. Xóa các vòng đấu cũ của nội dung này để sinh lại vòng đấu chuẩn theo thể thức mới
-            var vongs = (await _unitOfWork.VongDaus.FindAsync(v => v.NoiDungThiDauId == noiDungThiDauId)).ToList();
+            var vongs = (await _unitOfWork.VongDaus.FindAsync(v => v.GiaiDauMonTheThaoId == giaiDauMonTheThaoId)).ToList();
             foreach (var v in vongs)
             {
                 _unitOfWork.VongDaus.Delete(v);
@@ -596,9 +596,8 @@ namespace Dms.Application.Services
                                         t.ThoiGianBatDau.HasValue && t.ThoiGianKetThuc.HasValue &&
                                         t.ThoiGianBatDau.Value < end && t.ThoiGianKetThuc.Value > start,
                         orderBy: null,
-                        t => t.NoiDungThiDau,
-                        t => t.NoiDungThiDau.GiaiDauMonTheThao,
-                        t => t.NoiDungThiDau.GiaiDauMonTheThao.MonTheThao,
+                        t => t.GiaiDauMonTheThao,
+                        t => t.GiaiDauMonTheThao.MonTheThao,
                         t => t.SanDau!,
                         t => t.ThanhPhanTranDaus
                     )).Items.ToList();
@@ -628,8 +627,8 @@ namespace Dms.Application.Services
                                     {
                                         result.HasConflict = true;
 
-                                        string monTen = m.NoiDungThiDau?.GiaiDauMonTheThao?.MonTheThao?.Ten ?? "Thể thao";
-                                        string noiDungTen = m.NoiDungThiDau?.Ten ?? "Nội dung";
+                                        string monTen = m.GiaiDauMonTheThao?.MonTheThao?.Ten ?? "Thể thao";
+                                        string noiDungTen = m.GiaiDauMonTheThao?.MonTheThao?.Ten ?? "";
                                         string sanTen = m.SanDau?.Ten ?? "Chưa xếp sân";
                                         string timeStr = $"{m.ThoiGianBatDau:HH:mm} - {m.ThoiGianKetThuc:HH:mm}";
                                         string matchName = m.TenTran ?? $"Trận #{m.SoTran}";
@@ -648,8 +647,8 @@ namespace Dms.Application.Services
                                             TenDoiHienTai = currentVdvInfo.TenDoi,
                                             TranDauBiTrungId = m.Id,
                                             TenTranBiTrung = matchName,
-                                            TenMonTheThao = monTen,
-                                            TenNoiDung = noiDungTen,
+                                             TenMonTheThao = monTen,
+                                             TenNoiDung = noiDungTen,
                                             TenSanDau = sanTen,
                                             ThoiGianBatDau = m.ThoiGianBatDau,
                                             ThoiGianKetThuc = m.ThoiGianKetThuc
@@ -669,38 +668,38 @@ namespace Dms.Application.Services
         {
             var result = new AutoScheduleResultDto();
 
-            // 1. Lấy thông tin Nội dung thi đấu
-            var noiDung = (await _unitOfWork.NoiDungThiDaus.GetPagedAsync(
+            // 1. Lấy thông tin GiaiDauMonTheThao
+            var noiDung = (await _unitOfWork.GiaiDauMonTheThaos.GetPagedAsync(
                 1, 1,
-                predicate: n => n.Id == request.NoiDungThiDauId && n.IsDeleted != true,
+                predicate: n => n.Id == request.GiaiDauMonTheThaoId && n.IsDeleted != true,
                 orderBy: null,
-                n => n.GiaiDauMonTheThao,
-                n => n.GiaiDauMonTheThao.MonTheThao
+                n => n.MonTheThao,
+                n => n.GiaiDau
             )).Items.FirstOrDefault();
 
             if (noiDung == null)
             {
                 result.Success = false;
-                result.Message = "Không tìm thấy nội dung thi đấu.";
+                result.Message = "Không tìm thấy thông tin môn thi đấu trong giải.";
                 return result;
             }
 
             // 2. Lấy danh sách đăng ký đã duyệt
             var dangKyList = (await _unitOfWork.DangKyThiDaus.FindAsync(
-                d => d.NoiDungThiDauId == request.NoiDungThiDauId && d.IsDeleted != true
+                d => d.GiaiDauMonTheThaoId == request.GiaiDauMonTheThaoId && d.IsDeleted != true
             )).ToList();
 
             if (dangKyList.Count < 2)
             {
                 result.Success = false;
-                result.Message = "Nội dung thi đấu cần ít nhất 2 đội/vận động viên để xếp lịch.";
+                result.Message = "Giải đấu - Môn thi đấu cần ít nhất 2 đội/vận động viên để xếp lịch.";
                 return result;
             }
 
             // 3. Nếu yêu cầu xóa lịch cũ
             if (request.XoaLichCu)
             {
-                await ClearByNoiDungAsync(request.NoiDungThiDauId);
+                await ClearByGiaiDauMonTheThaoAsync(request.GiaiDauMonTheThaoId);
             }
 
             // 4. Lấy danh sách Sân đấu
@@ -709,10 +708,10 @@ namespace Dms.Application.Services
             {
                 sanDauList = (await _unitOfWork.SanDaus.FindAsync(s => request.SanDauIds.Contains(s.Id) && s.TrangThai && s.IsDeleted != true)).ToList();
             }
-            else
+            if (!sanDauList.Any())
             {
                 // Mặc định lấy các sân phục vụ môn này
-                int? monId = noiDung.GiaiDauMonTheThao?.MonTheThaoId;
+                int? monId = noiDung.MonTheThaoId;
                 sanDauList = (await _unitOfWork.SanDaus.FindAsync(s => (!monId.HasValue || s.MonTheThaoId == monId.Value) && s.TrangThai && s.IsDeleted != true)).ToList();
             }
 
@@ -733,10 +732,8 @@ namespace Dms.Application.Services
                 trongTaiList = (await _unitOfWork.TrongTais.FindAsync(tt => tt.TrangThai && tt.IsDeleted != true)).ToList();
             }
 
-            // 6. Xác định hình thức thi đấu (fallback từ Môn thể thao nếu Nội dung chưa chọn riêng)
-            var effectiveHinhThuc = noiDung.HinhThucThiDau ??
-                                    noiDung.GiaiDauMonTheThao?.MonTheThao?.HinhThucThiDau ??
-                                    HinhThucThiDau.LoaiTrucTiep;
+            // 6. Xác định hình thức thi đấu từ MonTheThao
+            var effectiveHinhThuc = noiDung.MonTheThao?.HinhThucThiDau ?? HinhThucThiDau.LoaiTrucTiep;
 
             bool laLoaiTrucTiep = effectiveHinhThuc == HinhThucThiDau.LoaiTrucTiep ||
                                    effectiveHinhThuc == HinhThucThiDau.NhanhThangNhanhThua;
@@ -746,7 +743,7 @@ namespace Dms.Application.Services
             // Nếu là thể thức Loại trực tiếp: đảm bảo KHÔNG có bảng đấu (xóa sạch bảng đấu cũ nếu có)
             if (laLoaiTrucTiep)
             {
-                var oldBangs = (await _unitOfWork.BangDaus.FindAsync(b => b.NoiDungThiDauId == request.NoiDungThiDauId)).ToList();
+                var oldBangs = (await _unitOfWork.BangDaus.FindAsync(b => b.GiaiDauMonTheThaoId == request.GiaiDauMonTheThaoId)).ToList();
                 if (oldBangs.Any())
                 {
                     foreach (var b in oldBangs)
@@ -765,13 +762,14 @@ namespace Dms.Application.Services
             // Xây dựng danh sách các cặp đấu (Fixture item)
             // Mỗi fixture: { VongDauTen, BangDauId, Doi1Id, Doi2Id, TenTran }
             var fixtures = new List<MatchFixture>();
+            var teamMap = dangKyList.ToDictionary(d => d.Id, d => d.TenDangKy ?? d.SoDangKy ?? $"Đội {d.Id}");
 
             if (coVongBang)
             {
                 // Kiểm tra xem đã có Bảng đấu chưa
                 var bangDaus = (await _unitOfWork.BangDaus.GetPagedAsync(
                     1, 100,
-                    predicate: b => b.NoiDungThiDauId == request.NoiDungThiDauId && b.IsDeleted != true,
+                    predicate: b => b.GiaiDauMonTheThaoId == request.GiaiDauMonTheThaoId && b.IsDeleted != true,
                     orderBy: q => q.OrderBy(b => b.ThuTu),
                     b => b.ThanhVienBangs
                 )).Items.ToList();
@@ -785,30 +783,35 @@ namespace Dms.Application.Services
                     var bangDauService = new BangDauService(_unitOfWork);
                     await bangDauService.AutoDistributeAsync(new AutoDistributeBangDto
                     {
-                        NoiDungThiDauId = request.NoiDungThiDauId,
+                        GiaiDauMonTheThaoId = request.GiaiDauMonTheThaoId,
                         SoBang = soBang
                     }, createdBy);
 
                     bangDaus = (await _unitOfWork.BangDaus.GetPagedAsync(
                         1, 100,
-                        predicate: b => b.NoiDungThiDauId == request.NoiDungThiDauId && b.IsDeleted != true,
+                        predicate: b => b.GiaiDauMonTheThaoId == request.GiaiDauMonTheThaoId && b.IsDeleted != true,
                         orderBy: q => q.OrderBy(b => b.ThuTu),
                         b => b.ThanhVienBangs
                     )).Items.ToList();
                 }
 
                 // Với từng bảng đấu, áp dụng thuật toán Round-Robin để sinh cặp đấu
+                int maxGroupRound = 0;
                 foreach (var b in bangDaus)
                 {
                     var teamIds = b.ThanhVienBangs.Where(m => m.IsDeleted != true).Select(m => m.DangKyThiDauId).ToList();
                     if (teamIds.Count < 2) continue;
 
                     var groupFixtures = GenerateRoundRobin(teamIds);
+                    if (groupFixtures.Count > maxGroupRound) maxGroupRound = groupFixtures.Count;
+
                     for (int r = 0; r < groupFixtures.Count; r++)
                     {
                         string vongTen = $"Vòng bảng - Lượt {r + 1}";
                         foreach (var pair in groupFixtures[r])
                         {
+                            var d1Name = teamMap.GetValueOrDefault(pair.Item1, $"Đội {pair.Item1}");
+                            var d2Name = teamMap.GetValueOrDefault(pair.Item2, $"Đội {pair.Item2}");
                             fixtures.Add(new MatchFixture
                             {
                                 VongTen = vongTen,
@@ -816,9 +819,224 @@ namespace Dms.Application.Services
                                 BangDauId = b.Id,
                                 Doi1DangKyId = pair.Item1,
                                 Doi2DangKyId = pair.Item2,
-                                TenTran = $"{b.Ten} - Lượt {r + 1}: {pair.Item1} vs {pair.Item2}"
+                                TenTran = $"{b.Ten} - Lượt {r + 1}: {d1Name} vs {d2Name}"
                             });
                         }
+                    }
+                }
+
+                // Nếu là thể thức Kết Hợp Vòng Bảng & Loại Trực Tiếp: Tự động xếp lịch tiếp các vòng sau (Tứ kết, Bán kết, Tranh 3-4, Chung kết)
+                if (effectiveHinhThuc == HinhThucThiDau.KetHopVongBangVaLoaiTrucTiep && bangDaus.Any())
+                {
+                    int numGroups = bangDaus.Count;
+                    string GetGName(int idx) => idx < bangDaus.Count ? (bangDaus[idx].Ten ?? $"Bảng {(char)('A' + idx)}") : $"Bảng {(char)('A' + idx)}";
+
+                    int nextRoundThuTu = maxGroupRound + 1;
+                    int soDoiMoiBang = request.SoDoiMoiBangVaoVongTrong > 0 ? request.SoDoiMoiBangVaoVongTrong : 2;
+                    int soDoiThu3 = (soDoiMoiBang >= 2 && request.SoDoiThu3TotNhat > 0) ? request.SoDoiThu3TotNhat : 0;
+                    int totalAdvancing = (numGroups * soDoiMoiBang) + soDoiThu3;
+
+                    if (totalAdvancing <= 2 || (numGroups == 1 && dangKyList.Count < 4))
+                    {
+                        // 2 đội vào thẳng trận Chung kết (Ví dụ: 2 bảng chỉ lấy Nhất bảng, hoặc 1 bảng lấy Top 2)
+                        string t1Name = numGroups >= 2 ? $"Nhất {GetGName(0)}" : $"Nhất {GetGName(0)}";
+                        string t2Name = numGroups >= 2 ? (soDoiMoiBang == 1 ? $"Nhất {GetGName(1)}" : $"Nhì {GetGName(0)}") : $"Nhì {GetGName(0)}";
+                        fixtures.Add(new MatchFixture
+                        {
+                            VongTen = "Chung kết",
+                            VongThuTu = nextRoundThuTu,
+                            BangDauId = null,
+                            Doi1DangKyId = 0,
+                            Doi2DangKyId = 0,
+                            TenTran = $"Chung kết: {t1Name} vs {t2Name}",
+                            TenDoi1Placeholder = t1Name,
+                            TenDoi2Placeholder = t2Name,
+                            GhiChu = $"TBD: {t1Name} vs {t2Name}"
+                        });
+                    }
+                    else if (totalAdvancing == 4 || (numGroups <= 3 && soDoiMoiBang >= 2 && soDoiThu3 == 0) || (numGroups == 4 && soDoiMoiBang == 1))
+                    {
+                        // 4 đội vào Bán kết -> Tranh 3-4 & Chung kết
+                        string roundBanKet = "Bán kết";
+                        string bk1_d1, bk1_d2, bk2_d1, bk2_d2;
+
+                        if (numGroups >= 4 && soDoiMoiBang == 1)
+                        {
+                            // 4 bảng chỉ lấy Nhất bảng
+                            bk1_d1 = $"Nhất {GetGName(0)}";
+                            bk1_d2 = $"Nhất {GetGName(1)}";
+                            bk2_d1 = $"Nhất {GetGName(2)}";
+                            bk2_d2 = $"Nhất {GetGName(3)}";
+                        }
+                        else if (numGroups == 2)
+                        {
+                            // 2 bảng lấy Nhất & Nhì
+                            bk1_d1 = $"Nhất {GetGName(0)}";
+                            bk1_d2 = $"Nhì {GetGName(1)}";
+                            bk2_d1 = $"Nhất {GetGName(1)}";
+                            bk2_d2 = $"Nhì {GetGName(0)}";
+                        }
+                        else if (numGroups == 3)
+                        {
+                            // 3 bảng: 3 Nhất + 1 Nhì tốt nhất
+                            bk1_d1 = $"Nhất {GetGName(0)}";
+                            bk1_d2 = "Nhì có thành tích tốt nhất";
+                            bk2_d1 = $"Nhất {GetGName(1)}";
+                            bk2_d2 = $"Nhất {GetGName(2)}";
+                        }
+                        else
+                        {
+                            // 1 bảng (Top 4)
+                            bk1_d1 = $"Nhất {GetGName(0)}";
+                            bk1_d2 = $"Hạng 4 {GetGName(0)}";
+                            bk2_d1 = $"Nhì {GetGName(0)}";
+                            bk2_d2 = $"Hạng 3 {GetGName(0)}";
+                        }
+
+                        fixtures.Add(new MatchFixture
+                        {
+                            VongTen = roundBanKet,
+                            VongThuTu = nextRoundThuTu,
+                            BangDauId = null,
+                            Doi1DangKyId = 0,
+                            Doi2DangKyId = 0,
+                            TenTran = $"Bán kết 1: {bk1_d1} vs {bk1_d2}",
+                            TenDoi1Placeholder = bk1_d1,
+                            TenDoi2Placeholder = bk1_d2,
+                            GhiChu = $"TBD: {bk1_d1} vs {bk1_d2}"
+                        });
+
+                        fixtures.Add(new MatchFixture
+                        {
+                            VongTen = roundBanKet,
+                            VongThuTu = nextRoundThuTu,
+                            BangDauId = null,
+                            Doi1DangKyId = 0,
+                            Doi2DangKyId = 0,
+                            TenTran = $"Bán kết 2: {bk2_d1} vs {bk2_d2}",
+                            TenDoi1Placeholder = bk2_d1,
+                            TenDoi2Placeholder = bk2_d2,
+                            GhiChu = $"TBD: {bk2_d1} vs {bk2_d2}"
+                        });
+
+                        nextRoundThuTu++;
+
+                        fixtures.Add(new MatchFixture
+                        {
+                            VongTen = "Tranh hạng 3 - 4",
+                            VongThuTu = nextRoundThuTu,
+                            BangDauId = null,
+                            Doi1DangKyId = 0,
+                            Doi2DangKyId = 0,
+                            TenTran = "Trận tranh hạng 3 - 4: Thua Bán kết 1 vs Thua Bán kết 2",
+                            TenDoi1Placeholder = "Thua Bán kết 1",
+                            TenDoi2Placeholder = "Thua Bán kết 2",
+                            GhiChu = "TBD: Thua Bán kết 1 vs Thua Bán kết 2"
+                        });
+
+                        fixtures.Add(new MatchFixture
+                        {
+                            VongTen = "Chung kết",
+                            VongThuTu = nextRoundThuTu,
+                            BangDauId = null,
+                            Doi1DangKyId = 0,
+                            Doi2DangKyId = 0,
+                            TenTran = "Chung kết: Thắng Bán kết 1 vs Thắng Bán kết 2",
+                            TenDoi1Placeholder = "Thắng Bán kết 1",
+                            TenDoi2Placeholder = "Thắng Bán kết 2",
+                            GhiChu = "TBD: Thắng Bán kết 1 vs Thắng Bán kết 2"
+                        });
+                    }
+                    else if (totalAdvancing >= 14 || (numGroups >= 6 && soDoiThu3 >= 4) || (numGroups >= 8 && soDoiMoiBang >= 2))
+                    {
+                        // 16 đội: Vòng 1/8 (8 trận) -> Tứ kết (4 trận) -> Bán kết (2 trận) -> Tranh 3-4 & Chung kết
+                        string roundVong18 = "Vòng 1/8";
+                        if (numGroups == 6 && soDoiThu3 == 4)
+                        {
+                            // Mô hình EURO (6 bảng x 2 = 12 + 4 đội hạng 3 tốt nhất = 16 đội)
+                            fixtures.Add(new MatchFixture { VongTen = roundVong18, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Trận 1 (1/8): Nhất {GetGName(0)} vs Đội thứ 3 tốt nhất (1)", TenDoi1Placeholder = $"Nhất {GetGName(0)}", TenDoi2Placeholder = "Đội thứ 3 tốt nhất (1)", GhiChu = $"TBD: Nhất {GetGName(0)} vs Đội thứ 3 tốt nhất (1)" });
+                            fixtures.Add(new MatchFixture { VongTen = roundVong18, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Trận 2 (1/8): Nhất {GetGName(1)} vs Đội thứ 3 tốt nhất (2)", TenDoi1Placeholder = $"Nhất {GetGName(1)}", TenDoi2Placeholder = "Đội thứ 3 tốt nhất (2)", GhiChu = $"TBD: Nhất {GetGName(1)} vs Đội thứ 3 tốt nhất (2)" });
+                            fixtures.Add(new MatchFixture { VongTen = roundVong18, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Trận 3 (1/8): Nhất {GetGName(2)} vs Nhì {GetGName(3)}", TenDoi1Placeholder = $"Nhất {GetGName(2)}", TenDoi2Placeholder = $"Nhì {GetGName(3)}", GhiChu = $"TBD: Nhất {GetGName(2)} vs Nhì {GetGName(3)}" });
+                            fixtures.Add(new MatchFixture { VongTen = roundVong18, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Trận 4 (1/8): Nhất {GetGName(3)} vs Đội thứ 3 tốt nhất (3)", TenDoi1Placeholder = $"Nhất {GetGName(3)}", TenDoi2Placeholder = "Đội thứ 3 tốt nhất (3)", GhiChu = $"TBD: Nhất {GetGName(3)} vs Đội thứ 3 tốt nhất (3)" });
+                            fixtures.Add(new MatchFixture { VongTen = roundVong18, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Trận 5 (1/8): Nhất {GetGName(4)} vs Đội thứ 3 tốt nhất (4)", TenDoi1Placeholder = $"Nhất {GetGName(4)}", TenDoi2Placeholder = "Đội thứ 3 tốt nhất (4)", GhiChu = $"TBD: Nhất {GetGName(4)} vs Đội thứ 3 tốt nhất (4)" });
+                            fixtures.Add(new MatchFixture { VongTen = roundVong18, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Trận 6 (1/8): Nhất {GetGName(5)} vs Nhì {GetGName(4)}", TenDoi1Placeholder = $"Nhất {GetGName(5)}", TenDoi2Placeholder = $"Nhì {GetGName(4)}", GhiChu = $"TBD: Nhất {GetGName(5)} vs Nhì {GetGName(4)}" });
+                            fixtures.Add(new MatchFixture { VongTen = roundVong18, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Trận 7 (1/8): Nhì {GetGName(0)} vs Nhì {GetGName(2)}", TenDoi1Placeholder = $"Nhì {GetGName(0)}", TenDoi2Placeholder = $"Nhì {GetGName(2)}", GhiChu = $"TBD: Nhì {GetGName(0)} vs Nhì {GetGName(2)}" });
+                            fixtures.Add(new MatchFixture { VongTen = roundVong18, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Trận 8 (1/8): Nhì {GetGName(1)} vs Nhì {GetGName(5)}", TenDoi1Placeholder = $"Nhì {GetGName(1)}", TenDoi2Placeholder = $"Nhì {GetGName(5)}", GhiChu = $"TBD: Nhì {GetGName(1)} vs Nhì {GetGName(5)}" });
+                        }
+                        else
+                        {
+                            // 8 bảng Nhất & Nhì (16 đội)
+                            for (int i = 0; i < 4; i++)
+                            {
+                                int gA = 2 * i;
+                                int gB = 2 * i + 1;
+                                fixtures.Add(new MatchFixture { VongTen = roundVong18, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Trận {2 * i + 1} (1/8): Nhất {GetGName(gA)} vs Nhì {GetGName(gB)}", TenDoi1Placeholder = $"Nhất {GetGName(gA)}", TenDoi2Placeholder = $"Nhì {GetGName(gB)}", GhiChu = $"TBD: Nhất {GetGName(gA)} vs Nhì {GetGName(gB)}" });
+                                fixtures.Add(new MatchFixture { VongTen = roundVong18, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Trận {2 * i + 2} (1/8): Nhất {GetGName(gB)} vs Nhì {GetGName(gA)}", TenDoi1Placeholder = $"Nhất {GetGName(gB)}", TenDoi2Placeholder = $"Nhì {GetGName(gA)}", GhiChu = $"TBD: Nhất {GetGName(gB)} vs Nhì {GetGName(gA)}" });
+                            }
+                        }
+
+                        nextRoundThuTu++;
+
+                        string roundTuKet = "Tứ kết";
+                        fixtures.Add(new MatchFixture { VongTen = roundTuKet, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = "Tứ kết 1: Thắng Trận 1 (1/8) vs Thắng Trận 2 (1/8)", TenDoi1Placeholder = "Thắng Trận 1 (1/8)", TenDoi2Placeholder = "Thắng Trận 2 (1/8)", GhiChu = "TBD: Thắng Trận 1 (1/8) vs Thắng Trận 2 (1/8)" });
+                        fixtures.Add(new MatchFixture { VongTen = roundTuKet, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = "Tứ kết 2: Thắng Trận 3 (1/8) vs Thắng Trận 4 (1/8)", TenDoi1Placeholder = "Thắng Trận 3 (1/8)", TenDoi2Placeholder = "Thắng Trận 4 (1/8)", GhiChu = "TBD: Thắng Trận 3 (1/8) vs Thắng Trận 4 (1/8)" });
+                        fixtures.Add(new MatchFixture { VongTen = roundTuKet, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = "Tứ kết 3: Thắng Trận 5 (1/8) vs Thắng Trận 6 (1/8)", TenDoi1Placeholder = "Thắng Trận 5 (1/8)", TenDoi2Placeholder = "Thắng Trận 6 (1/8)", GhiChu = "TBD: Thắng Trận 5 (1/8) vs Thắng Trận 6 (1/8)" });
+                        fixtures.Add(new MatchFixture { VongTen = roundTuKet, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = "Tứ kết 4: Thắng Trận 7 (1/8) vs Thắng Trận 8 (1/8)", TenDoi1Placeholder = "Thắng Trận 7 (1/8)", TenDoi2Placeholder = "Thắng Trận 8 (1/8)", GhiChu = "TBD: Thắng Trận 7 (1/8) vs Thắng Trận 8 (1/8)" });
+
+                        nextRoundThuTu++;
+
+                        string roundBanKet = "Bán kết";
+                        fixtures.Add(new MatchFixture { VongTen = roundBanKet, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = "Bán kết 1: Thắng Tứ kết 1 vs Thắng Tứ kết 2", TenDoi1Placeholder = "Thắng Tứ kết 1", TenDoi2Placeholder = "Thắng Tứ kết 2", GhiChu = "TBD: Thắng Tứ kết 1 vs Thắng Tứ kết 2" });
+                        fixtures.Add(new MatchFixture { VongTen = roundBanKet, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = "Bán kết 2: Thắng Tứ kết 3 vs Thắng Tứ kết 4", TenDoi1Placeholder = "Thắng Tứ kết 3", TenDoi2Placeholder = "Thắng Tứ kết 4", GhiChu = "TBD: Thắng Tứ kết 3 vs Thắng Tứ kết 4" });
+
+                        nextRoundThuTu++;
+
+                        fixtures.Add(new MatchFixture { VongTen = "Tranh hạng 3 - 4", VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = "Trận tranh hạng 3 - 4: Thua Bán kết 1 vs Thua Bán kết 2", TenDoi1Placeholder = "Thua Bán kết 1", TenDoi2Placeholder = "Thua Bán kết 2", GhiChu = "TBD: Thua Bán kết 1 vs Thua Bán kết 2" });
+                        fixtures.Add(new MatchFixture { VongTen = "Chung kết", VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = "Chung kết: Thắng Bán kết 1 vs Thắng Bán kết 2", TenDoi1Placeholder = "Thắng Bán kết 1", TenDoi2Placeholder = "Thắng Bán kết 2", GhiChu = "TBD: Thắng Bán kết 1 vs Thắng Bán kết 2" });
+                    }
+                    else
+                    {
+                        // 8 đội vào Tứ kết (4 bảng x 2 = 8 đội, hoặc 8 bảng chỉ lấy Nhất = 8 đội)
+                        string roundTuKet = "Tứ kết";
+                        string tk1_d1, tk1_d2, tk2_d1, tk2_d2, tk3_d1, tk3_d2, tk4_d1, tk4_d2;
+
+                        if (numGroups >= 8 && soDoiMoiBang == 1)
+                        {
+                            tk1_d1 = $"Nhất {GetGName(0)}"; tk1_d2 = $"Nhất {GetGName(1)}";
+                            tk2_d1 = $"Nhất {GetGName(2)}"; tk2_d2 = $"Nhất {GetGName(3)}";
+                            tk3_d1 = $"Nhất {GetGName(4)}"; tk3_d2 = $"Nhất {GetGName(5)}";
+                            tk4_d1 = $"Nhất {GetGName(6)}"; tk4_d2 = $"Nhất {GetGName(7)}";
+                        }
+                        else if (numGroups >= 4)
+                        {
+                            tk1_d1 = $"Nhất {GetGName(0)}"; tk1_d2 = $"Nhì {GetGName(1)}";
+                            tk2_d1 = $"Nhất {GetGName(2)}"; tk2_d2 = $"Nhì {GetGName(3)}";
+                            tk3_d1 = $"Nhất {GetGName(1)}"; tk3_d2 = $"Nhì {GetGName(0)}";
+                            tk4_d1 = $"Nhất {GetGName(3)}"; tk4_d2 = $"Nhì {GetGName(2)}";
+                        }
+                        else
+                        {
+                            tk1_d1 = $"Nhất {GetGName(0)}"; tk1_d2 = $"Nhì {GetGName(1)}";
+                            tk2_d1 = $"Nhất {GetGName(1)}"; tk2_d2 = "Đội thứ 3 tốt nhất (1)";
+                            tk3_d1 = numGroups >= 3 ? $"Nhất {GetGName(2)}" : "Vé vớt 1"; tk3_d2 = "Đội thứ 3 tốt nhất (2)";
+                            tk4_d1 = numGroups >= 3 ? $"Nhì {GetGName(2)}" : "Vé vớt 2"; tk4_d2 = $"Nhì {GetGName(0)}";
+                        }
+
+                        fixtures.Add(new MatchFixture { VongTen = roundTuKet, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Tứ kết 1: {tk1_d1} vs {tk1_d2}", TenDoi1Placeholder = tk1_d1, TenDoi2Placeholder = tk1_d2, GhiChu = $"TBD: {tk1_d1} vs {tk1_d2}" });
+                        fixtures.Add(new MatchFixture { VongTen = roundTuKet, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Tứ kết 2: {tk2_d1} vs {tk2_d2}", TenDoi1Placeholder = tk2_d1, TenDoi2Placeholder = tk2_d2, GhiChu = $"TBD: {tk2_d1} vs {tk2_d2}" });
+                        fixtures.Add(new MatchFixture { VongTen = roundTuKet, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Tứ kết 3: {tk3_d1} vs {tk3_d2}", TenDoi1Placeholder = tk3_d1, TenDoi2Placeholder = tk3_d2, GhiChu = $"TBD: {tk3_d1} vs {tk3_d2}" });
+                        fixtures.Add(new MatchFixture { VongTen = roundTuKet, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = $"Tứ kết 4: {tk4_d1} vs {tk4_d2}", TenDoi1Placeholder = tk4_d1, TenDoi2Placeholder = tk4_d2, GhiChu = $"TBD: {tk4_d1} vs {tk4_d2}" });
+
+                        nextRoundThuTu++;
+
+                        string roundBanKet = "Bán kết";
+                        fixtures.Add(new MatchFixture { VongTen = roundBanKet, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = "Bán kết 1: Thắng Tứ kết 1 vs Thắng Tứ kết 2", TenDoi1Placeholder = "Thắng Tứ kết 1", TenDoi2Placeholder = "Thắng Tứ kết 2", GhiChu = "TBD: Thắng Tứ kết 1 vs Thắng Tứ kết 2" });
+                        fixtures.Add(new MatchFixture { VongTen = roundBanKet, VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = "Bán kết 2: Thắng Tứ kết 3 vs Thắng Tứ kết 4", TenDoi1Placeholder = "Thắng Tứ kết 3", TenDoi2Placeholder = "Thắng Tứ kết 4", GhiChu = "TBD: Thắng Tứ kết 3 vs Thắng Tứ kết 4" });
+
+                        nextRoundThuTu++;
+
+                        fixtures.Add(new MatchFixture { VongTen = "Tranh hạng 3 - 4", VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = "Trận tranh hạng 3 - 4: Thua Bán kết 1 vs Thua Bán kết 2", TenDoi1Placeholder = "Thua Bán kết 1", TenDoi2Placeholder = "Thua Bán kết 2", GhiChu = "TBD: Thua Bán kết 1 vs Thua Bán kết 2" });
+                        fixtures.Add(new MatchFixture { VongTen = "Chung kết", VongThuTu = nextRoundThuTu, BangDauId = null, Doi1DangKyId = 0, Doi2DangKyId = 0, TenTran = "Chung kết: Thắng Bán kết 1 vs Thắng Bán kết 2", TenDoi1Placeholder = "Thắng Bán kết 1", TenDoi2Placeholder = "Thắng Bán kết 2", GhiChu = "TBD: Thắng Bán kết 1 vs Thắng Bán kết 2" });
                     }
                 }
             }
@@ -947,13 +1165,28 @@ namespace Dms.Application.Services
                     };
                 }
 
-                var teamMap = dangKyList.ToDictionary(d => d.Id, d => d.TenDangKy ?? d.SoDangKy ?? $"Đội {d.Id}");
-
                 for (int r = 0; r < totalPlayedRounds; r++)
                 {
                     int roundOrder = r + 1;
                     string roundName = GetRoundName(roundOrder);
                     var matchesInRound = playedLevels[r].matches;
+
+                    if (roundName == "Chung kết" && totalPlayedRounds >= 2)
+                    {
+                        // Thêm trận Tranh hạng 3 - 4 giữa 2 đội thua Bán kết
+                        fixtures.Add(new MatchFixture
+                        {
+                            VongTen = "Tranh hạng 3 - 4",
+                            VongThuTu = roundOrder,
+                            BangDauId = null,
+                            Doi1DangKyId = 0,
+                            Doi2DangKyId = 0,
+                            TenTran = "Trận tranh hạng 3 - 4: Thua Bán kết 1 vs Thua Bán kết 2",
+                            TenDoi1Placeholder = "Thua Bán kết 1",
+                            TenDoi2Placeholder = "Thua Bán kết 2",
+                            GhiChu = "TBD: Thua Bán kết 1 vs Thua Bán kết 2"
+                        });
+                    }
 
                     for (int m = 0; m < matchesInRound.Count; m++)
                     {
@@ -963,6 +1196,10 @@ namespace Dms.Application.Services
                         {
                             matchTitle = $"Trận {m + 1} - Vòng loại";
                         }
+                        else if (roundName == "Chung kết" && totalPlayedRounds >= 2 && node.Team1Id == 0 && node.Team2Id == 0)
+                        {
+                            matchTitle = "Chung kết: Thắng Bán kết 1 vs Thắng Bán kết 2";
+                        }
 
                         fixtures.Add(new MatchFixture
                         {
@@ -971,7 +1208,10 @@ namespace Dms.Application.Services
                             BangDauId = null,
                             Doi1DangKyId = node.Team1Id,
                             Doi2DangKyId = node.Team2Id,
-                            TenTran = matchTitle
+                            TenTran = matchTitle,
+                            TenDoi1Placeholder = (roundName == "Chung kết" && node.Team1Id == 0) ? "Thắng Bán kết 1" : null,
+                            TenDoi2Placeholder = (roundName == "Chung kết" && node.Team2Id == 0) ? "Thắng Bán kết 2" : null,
+                            GhiChu = (roundName == "Chung kết" && node.Team1Id == 0 && node.Team2Id == 0) ? "TBD: Thắng Bán kết 1 vs Thắng Bán kết 2" : null
                         });
                     }
                 }
@@ -1013,17 +1253,24 @@ namespace Dms.Application.Services
             foreach (var v in distinctVongs)
             {
                 var existingVong = (await _unitOfWork.VongDaus.FindAsync(
-                    x => x.NoiDungThiDauId == request.NoiDungThiDauId && x.Ten == v.VongTen && x.IsDeleted != true
+                    x => x.GiaiDauMonTheThaoId == request.GiaiDauMonTheThaoId && x.Ten == v.VongTen && x.IsDeleted != true
                 )).FirstOrDefault();
 
                 if (existingVong == null)
                 {
+                    string loaiVong = "LoaiTrucTiep";
+                    if (v.VongTen.Contains("Vòng bảng")) loaiVong = "VongBang";
+                    else if (v.VongTen == "Tứ kết") loaiVong = "TuKet";
+                    else if (v.VongTen == "Bán kết") loaiVong = "BanKet";
+                    else if (v.VongTen == "Chung kết") loaiVong = "ChungKet";
+                    else if (v.VongTen.Contains("Tranh hạng")) loaiVong = "TranhHangBa";
+
                     existingVong = new VongDau
                     {
-                        NoiDungThiDauId = request.NoiDungThiDauId,
+                        GiaiDauMonTheThaoId = request.GiaiDauMonTheThaoId,
                         Ten = v.VongTen,
                         ThuTu = v.VongThuTu,
-                        LoaiVong = coVongBang ? "VongBang" : "LoaiTrucTiep",
+                        LoaiVong = loaiVong,
                         Created = DateTime.UtcNow,
                         CreatedBy = createdBy,
                         IsDeleted = false
@@ -1036,7 +1283,7 @@ namespace Dms.Application.Services
             }
 
             // 8. Thuật toán CSP Engine 2 Tầng: Macro-Scheduler & Micro Slot Scanner
-            int monTheThaoId = noiDung.GiaiDauMonTheThao?.MonTheThaoId ?? 0;
+            int monTheThaoId = noiDung.MonTheThaoId;
             CauHinhLichThiDau? cauHinh = null;
             if (monTheThaoId > 0)
             {
@@ -1063,10 +1310,13 @@ namespace Dms.Application.Services
             int matchMinutes = request.ThoiLuongTranPhut > 0 ? request.ThoiLuongTranPhut : (cauHinh?.ThoiLuongTranMacDinhPhut > 0 ? cauHinh.ThoiLuongTranMacDinhPhut : 60);
             int breakMinutes = request.NghiGiuaTranPhut >= 0 ? request.NghiGiuaTranPhut : 15;
             TimeSpan slotDuration = TimeSpan.FromMinutes(matchMinutes + effThoiGianDemDonSanPhut);
-            int minRestMinutes = request.ThoiGianNghiToiThieuVdvPhut > 0 ? request.ThoiGianNghiToiThieuVdvPhut : (cauHinh?.NghiToiThieuGiua2TranPhut ?? 60);
+            int effKhoangCachVongPhut = (request.KhoangCachGiuaCacVongGio > 0 ? request.KhoangCachGiuaCacVongGio : (cauHinh?.KhoangCachGiuaCacVongGio ?? 0)) * 60;
+            int minRestMinutes = effKhoangCachVongPhut > 0
+                ? effKhoangCachVongPhut
+                : (request.ThoiGianNghiToiThieuVdvPhut > 0 ? request.ThoiGianNghiToiThieuVdvPhut : (cauHinh?.NghiToiThieuGiua2TranPhut ?? 60));
 
             // --- MACRO-SCHEDULER: Phân bổ Vòng đấu vào Ngày thi đấu cụ thể ---
-            var giaiDau = noiDung.GiaiDauMonTheThao?.GiaiDau;
+            var giaiDau = noiDung.GiaiDau;
             DateTime tournamentStart = request.NgayBatDau.Date;
             DateTime tournamentEnd = giaiDau != null ? giaiDau.NgayKetThuc.Date : tournamentStart;
             if (tournamentEnd < tournamentStart) tournamentEnd = tournamentStart;
@@ -1121,13 +1371,13 @@ namespace Dms.Application.Services
             }
 
             // Nạp các trận đấu đang có trong giải đấu để tránh trùng với lịch môn khác
-            int? currentGiaiDauId = noiDung.GiaiDauMonTheThao?.GiaiDauId;
+            int? currentGiaiDauId = noiDung.GiaiDauId;
             var existingMatches = (await _unitOfWork.TranDaus.GetPagedAsync(
                 1, 4000,
                 predicate: t => t.IsDeleted != true &&
                                 t.ThoiGianBatDau.HasValue && t.ThoiGianKetThuc.HasValue &&
                                 t.ThoiGianBatDau.Value.Date >= tournamentStart.Date &&
-                                (!currentGiaiDauId.HasValue || t.NoiDungThiDau.GiaiDauMonTheThao.GiaiDauId == currentGiaiDauId.Value),
+                                (!currentGiaiDauId.HasValue || t.GiaiDauMonTheThao.GiaiDauId == currentGiaiDauId.Value),
                 orderBy: null,
                 t => t.ThanhPhanTranDaus,
                 t => t.PhanCongTrongTais
@@ -1179,7 +1429,7 @@ namespace Dms.Application.Services
             // Sắp xếp fixtures theo thứ tự vòng đấu tăng dần
             fixtures = fixtures.OrderBy(f => f.VongThuTu).ToList();
 
-            var currentMaxSoTran = (await _unitOfWork.TranDaus.FindAsync(t => t.NoiDungThiDauId == request.NoiDungThiDauId && t.IsDeleted != true))
+            var currentMaxSoTran = (await _unitOfWork.TranDaus.FindAsync(t => t.GiaiDauMonTheThaoId == request.GiaiDauMonTheThaoId && t.IsDeleted != true))
                 .Select(t => t.SoTran)
                 .DefaultIfEmpty(0)
                 .Max();
@@ -1410,7 +1660,7 @@ namespace Dms.Application.Services
                     // === TẠO TRẬN ĐẤU ===
                     var tran = new TranDau
                     {
-                        NoiDungThiDauId = request.NoiDungThiDauId,
+                        GiaiDauMonTheThaoId = request.GiaiDauMonTheThaoId,
                         VongDauId = vongDauMap[f.VongTen].Id,
                         BangDauId = f.BangDauId,
                         SanDauId = candSan?.Id,
@@ -1420,7 +1670,9 @@ namespace Dms.Application.Services
                         ThoiGianBatDau = matchStart,
                         ThoiGianKetThuc = matchEnd,
                         TrangThai = "ChuaDau",
-                        GhiChu = (f.Doi1DangKyId == 0 || f.Doi2DangKyId == 0) ? "Chờ xác định đội thi đấu (TBD)" : null,
+                        GhiChu = !string.IsNullOrWhiteSpace(f.GhiChu)
+                            ? f.GhiChu
+                            : ((f.Doi1DangKyId == 0 || f.Doi2DangKyId == 0) ? "Chờ xác định đội thi đấu (TBD)" : null),
                         Created = DateTime.UtcNow,
                         CreatedBy = createdBy,
                         IsDeleted = false
@@ -1565,7 +1817,7 @@ namespace Dms.Application.Services
                 .Count();
             if (result.SoNgayThiDau == 0) result.SoNgayThiDau = 1;
 
-            var allMatches = (await GetAllAsync(noiDungThiDauId: request.NoiDungThiDauId)).ToList();
+            var allMatches = (await GetAllAsync(giaiDauMonTheThaoId: request.GiaiDauMonTheThaoId)).ToList();
             result.Success = true;
             result.TotalMatchesCreated = createdTranList.Count;
             result.Message = $"Đã tự động xếp thành công {createdTranList.Count} trận đấu qua thuật toán phân bổ thông minh!";
@@ -1587,12 +1839,11 @@ namespace Dms.Application.Services
             var matches = (await _unitOfWork.TranDaus.GetPagedAsync(
                 1, 4000,
                 predicate: t => t.IsDeleted != true &&
-                                t.NoiDungThiDau.GiaiDauMonTheThao.GiaiDauId == giaiDauId &&
+                                t.GiaiDauMonTheThao.GiaiDauId == giaiDauId &&
                                 t.ThoiGianBatDau.HasValue && t.ThoiGianKetThuc.HasValue,
                 orderBy: q => q.OrderBy(t => t.ThoiGianBatDau),
-                t => t.NoiDungThiDau,
-                t => t.NoiDungThiDau.GiaiDauMonTheThao,
-                t => t.NoiDungThiDau.GiaiDauMonTheThao.MonTheThao,
+                t => t.GiaiDauMonTheThao,
+                t => t.GiaiDauMonTheThao.MonTheThao,
                 t => t.SanDau!,
                 t => t.ThanhPhanTranDaus,
                 t => t.PhanCongTrongTais
@@ -1628,10 +1879,10 @@ namespace Dms.Application.Services
                     {
                         string m1Name = m1.TenTran ?? $"Trận #{m1.SoTran}";
                         string m2Name = m2.TenTran ?? $"Trận #{m2.SoTran}";
-                        string m1Mon = m1.NoiDungThiDau?.GiaiDauMonTheThao?.MonTheThao?.Ten ?? "Thể thao";
-                        string m2Mon = m2.NoiDungThiDau?.GiaiDauMonTheThao?.MonTheThao?.Ten ?? "Thể thao";
-                        string m1Nd = m1.NoiDungThiDau?.Ten ?? "";
-                        string m2Nd = m2.NoiDungThiDau?.Ten ?? "";
+                        string m1Mon = m1.GiaiDauMonTheThao?.MonTheThao?.Ten ?? "Thể thao";
+                        string m2Mon = m2.GiaiDauMonTheThao?.MonTheThao?.Ten ?? "Thể thao";
+                        string m1Nd = m1.GiaiDauMonTheThao?.MonTheThao?.Ten ?? "";
+                        string m2Nd = m2.GiaiDauMonTheThao?.MonTheThao?.Ten ?? "";
                         string m1San = m1.SanDau?.Ten ?? "Chưa xếp sân";
 
                         // 1. Kiểm tra Sân đấu
@@ -1878,6 +2129,32 @@ namespace Dms.Application.Services
             return rounds;
         }
 
+        private static string? GetPlaceholderTeam(string? ghiChu, string? tenTran, int position)
+        {
+            if (!string.IsNullOrWhiteSpace(ghiChu) && ghiChu.StartsWith("TBD: "))
+            {
+                var content = ghiChu.Substring(5);
+                var vsIdx = content.IndexOf(" vs ", StringComparison.OrdinalIgnoreCase);
+                if (vsIdx > 0)
+                {
+                    return position == 1 ? content.Substring(0, vsIdx).Trim() : content.Substring(vsIdx + 4).Trim();
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(tenTran))
+            {
+                var colonIdx = tenTran.IndexOf(':');
+                var matchup = colonIdx >= 0 ? tenTran.Substring(colonIdx + 1).Trim() : tenTran.Trim();
+                var vsIdx = matchup.IndexOf(" vs ", StringComparison.OrdinalIgnoreCase);
+                if (vsIdx > 0)
+                {
+                    return position == 1 ? matchup.Substring(0, vsIdx).Trim() : matchup.Substring(vsIdx + 4).Trim();
+                }
+            }
+
+            return null;
+        }
+
         private class MatchFixture
         {
             public string VongTen { get; set; } = string.Empty;
@@ -1887,6 +2164,9 @@ namespace Dms.Application.Services
             public int Doi2DangKyId { get; set; }
             public string TenTran { get; set; } = string.Empty;
             public bool IsPlaceholder { get; set; } = false;
+            public string? TenDoi1Placeholder { get; set; }
+            public string? TenDoi2Placeholder { get; set; }
+            public string? GhiChu { get; set; }
         }
 
         private class BracketNode

@@ -1729,3 +1729,96 @@ FROM INFORMATION_SCHEMA.TABLES
 WHERE TABLE_TYPE = 'BASE TABLE'
 ORDER BY TABLE_NAME;
 GO
+
+
+
+
+
+Tôi đã cập nhật thuật toán xếp lịch tự động cho thể thức "Kết hợp vòng bảng & loại trực tiếp" (KetHopVongBangVaLoaiTrucTiep) trong 
+
+TranDauService.cs
+ và đồng bộ giao diện 
+
+lich-thi-dau/page.tsx
+.
+
+Chi tiết các cải tiến đã thực hiện:
+1. Tự động sinh nhánh đấu loại trực tiếp nối tiếp Vòng bảng
+Sau khi sinh lịch thi đấu vòng tròn cho các bảng đấu (Round-Robin), hệ thống sẽ tự động tạo tiếp các vòng knockout tương ứng theo quy mô số bảng:
+
+Trường hợp từ 4 bảng trở lên (Bảng A, B, C, D...):
+
+Vòng Tứ kết (4 trận):
+Tứ kết 1: Nhất Bảng A vs Nhì Bảng B
+Tứ kết 2: Nhất Bảng C vs Nhì Bảng D
+Tứ kết 3: Nhất Bảng B vs Nhì Bảng A
+Tứ kết 4: Nhất Bảng D vs Nhì Bảng C
+Vòng Bán kết (2 trận):
+Bán kết 1: Thắng Tứ kết 1 vs Thắng Tứ kết 2
+Bán kết 2: Thắng Tứ kết 3 vs Thắng Tứ kết 4
+Trận Tranh hạng 3 - 4 (1 trận):
+Thua Bán kết 1 vs Thua Bán kết 2
+Trận Chung kết (1 trận):
+Thắng Bán kết 1 vs Thắng Bán kết 2
+Trường hợp 2 hoặc 3 bảng:
+
+Vòng Bán kết (2 trận):
+Với 2 bảng: Nhất Bảng A vs Nhì Bảng B, Nhất Bảng B vs Nhì Bảng A.
+Với 3 bảng: Nhất Bảng A vs Nhì bảng có thành tích tốt nhất, Nhất Bảng B vs Nhất Bảng C.
+Trận Tranh hạng 3 - 4 (1 trận): Thua Bán kết 1 vs Thua Bán kết 2.
+Trận Chung kết (1 trận): Thắng Bán kết 1 vs Thắng Bán kết 2.
+Trường hợp 1 bảng:
+
+Nếu có từ 4 đội trở lên: Bán kết (Nhất vs Hạng 4, Nhì vs Hạng 3) $\rightarrow$ Tranh hạng 3 - 4 $\rightarrow$ Chung kết.
+Nếu dưới 4 đội: Trận Chung kết (Nhất vs Nhì).
+2. Ràng buộc thời gian & phân bổ sân bãi (CSP Engine)
+Thứ tự vòng đấu (Round Precedence): Các trận Tứ kết bắt buộc bắt đầu sau khi Vòng bảng đã hoàn tất; Bán kết bắt đầu sau khi Tứ kết hoàn tất; Tranh 3-4 và Chung kết diễn ra sau Bán kết.
+Ngày thi đấu: Nếu bật Ưu tiên Chung kết ngày bế mạc hoặc Mỗi vòng một ngày, các vòng đấu sẽ trải đều theo ngày giải đấu, trận Tranh hạng 3-4 và trận Chung kết sẽ diễn ra vào ngày bế mạc (trận Tranh 3-4 diễn ra trước trận Chung kết).
+Phân bổ Sân đấu & Trọng tài: Các trận vòng knockout vẫn được xếp sân và phân công trọng tài tự động, đảm bảo không trùng sân và cân bằng tải trọng tài.
+3. Hiển thị thông minh trên giao diện
+Huy hiệu Nhánh đấu: Các trận knockout chưa có kết quả thực tế sẽ hiển thị định danh rõ ràng như Nhất Bảng A [Nhánh đấu] vs Nhì Bảng B [Nhánh đấu], hoặc Thắng Bán kết 1 [Nhánh đấu] vs Thắng Bán kết 2 [Nhánh đấu].
+Bộ lọc vòng đấu: Người dùng có thể lọc theo từng vòng cụ thể: Vòng bảng (Lượt 1, 2...), Tứ kết, Bán kết, Tranh hạng 3 - 4, Chung kết.
+Khi kết thúc vòng bảng, ban tổ chức có thể nhấn Sửa trận đấu để cập nhật đội tuyển thực tế đã giành quyền đi tiếp vào trận đấu.
+
+
+
+
+
+Trong hệ thống xếp lịch tự động thi đấu, khi bạn chọn thể thức Vòng bảng + Loại trực tiếp, các vị trí này xuất hiện do cơ chế tính toán số đội đi tiếp để ghép vào cây thi đấu Knock-out:
+
+1. Ý nghĩa của từng vị trí
+Đội thứ 3 tốt nhất (1) và (2):
+
+Đây là 2 đội xếp hạng 3 ở các bảng đấu có thành tích cao nhất (so sánh lần lượt theo: Điểm số $\rightarrow$ Hiệu số bàn thắng/thua $\rightarrow$ Số bàn thắng ghi được giữa các đội đứng thứ 3 với nhau).
+Vé vớt 1 và Vé vớt 2:
+
+Đây là 2 suất vé vớt bổ sung (Wildcard / Play-in). Nó xuất hiện khi giải đấu của bạn chỉ có 2 bảng đấu, nhưng vòng Knock-out lại được cấu hình là vòng Tứ kết (cần đúng 8 đội).
+2. Tại sao lại xuất hiện cả hai cùng lúc?
+Để tổ chức vòng Tứ kết, bắt buộc phải có đủ 8 đội (để chia thành 4 trận đấu).
+
+Tuy nhiên, nếu giải của bạn chỉ có 2 bảng đấu (Bảng A & Bảng B):
+
+2 đội Nhất (Nhất A, Nhất B) + 2 đội Nhì (Nhì A, Nhì B) = 4 đội.
+Lấy thêm 2 đội hạng 3 (Hạng 3 bảng A, Hạng 3 bảng B) = 6 đội.
+Vẫn thiếu 2 đội nữa mới đủ 8 đội cho 4 cặp Tứ kết!
+Do đó, thuật toán tự động sinh thêm 2 suất giữ chỗ mang tên "Vé vớt 1" và "Vé vớt 2" (thực tế sẽ là 2 đội hạng 4 có thành tích tốt nhất, hoặc 2 đội thắng trận play-off tranh vé vớt) để ghép đủ 4 cặp đấu Tứ kết:
+
+Tứ kết 1: Nhất A vs Nhì B
+Tứ kết 2: Nhất B vs Đội thứ 3 tốt nhất (1)
+Tứ kết 3: Vé vớt 1 vs Đội thứ 3 tốt nhất (2)
+Tứ kết 4: Vé vớt 2 vs Nhì A
+3. Gợi ý thiết lập hợp lý nhất cho giải đấu
+Tùy vào quy mô giải mà bạn có thể áp dụng:
+
+Nếu giải chỉ có 2 bảng:
+
+Chuẩn và đẹp nhất là không lấy vé vớt/đội thứ 3, chỉ lấy 4 đội (Nhất A, Nhì A, Nhất B, Nhì B) vào thẳng Bán kết:
+Bán kết 1: Nhất A vs Nhì B
+Bán kết 2: Nhất B vs Nhì A
+Hai đội thắng vào Chung kết, hai đội thua đá Tranh 3 - 4.
+Khi đó sơ đồ sẽ vừa khít, không bao giờ xuất hiện chữ "Vé vớt".
+Nếu muốn đá Tứ kết (8 đội):
+
+Bạn nên chia giải thành 3 hoặc 4 bảng:
+4 bảng (A, B, C, D): Lấy Nhất & Nhì mỗi bảng = đúng 8 đội vào Tứ kết.
+3 bảng (A, B, C): Lấy 3 Nhất + 3 Nhì = 6 đội, cộng thêm đúng 2 đội thứ 3 tốt nhất (1 & 2) là tròn 8 đội Tứ kết (không bị dư ra Vé vớt 1, 2).

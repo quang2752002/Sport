@@ -9,21 +9,31 @@ export const dangKyThiDauService = {
     pageSize?: number;
     keyword?: string;
     giaiDauId?: number;
+    giaiDauMonTheThaoId?: number;
     noiDungThiDauId?: number;
     donViId?: number;
     trangThai?: string;
   }) => {
-    const res = await api.get<PagedResult<DangKyThiDau>>('/api/dangkythidau/paged', { params });
+    const query = {
+      ...params,
+      giaiDauMonTheThaoId: params?.giaiDauMonTheThaoId ?? params?.noiDungThiDauId,
+    };
+    const res = await api.get<PagedResult<DangKyThiDau>>('/api/dangkythidau/paged', { params: query });
     return res.data;
   },
 
   /** Lấy toàn bộ danh sách hồ sơ đăng ký thi đấu */
   getAll: async (params?: {
     giaiDauId?: number;
+    giaiDauMonTheThaoId?: number;
     noiDungThiDauId?: number;
     donViId?: number;
   }) => {
-    const res = await api.get<DangKyThiDau[]>('/api/dangkythidau', { params });
+    const query = {
+      ...params,
+      giaiDauMonTheThaoId: params?.giaiDauMonTheThaoId ?? params?.noiDungThiDauId,
+    };
+    const res = await api.get<DangKyThiDau[]>('/api/dangkythidau', { params: query });
     return res.data;
   },
 

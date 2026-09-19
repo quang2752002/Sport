@@ -28,7 +28,7 @@ namespace Dms.Application.Services
             int pageSize,
             string? keyword = null,
             int? giaiDauId = null,
-            int? noiDungThiDauId = null,
+            int? giaiDauMonTheThaoId = null,
             int? donViId = null,
             string? trangThai = null)
         {
@@ -37,15 +37,14 @@ namespace Dms.Application.Services
                 pageSize,
                 predicate: d => d.IsDeleted != true &&
                                 (string.IsNullOrEmpty(keyword) || d.SoDangKy.Contains(keyword) || (d.TenDangKy != null && d.TenDangKy.Contains(keyword))) &&
-                                (!noiDungThiDauId.HasValue || d.NoiDungThiDauId == noiDungThiDauId.Value) &&
+                                (!giaiDauMonTheThaoId.HasValue || d.GiaiDauMonTheThaoId == giaiDauMonTheThaoId.Value) &&
                                 (string.IsNullOrEmpty(trangThai) || d.TrangThai == trangThai) &&
                                 (!donViId.HasValue || (d.Doi != null && d.Doi.DonViId == donViId.Value) || d.ChiTietDangKyThiDaus.Any(c => c.VanDongVien.DonViId == donViId.Value)) &&
-                                (!giaiDauId.HasValue || d.NoiDungThiDau.GiaiDauMonTheThao.GiaiDauId == giaiDauId.Value),
+                                (!giaiDauId.HasValue || d.GiaiDauMonTheThao.GiaiDauId == giaiDauId.Value),
                 orderBy: q => q.OrderByDescending(d => d.NgayDangKy),
-                d => d.NoiDungThiDau,
-                d => d.NoiDungThiDau.GiaiDauMonTheThao,
-                d => d.NoiDungThiDau.GiaiDauMonTheThao.GiaiDau,
-                d => d.NoiDungThiDau.GiaiDauMonTheThao.MonTheThao,
+                d => d.GiaiDauMonTheThao,
+                d => d.GiaiDauMonTheThao.GiaiDau,
+                d => d.GiaiDauMonTheThao.MonTheThao,
                 d => d.Doi!,
                 d => d.ChiTietDangKyThiDaus
             );
@@ -54,20 +53,19 @@ namespace Dms.Application.Services
             return new PagedResult<DangKyThiDauDto>(dtos, pagedEntities.TotalCount, pageIndex, pageSize);
         }
 
-        public async Task<IEnumerable<DangKyThiDauDto>> GetAllAsync(int? giaiDauId = null, int? noiDungThiDauId = null, int? donViId = null)
+        public async Task<IEnumerable<DangKyThiDauDto>> GetAllAsync(int? giaiDauId = null, int? giaiDauMonTheThaoId = null, int? donViId = null)
         {
             var paged = await _unitOfWork.DangKyThiDaus.GetPagedAsync(
                 1,
                 1000,
                 predicate: d => d.IsDeleted != true &&
-                                (!noiDungThiDauId.HasValue || d.NoiDungThiDauId == noiDungThiDauId.Value) &&
+                                (!giaiDauMonTheThaoId.HasValue || d.GiaiDauMonTheThaoId == giaiDauMonTheThaoId.Value) &&
                                 (!donViId.HasValue || (d.Doi != null && d.Doi.DonViId == donViId.Value) || d.ChiTietDangKyThiDaus.Any(c => c.VanDongVien.DonViId == donViId.Value)) &&
-                                (!giaiDauId.HasValue || d.NoiDungThiDau.GiaiDauMonTheThao.GiaiDauId == giaiDauId.Value),
+                                (!giaiDauId.HasValue || d.GiaiDauMonTheThao.GiaiDauId == giaiDauId.Value),
                 orderBy: q => q.OrderByDescending(d => d.NgayDangKy),
-                d => d.NoiDungThiDau,
-                d => d.NoiDungThiDau.GiaiDauMonTheThao,
-                d => d.NoiDungThiDau.GiaiDauMonTheThao.GiaiDau,
-                d => d.NoiDungThiDau.GiaiDauMonTheThao.MonTheThao,
+                d => d.GiaiDauMonTheThao,
+                d => d.GiaiDauMonTheThao.GiaiDau,
+                d => d.GiaiDauMonTheThao.MonTheThao,
                 d => d.Doi!,
                 d => d.ChiTietDangKyThiDaus
             );
@@ -82,10 +80,9 @@ namespace Dms.Application.Services
                 1,
                 predicate: d => d.Id == id && d.IsDeleted != true,
                 orderBy: null,
-                d => d.NoiDungThiDau,
-                d => d.NoiDungThiDau.GiaiDauMonTheThao,
-                d => d.NoiDungThiDau.GiaiDauMonTheThao.GiaiDau,
-                d => d.NoiDungThiDau.GiaiDauMonTheThao.MonTheThao,
+                d => d.GiaiDauMonTheThao,
+                d => d.GiaiDauMonTheThao.GiaiDau,
+                d => d.GiaiDauMonTheThao.MonTheThao,
                 d => d.Doi!,
                 d => d.ChiTietDangKyThiDaus
             );
@@ -99,26 +96,24 @@ namespace Dms.Application.Services
 
         public async Task<DangKyThiDauDto> CreateAsync(CreateUpdateDangKyThiDauDto dto, string? createdBy = null, bool isPrivileged = false)
         {
-            var noiDung = await _unitOfWork.NoiDungThiDaus.GetByIdAsync(dto.NoiDungThiDauId);
-            if (noiDung == null || noiDung.IsDeleted == true)
+            var gdMon = await _unitOfWork.GiaiDauMonTheThaos.GetByIdAsync(dto.GiaiDauMonTheThaoId);
+            if (gdMon == null || gdMon.IsDeleted == true)
             {
-                throw new InvalidOperationException("Nội dung thi đấu không tồn tại hoặc đã bị xóa.");
+                throw new InvalidOperationException("Môn thi đấu trong giải không tồn tại hoặc đã bị xóa.");
             }
+
+            var monTheThao = await _unitOfWork.MonTheThaos.GetByIdAsync(gdMon.MonTheThaoId);
 
             // Kiểm tra hạn đăng ký giải đấu
             if (!isPrivileged)
             {
-                var gdMon = await _unitOfWork.GiaiDauMonTheThaos.GetByIdAsync(noiDung.GiaiDauMonTheThaoId);
-                if (gdMon != null)
+                var giaiDau = await _unitOfWork.GiaiDaus.GetByIdAsync(gdMon.GiaiDauId);
+                if (giaiDau != null)
                 {
-                    var giaiDau = await _unitOfWork.GiaiDaus.GetByIdAsync(gdMon.GiaiDauId);
-                    if (giaiDau != null)
+                    var deadline = giaiDau.HanDangKy ?? giaiDau.NgayBatDau;
+                    if (DateTime.Now > deadline || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.KetThuc || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.Huy)
                     {
-                        var deadline = giaiDau.HanDangKy ?? giaiDau.NgayBatDau;
-                        if (DateTime.Now > deadline || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.KetThuc || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.Huy)
-                        {
-                            throw new InvalidOperationException($"Giải đấu \"{giaiDau.Ten}\" đã hết hạn đăng ký thi đấu (Hạn chót: {deadline:dd/MM/yyyy HH:mm}). Không thể gửi thêm hồ sơ mới.");
-                        }
+                        throw new InvalidOperationException($"Giải đấu \"{giaiDau.Ten}\" đã hết hạn đăng ký thi đấu (Hạn chót: {deadline:dd/MM/yyyy HH:mm}). Không thể gửi thêm hồ sơ mới.");
                     }
                 }
             }
@@ -130,29 +125,29 @@ namespace Dms.Application.Services
             }
 
             // Kiểm tra số lượng VĐV theo loại thi đấu: Cá nhân chỉ cho phép đúng 1 VĐV
-            if (string.Equals(noiDung.LoaiThiDau, "CaNhan", StringComparison.OrdinalIgnoreCase))
+            if (monTheThao != null && !monTheThao.LaMonDongDoi)
             {
                 if (vdvIds.Count > 1)
                 {
-                    throw new InvalidOperationException($"Nội dung '{noiDung.Ten}' là nội dung thi đấu cá nhân, chỉ được chọn 1 vận động viên.");
+                    throw new InvalidOperationException($"Môn '{monTheThao.Ten}' là môn thi đấu cá nhân, chỉ được chọn 1 vận động viên.");
                 }
             }
-            else
+            else if (monTheThao != null)
             {
                 // Nội dung tập thể/đồng đội/đôi
-                if (noiDung.SoLuongToiThieu.HasValue && vdvIds.Count < noiDung.SoLuongToiThieu.Value)
+                if (monTheThao.SoLuongVanDongVienToiThieu.HasValue && vdvIds.Count < monTheThao.SoLuongVanDongVienToiThieu.Value)
                 {
-                    throw new InvalidOperationException($"Nội dung '{noiDung.Ten}' yêu cầu tối thiểu {noiDung.SoLuongToiThieu.Value} vận động viên (hiện có {vdvIds.Count}).");
+                    throw new InvalidOperationException($"Môn '{monTheThao.Ten}' yêu cầu tối thiểu {monTheThao.SoLuongVanDongVienToiThieu.Value} vận động viên (hiện có {vdvIds.Count}).");
                 }
-                if (noiDung.SoLuongToiDa.HasValue && vdvIds.Count > noiDung.SoLuongToiDa.Value)
+                if (monTheThao.SoLuongVanDongVienToiDa.HasValue && vdvIds.Count > monTheThao.SoLuongVanDongVienToiDa.Value)
                 {
-                    throw new InvalidOperationException($"Nội dung '{noiDung.Ten}' chỉ cho phép tối đa {noiDung.SoLuongToiDa.Value} vận động viên (hiện có {vdvIds.Count}).");
+                    throw new InvalidOperationException($"Môn '{monTheThao.Ten}' chỉ cho phép tối đa {monTheThao.SoLuongVanDongVienToiDa.Value} vận động viên (hiện có {vdvIds.Count}).");
                 }
             }
 
-            // Kiểm tra trùng VĐV đã đăng ký trong nội dung thi đấu này của giải đấu
+            // Kiểm tra trùng VĐV đã đăng ký trong môn thi đấu này của giải đấu
             var activeRegistrations = (await _unitOfWork.DangKyThiDaus.FindAsync(
-                d => d.NoiDungThiDauId == dto.NoiDungThiDauId &&
+                d => d.GiaiDauMonTheThaoId == dto.GiaiDauMonTheThaoId &&
                      d.IsDeleted != true &&
                      d.TrangThai != "TuChoi"
             )).ToList();
@@ -182,7 +177,7 @@ namespace Dms.Application.Services
                 {
                     var dupVdvs = (await _unitOfWork.VanDongViens.FindAsync(v => dupVdvIds.Contains(v.Id))).ToList();
                     var dupNames = string.Join(", ", dupVdvs.Select(v => v.HoTen));
-                    throw new InvalidOperationException($"Vận động viên [{dupNames}] đã được đăng ký tham gia nội dung \"{noiDung.Ten}\". Không thể đăng ký trùng.");
+                    throw new InvalidOperationException($"Vận động viên [{dupNames}] đã được đăng ký tham gia môn thi đấu này. Không thể đăng ký trùng.");
                 }
             }
 
@@ -247,12 +242,12 @@ namespace Dms.Application.Services
 
             var entity = new DangKyThiDau
             {
-                NoiDungThiDauId = dto.NoiDungThiDauId,
+                GiaiDauMonTheThaoId = dto.GiaiDauMonTheThaoId,
                 DoiId = resolvedDoiId,
                 SoDangKy = string.IsNullOrWhiteSpace(dto.SoDangKy) ? $"DK_{DateTime.Now:yyyyMMddHHmmss}" : dto.SoDangKy,
                 TenDangKy = !string.IsNullOrWhiteSpace(dto.TenDangKy)
                     ? dto.TenDangKy
-                    : (!string.IsNullOrWhiteSpace(dto.TenDoi) ? $"{dto.TenDoi} - {noiDung.Ten}" : $"{noiDung.Ten}"),
+                    : (!string.IsNullOrWhiteSpace(dto.TenDoi) ? dto.TenDoi : $"Tham gia - {monTheThao?.Ten ?? "Môn thi đấu"}"),
                 TrangThai = "DaDuyet", // Luôn mặc định đã duyệt theo yêu cầu của hệ thống
                 NgayDangKy = dto.NgayDangKy != default ? dto.NgayDangKy : DateTime.Now,
                 GhiChu = dto.GhiChu,
@@ -292,27 +287,23 @@ namespace Dms.Application.Services
             // Kiểm tra hạn đăng ký giải đấu
             if (!isPrivileged)
             {
-                var targetNoiDungId = dto.NoiDungThiDauId != 0 ? dto.NoiDungThiDauId : entity.NoiDungThiDauId;
-                var noiDung = await _unitOfWork.NoiDungThiDaus.GetByIdAsync(targetNoiDungId);
-                if (noiDung != null)
+                var targetId = dto.GiaiDauMonTheThaoId != 0 ? dto.GiaiDauMonTheThaoId : entity.GiaiDauMonTheThaoId;
+                var gdMon = await _unitOfWork.GiaiDauMonTheThaos.GetByIdAsync(targetId);
+                if (gdMon != null)
                 {
-                    var gdMon = await _unitOfWork.GiaiDauMonTheThaos.GetByIdAsync(noiDung.GiaiDauMonTheThaoId);
-                    if (gdMon != null)
+                    var giaiDau = await _unitOfWork.GiaiDaus.GetByIdAsync(gdMon.GiaiDauId);
+                    if (giaiDau != null)
                     {
-                        var giaiDau = await _unitOfWork.GiaiDaus.GetByIdAsync(gdMon.GiaiDauId);
-                        if (giaiDau != null)
+                        var deadline = giaiDau.HanDangKy ?? giaiDau.NgayBatDau;
+                        if (DateTime.Now > deadline || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.KetThuc || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.Huy)
                         {
-                            var deadline = giaiDau.HanDangKy ?? giaiDau.NgayBatDau;
-                            if (DateTime.Now > deadline || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.KetThuc || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.Huy)
-                            {
-                                throw new InvalidOperationException($"Giải đấu \"{giaiDau.Ten}\" đã hết hạn đăng ký thi đấu (Hạn chót: {deadline:dd/MM/yyyy HH:mm}). Không thể chỉnh sửa hồ sơ.");
-                            }
+                            throw new InvalidOperationException($"Giải đấu \"{giaiDau.Ten}\" đã hết hạn đăng ký thi đấu (Hạn chót: {deadline:dd/MM/yyyy HH:mm}). Không thể chỉnh sửa hồ sơ.");
                         }
                     }
                 }
             }
 
-            entity.NoiDungThiDauId = dto.NoiDungThiDauId;
+            entity.GiaiDauMonTheThaoId = dto.GiaiDauMonTheThaoId;
             entity.DoiId = dto.DoiId;
             if (!string.IsNullOrWhiteSpace(dto.SoDangKy)) entity.SoDangKy = dto.SoDangKy;
             entity.TenDangKy = dto.TenDangKy;
@@ -326,9 +317,9 @@ namespace Dms.Application.Services
 
             if (dto.VanDongVienIds != null && dto.VanDongVienIds.Any())
             {
-                var targetNoiDungId = dto.NoiDungThiDauId != 0 ? dto.NoiDungThiDauId : entity.NoiDungThiDauId;
+                var targetId = dto.GiaiDauMonTheThaoId != 0 ? dto.GiaiDauMonTheThaoId : entity.GiaiDauMonTheThaoId;
                 var activeRegistrations = (await _unitOfWork.DangKyThiDaus.FindAsync(
-                    d => d.NoiDungThiDauId == targetNoiDungId &&
+                    d => d.GiaiDauMonTheThaoId == targetId &&
                          d.Id != id &&
                          d.IsDeleted != true &&
                          d.TrangThai != "TuChoi"
@@ -360,8 +351,7 @@ namespace Dms.Application.Services
                     {
                         var dupVdvs = (await _unitOfWork.VanDongViens.FindAsync(v => dupVdvIds.Contains(v.Id))).ToList();
                         var dupNames = string.Join(", ", dupVdvs.Select(v => v.HoTen));
-                        var nd = await _unitOfWork.NoiDungThiDaus.GetByIdAsync(targetNoiDungId);
-                        throw new InvalidOperationException($"Vận động viên [{dupNames}] đã được đăng ký tham gia nội dung \"{nd?.Ten}\". Không thể đăng ký trùng.");
+                        throw new InvalidOperationException($"Vận động viên [{dupNames}] đã được đăng ký tham gia môn thi đấu này. Không thể đăng ký trùng.");
                     }
                 }
 
@@ -398,20 +388,16 @@ namespace Dms.Application.Services
             // Kiểm tra hạn đăng ký giải đấu
             if (!isPrivileged)
             {
-                var noiDung = await _unitOfWork.NoiDungThiDaus.GetByIdAsync(entity.NoiDungThiDauId);
-                if (noiDung != null)
+                var gdMon = await _unitOfWork.GiaiDauMonTheThaos.GetByIdAsync(entity.GiaiDauMonTheThaoId);
+                if (gdMon != null)
                 {
-                    var gdMon = await _unitOfWork.GiaiDauMonTheThaos.GetByIdAsync(noiDung.GiaiDauMonTheThaoId);
-                    if (gdMon != null)
+                    var giaiDau = await _unitOfWork.GiaiDaus.GetByIdAsync(gdMon.GiaiDauId);
+                    if (giaiDau != null)
                     {
-                        var giaiDau = await _unitOfWork.GiaiDaus.GetByIdAsync(gdMon.GiaiDauId);
-                        if (giaiDau != null)
+                        var deadline = giaiDau.HanDangKy ?? giaiDau.NgayBatDau;
+                        if (DateTime.Now > deadline || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.KetThuc || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.Huy)
                         {
-                            var deadline = giaiDau.HanDangKy ?? giaiDau.NgayBatDau;
-                            if (DateTime.Now > deadline || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.KetThuc || giaiDau.TrangThai == Dms.Domain.Enums.TrangThaiGiaiDau.Huy)
-                            {
-                                throw new InvalidOperationException($"Giải đấu \"{giaiDau.Ten}\" đã hết hạn đăng ký thi đấu (Hạn chót: {deadline:dd/MM/yyyy HH:mm}). Không thể xóa hoặc hủy hồ sơ.");
-                            }
+                            throw new InvalidOperationException($"Giải đấu \"{giaiDau.Ten}\" đã hết hạn đăng ký thi đấu (Hạn chót: {deadline:dd/MM/yyyy HH:mm}). Không thể xóa hoặc hủy hồ sơ.");
                         }
                     }
                 }
@@ -499,8 +485,8 @@ namespace Dms.Application.Services
             var result = new List<DangKyThiDauDto>();
             foreach (var d in list)
             {
-                var gd = d.NoiDungThiDau?.GiaiDauMonTheThao?.GiaiDau;
-                var mon = d.NoiDungThiDau?.GiaiDauMonTheThao?.MonTheThao;
+                var gd = d.GiaiDauMonTheThao?.GiaiDau;
+                var mon = d.GiaiDauMonTheThao?.MonTheThao;
                 var vdvsInEntry = d.ChiTietDangKyThiDaus.Select(c => c.VanDongVienId).ToList();
                 var vdvNames = vdvsInEntry
                     .Where(id => vdvDict.ContainsKey(id))
@@ -520,8 +506,7 @@ namespace Dms.Application.Services
                 result.Add(new DangKyThiDauDto
                 {
                     Id = d.Id,
-                    NoiDungThiDauId = d.NoiDungThiDauId,
-                    TenNoiDung = d.NoiDungThiDau?.Ten,
+                    GiaiDauMonTheThaoId = d.GiaiDauMonTheThaoId,
                     GiaiDauId = gd?.Id,
                     TenGiaiDau = gd?.Ten,
                     MonTheThaoId = mon?.Id,

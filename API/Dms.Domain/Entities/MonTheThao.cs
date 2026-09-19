@@ -26,7 +26,15 @@ namespace Dms.Domain.Entities
 
         public bool LaMonDongDoi { get; set; } = false;
 
+        [Required]
+        [MaxLength(20)]
+        public string GioiTinh { get; set; } = "HonHop";
+
         public HinhThucThiDau HinhThucThiDau { get; set; } = HinhThucThiDau.LoaiTrucTiep;
+
+        public int? SoLuongVanDongVienToiThieu { get; set; }
+        public int? SoLuongVanDongVienToiDa { get; set; }
+        public int? SoDoiToiDa { get; set; }
 
         public bool TrangThai { get; set; } = true;
 

@@ -126,50 +126,59 @@ export default function CreateGiaiDauPage() {
   }, []);
 
   const handleKhoiToggle = (khoiId: number) => {
-    const current = formData.khoiIds || [];
-    if (current.includes(khoiId)) {
-      setFormData({ ...formData, khoiIds: current.filter((id) => id !== khoiId) });
-    } else {
-      setFormData({ ...formData, khoiIds: [...current, khoiId] });
-    }
+    setFormData((prev) => {
+      const current = prev.khoiIds || [];
+      return {
+        ...prev,
+        khoiIds: current.includes(khoiId) ? current.filter((id) => id !== khoiId) : [...current, khoiId],
+      };
+    });
   };
 
   const handleMonToggle = (monId: number) => {
-    const current = formData.monTheThaoIds || [];
-    if (current.includes(monId)) {
-      setFormData({ ...formData, monTheThaoIds: current.filter((id) => id !== monId) });
-    } else {
-      setFormData({ ...formData, monTheThaoIds: [...current, monId] });
-    }
+    setFormData((prev) => {
+      const current = prev.monTheThaoIds || [];
+      return {
+        ...prev,
+        monTheThaoIds: current.includes(monId) ? current.filter((id) => id !== monId) : [...current, monId],
+      };
+    });
   };
 
   const handleSelectAllMons = () => {
-    if ((formData.monTheThaoIds || []).length === availableMons.length) {
-      setFormData({ ...formData, monTheThaoIds: [] });
-    } else {
-      setFormData({ ...formData, monTheThaoIds: availableMons.map((m) => m.id) });
-    }
+    setFormData((prev) => {
+      const current = prev.monTheThaoIds || [];
+      return {
+        ...prev,
+        monTheThaoIds: current.length === availableMons.length ? [] : availableMons.map((m) => m.id),
+      };
+    });
   };
 
   // Quản lý danh sách Điều lệ giải đấu
   const handleAddDieuLe = () => {
-    const newDieuLe: CreateUpdateDieuLeGiaiDau = {
-      tieuDe: '',
-      noiDung: '',
-      tepDinhKem: '',
-      thuTu: (formData.dieuLes?.length || 0) + 1,
-      trangThai: true,
-    };
-    setFormData({
-      ...formData,
-      dieuLes: [...(formData.dieuLes || []), newDieuLe],
+    setFormData((prev) => {
+      const current = prev.dieuLes || [];
+      const newDieuLe: CreateUpdateDieuLeGiaiDau = {
+        tieuDe: '',
+        noiDung: '',
+        tepDinhKem: '',
+        thuTu: current.length + 1,
+        trangThai: true,
+      };
+      return {
+        ...prev,
+        dieuLes: [...current, newDieuLe],
+      };
     });
   };
 
   const handleRemoveDieuLe = (index: number) => {
-    const current = [...(formData.dieuLes || [])];
-    current.splice(index, 1);
-    setFormData({ ...formData, dieuLes: current });
+    setFormData((prev) => {
+      const current = [...(prev.dieuLes || [])];
+      current.splice(index, 1);
+      return { ...prev, dieuLes: current };
+    });
   };
 
   const handleDieuLeChange = (
@@ -177,9 +186,11 @@ export default function CreateGiaiDauPage() {
     field: keyof CreateUpdateDieuLeGiaiDau,
     value: any
   ) => {
-    const current = [...(formData.dieuLes || [])];
-    current[index] = { ...current[index], [field]: value };
-    setFormData({ ...formData, dieuLes: current });
+    setFormData((prev) => {
+      const current = [...(prev.dieuLes || [])];
+      current[index] = { ...current[index], [field]: value };
+      return { ...prev, dieuLes: current };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

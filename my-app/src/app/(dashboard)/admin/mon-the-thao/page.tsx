@@ -25,6 +25,45 @@ import { PaginationComponent } from '@/components/common/PaginationComponent';
 import { useAuth } from '@/context/AuthContext';
 import { Permissions } from '@/constants/permissions';
 
+const HINH_THUC_OPTIONS = [
+  { value: 'LoaiTrucTiep', label: 'Loại trực tiếp (Knockout)', badge: 'danger' },
+  { value: 'VongBang', label: 'Vòng tròn / Vòng bảng (Round Robin)', badge: 'primary' },
+  { value: 'KetHopVongBangVaLoaiTrucTiep', label: 'Vòng bảng + Knockout', badge: 'success' },
+  { value: 'NhanhThangNhanhThua', label: 'Nhánh thắng - Nhánh thua', badge: 'warning' },
+  { value: 'HeThuySi', label: 'Hệ Thụy Sĩ (Swiss System)', badge: 'info' },
+  { value: 'TinhDiemXepHang', label: 'Tính điểm xếp hạng / Tính giờ', badge: 'secondary' },
+];
+
+const GIOI_TINH_OPTIONS = [
+  { value: 'Nam', label: 'Nam (♂)', badge: 'primary' },
+  { value: 'Nu', label: 'Nữ (♀)', badge: 'danger' },
+  { value: 'HonHop', label: 'Hỗn hợp / Mọi giới tính (⚥)', badge: 'info' },
+];
+
+const renderGioiTinh = (gioiTinh?: string) => {
+  switch (gioiTinh) {
+    case 'Nam':
+      return (
+        <Badge color="primary" pill className="px-2 py-1">
+          <i className="bi bi-gender-male me-1"></i>Nam
+        </Badge>
+      );
+    case 'Nu':
+      return (
+        <Badge color="danger" pill className="px-2 py-1" style={{ backgroundColor: '#ec4899' }}>
+          <i className="bi bi-gender-female me-1"></i>Nữ
+        </Badge>
+      );
+    case 'HonHop':
+    default:
+      return (
+        <Badge color="info" pill className="px-2 py-1">
+          <i className="bi bi-gender-ambiguous me-1"></i>Hỗn hợp
+        </Badge>
+      );
+  }
+};
+
 export default function AdminMonTheThaoPage() {
   const { hasPermission } = useAuth();
   const canCreate = hasPermission(Permissions.MonTheThao.Create);
@@ -39,6 +78,7 @@ export default function AdminMonTheThaoPage() {
   const [pageSize, setPageSize] = useState(10);
   const [keyword, setKeyword] = useState('');
   const [danhMucFilter, setDanhMucFilter] = useState<string>('');
+  const [gioiTinhFilter, setGioiTinhFilter] = useState<string>('');
   const [trangThaiFilter, setTrangThaiFilter] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +92,11 @@ export default function AdminMonTheThaoPage() {
     ten: '',
     moTa: '',
     laMonDongDoi: false,
+    gioiTinh: 'HonHop',
+    hinhThucThiDau: 'LoaiTrucTiep',
+    soLuongVanDongVienToiThieu: 1,
+    soLuongVanDongVienToiDa: 1,
+    soDoiToiDa: undefined,
     trangThai: true,
   });
   const [submitting, setSubmitting] = useState(false);
@@ -207,6 +252,7 @@ export default function AdminMonTheThaoPage() {
         keyword: keyword.trim() || undefined,
         danhMucId: danhMucFilter ? parseInt(danhMucFilter, 10) : undefined,
         trangThai: trangThaiFilter === '' ? undefined : trangThaiFilter === 'true',
+        gioiTinh: gioiTinhFilter || undefined,
       });
       setMonTheThaos(data.items || []);
       setTotalCount(data.totalCount || 0);
@@ -217,7 +263,7 @@ export default function AdminMonTheThaoPage() {
     } finally {
       setLoading(false);
     }
-  }, [pageIndex, pageSize, keyword, danhMucFilter, trangThaiFilter]);
+  }, [pageIndex, pageSize, keyword, danhMucFilter, trangThaiFilter, gioiTinhFilter]);
 
   useEffect(() => {
     loadMonTheThaos();
@@ -238,6 +284,11 @@ export default function AdminMonTheThaoPage() {
       ten: '',
       moTa: '',
       laMonDongDoi: false,
+      gioiTinh: 'HonHop',
+      hinhThucThiDau: 'LoaiTrucTiep',
+      soLuongVanDongVienToiThieu: 1,
+      soLuongVanDongVienToiDa: 1,
+      soDoiToiDa: undefined,
       trangThai: true,
     });
     setModalOpen(true);
@@ -252,6 +303,11 @@ export default function AdminMonTheThaoPage() {
       ten: item.ten,
       moTa: item.moTa || '',
       laMonDongDoi: item.laMonDongDoi,
+      gioiTinh: item.gioiTinh || 'HonHop',
+      hinhThucThiDau: item.hinhThucThiDau || 'LoaiTrucTiep',
+      soLuongVanDongVienToiThieu: item.soLuongVanDongVienToiThieu ?? (item.laMonDongDoi ? 5 : 1),
+      soLuongVanDongVienToiDa: item.soLuongVanDongVienToiDa ?? (item.laMonDongDoi ? 10 : 1),
+      soDoiToiDa: item.soDoiToiDa,
       trangThai: item.trangThai,
     });
     setModalOpen(true);
@@ -363,7 +419,7 @@ export default function AdminMonTheThaoPage() {
             <Form onSubmit={handleSearchSubmit} className="mb-4">
               <div className="p-3 bg-light rounded-3">
                 <Row className="g-2 align-items-center">
-                  <Col md={5} lg={4}>
+                  <Col md={4} lg={3}>
                     <div className="input-group bg-white rounded-3 overflow-hidden border">
                       <span className="input-group-text bg-white border-0 text-muted ps-3">
                         <i className="bi bi-search"></i>
@@ -371,7 +427,7 @@ export default function AdminMonTheThaoPage() {
                       <Input
                         type="text"
                         className="border-0 shadow-none ps-2"
-                        placeholder="Tìm kiếm mã, tên môn thể thao..."
+                        placeholder="Tìm kiếm mã, tên môn..."
                         value={keyword}
                         onChange={(e) => setKeyword(e.target.value)}
                       />
@@ -387,7 +443,7 @@ export default function AdminMonTheThaoPage() {
                         setPageIndex(1);
                       }}
                     >
-                      <option value="">-- Tất cả danh mục môn --</option>
+                      <option value="">-- Tất cả danh mục --</option>
                       {danhMucs.map((dm) => (
                         <option key={dm.id} value={dm.id}>
                           {dm.ten}
@@ -395,7 +451,23 @@ export default function AdminMonTheThaoPage() {
                       ))}
                     </Input>
                   </Col>
-                  <Col md={2} lg={3}>
+                  <Col md={2} lg={2}>
+                    <Input
+                      type="select"
+                      className="bg-white border rounded-3 shadow-none"
+                      value={gioiTinhFilter}
+                      onChange={(e) => {
+                        setGioiTinhFilter(e.target.value);
+                        setPageIndex(1);
+                      }}
+                    >
+                      <option value="">-- Giới tính (Tất cả) --</option>
+                      <option value="Nam">Nam (♂)</option>
+                      <option value="Nu">Nữ (♀)</option>
+                      <option value="HonHop">Hỗn hợp (⚥)</option>
+                    </Input>
+                  </Col>
+                  <Col md={2} lg={2}>
                     <Input
                       type="select"
                       className="bg-white border rounded-3 shadow-none"
@@ -405,12 +477,12 @@ export default function AdminMonTheThaoPage() {
                         setPageIndex(1);
                       }}
                     >
-                      <option value="">-- Tất cả trạng thái --</option>
+                      <option value="">-- Trạng thái (Tất cả) --</option>
                       <option value="true">Đang hoạt động</option>
                       <option value="false">Tạm dừng / Khóa</option>
                     </Input>
                   </Col>
-                  <Col md={2} lg={2}>
+                  <Col md={1} lg={2}>
                     <Button color="dark" type="submit" className="w-100 rounded-3">
                       Tìm kiếm
                     </Button>
@@ -447,7 +519,8 @@ export default function AdminMonTheThaoPage() {
                       <th>Mã Môn</th>
                       <th>Tên Môn Thể Thao</th>
                       <th>Danh Mục Phân Loại</th>
-                      <th className="text-center">Hình Thức</th>
+                      <th className="text-center">Loại & Thể Thức</th>
+                      <th className="text-center">Quy Mô VĐV/Đội</th>
                       <th>Mô Tả</th>
                       <th>Trạng Thái</th>
                       <th className="text-end" style={{ width: '130px' }}>
@@ -465,7 +538,10 @@ export default function AdminMonTheThaoPage() {
                           </span>
                         </td>
                         <td>
-                          <div className="fw-semibold text-dark">{item.ten}</div>
+                          <div className="fw-semibold text-dark d-flex align-items-center gap-2">
+                            <span>{item.ten}</span>
+                            {renderGioiTinh(item.gioiTinh)}
+                          </div>
                         </td>
                         <td>
                           {item.tenDanhMuc ? (
@@ -477,18 +553,35 @@ export default function AdminMonTheThaoPage() {
                           )}
                         </td>
                         <td className="text-center">
+                          <div className="d-flex flex-column align-items-center gap-1">
+                            {item.laMonDongDoi ? (
+                              <Badge color="warning" className="text-dark" pill>
+                                <i className="bi bi-people me-1"></i> Đồng đội
+                              </Badge>
+                            ) : (
+                              <Badge color="primary" pill>
+                                <i className="bi bi-person me-1"></i> Cá nhân
+                              </Badge>
+                            )}
+                            <Badge color={HINH_THUC_OPTIONS.find(h => h.value === item.hinhThucThiDau)?.badge || 'secondary'} className="small">
+                              {HINH_THUC_OPTIONS.find(h => h.value === item.hinhThucThiDau)?.label || item.hinhThucThiDau || 'Loại trực tiếp'}
+                            </Badge>
+                          </div>
+                        </td>
+                        <td className="text-center">
                           {item.laMonDongDoi ? (
-                            <Badge color="warning" className="text-dark" pill>
-                              <i className="bi bi-people me-1"></i> Đồng đội
-                            </Badge>
+                            <span className="small fw-semibold text-dark">
+                              {item.soLuongVanDongVienToiThieu ?? 2} - {item.soLuongVanDongVienToiDa ?? '∞'} VĐV
+                            </span>
                           ) : (
-                            <Badge color="primary" pill>
-                              <i className="bi bi-person me-1"></i> Cá nhân
-                            </Badge>
+                            <span className="small text-muted">1 VĐV / hồ sơ</span>
                           )}
+                          {item.soDoiToiDa ? (
+                            <div className="text-xs text-muted">Tối đa {item.soDoiToiDa} đội</div>
+                          ) : null}
                         </td>
                         <td>
-                          <div className="small text-muted text-truncate" style={{ maxWidth: '250px' }}>
+                          <div className="small text-muted text-truncate" style={{ maxWidth: '200px' }}>
                             {item.moTa || '---'}
                           </div>
                         </td>
@@ -623,17 +716,149 @@ export default function AdminMonTheThaoPage() {
                 />
               </FormGroup>
 
+              <FormGroup>
+                <Label className="fw-semibold">
+                  Hình Thức / Thể Thức Thi Đấu <span className="text-danger">*</span>
+                </Label>
+                <Input
+                  type="select"
+                  value={formData.hinhThucThiDau || 'LoaiTrucTiep'}
+                  onChange={(e) => setFormData({ ...formData, hinhThucThiDau: e.target.value })}
+                  required
+                >
+                  {HINH_THUC_OPTIONS.map((ht) => (
+                    <option key={ht.value} value={ht.value}>
+                      {ht.label}
+                    </option>
+                  ))}
+                </Input>
+                <div className="form-text text-muted small">
+                  Xác định cách thức sinh bảng đấu, nhánh đấu và xếp lịch thi đấu tự động cho môn này.
+                </div>
+              </FormGroup>
+
+              <FormGroup>
+                <Label className="fw-semibold">
+                  Giới Tính Thi Đấu <span className="text-danger">*</span>
+                </Label>
+                <div className="d-flex gap-2">
+                  <div
+                    className={`p-2.5 rounded-3 border cursor-pointer flex-fill text-center transition-all ${
+                      formData.gioiTinh === 'Nam'
+                        ? 'border-primary bg-primary bg-opacity-10 text-primary fw-bold shadow-sm'
+                        : 'bg-light text-muted'
+                    }`}
+                    onClick={() => setFormData({ ...formData, gioiTinh: 'Nam' })}
+                  >
+                    <i className="bi bi-gender-male me-1 fs-5 d-block"></i>
+                    <span>Nam (♂)</span>
+                  </div>
+                  <div
+                    className={`p-2.5 rounded-3 border cursor-pointer flex-fill text-center transition-all ${
+                      formData.gioiTinh === 'Nu'
+                        ? 'border-danger bg-danger bg-opacity-10 text-danger fw-bold shadow-sm'
+                        : 'bg-light text-muted'
+                    }`}
+                    onClick={() => setFormData({ ...formData, gioiTinh: 'Nu' })}
+                  >
+                    <i className="bi bi-gender-female me-1 fs-5 d-block"></i>
+                    <span>Nữ (♀)</span>
+                  </div>
+                  <div
+                    className={`p-2.5 rounded-3 border cursor-pointer flex-fill text-center transition-all ${
+                      formData.gioiTinh === 'HonHop'
+                        ? 'border-info bg-info bg-opacity-10 text-info fw-bold shadow-sm'
+                        : 'bg-light text-muted'
+                    }`}
+                    onClick={() => setFormData({ ...formData, gioiTinh: 'HonHop' })}
+                  >
+                    <i className="bi bi-gender-ambiguous me-1 fs-5 d-block"></i>
+                    <span>Hỗn hợp / Tất cả (⚥)</span>
+                  </div>
+                </div>
+                <div className="form-text text-muted small mt-1">
+                  Quy định giới tính vận động viên được phép đăng ký và tham gia thi đấu cho môn này.
+                </div>
+              </FormGroup>
+
               <FormGroup switch className="mt-3">
                 <Input
                   type="switch"
                   id="dongDoiSwitch"
                   checked={formData.laMonDongDoi}
-                  onChange={(e) => setFormData({ ...formData, laMonDongDoi: e.target.checked })}
+                  onChange={(e) => {
+                    const isTeam = e.target.checked;
+                    setFormData({
+                      ...formData,
+                      laMonDongDoi: isTeam,
+                      soLuongVanDongVienToiThieu: isTeam ? (formData.soLuongVanDongVienToiThieu && formData.soLuongVanDongVienToiThieu > 1 ? formData.soLuongVanDongVienToiThieu : 5) : 1,
+                      soLuongVanDongVienToiDa: isTeam ? (formData.soLuongVanDongVienToiDa && formData.soLuongVanDongVienToiDa > 1 ? formData.soLuongVanDongVienToiDa : 10) : 1,
+                    });
+                  }}
                 />
                 <Label check for="dongDoiSwitch" className="fw-semibold ms-2">
                   Môn thi đấu tập thể / đồng đội (nhiều người trên 1 đội)
                 </Label>
               </FormGroup>
+
+              {formData.laMonDongDoi ? (
+                <div className="p-3 bg-light rounded-3 mt-2 border">
+                  <div className="fw-semibold small text-primary mb-2">
+                    <i className="bi bi-people-fill me-1"></i> Cấu hình số lượng VĐV & Đội tham gia:
+                  </div>
+                  <Row className="g-2">
+                    <Col md={4}>
+                      <Label className="small fw-semibold">VĐV tối thiểu / đội</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={formData.soLuongVanDongVienToiThieu ?? ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            soLuongVanDongVienToiThieu: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                          })
+                        }
+                        placeholder="VD: 5"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Label className="small fw-semibold">VĐV tối đa / đội</Label>
+                      <Input
+                        type="number"
+                        min={formData.soLuongVanDongVienToiThieu ?? 1}
+                        value={formData.soLuongVanDongVienToiDa ?? ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            soLuongVanDongVienToiDa: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                          })
+                        }
+                        placeholder="VD: 10"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Label className="small fw-semibold">Số đội tối đa</Label>
+                      <Input
+                        type="number"
+                        min={2}
+                        value={formData.soDoiToiDa ?? ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            soDoiToiDa: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                          })
+                        }
+                        placeholder="Không giới hạn"
+                      />
+                    </Col>
+                  </Row>
+                </div>
+              ) : (
+                <div className="p-2 bg-light rounded mt-2 border text-muted small">
+                  <i className="bi bi-info-circle me-1 text-primary"></i> Môn cá nhân: Mỗi hồ sơ đăng ký thi đấu có đúng <strong>1 vận động viên</strong>.
+                </div>
+              )}
 
               <FormGroup switch className="mt-2">
                 <Input
@@ -733,7 +958,7 @@ export default function AdminMonTheThaoPage() {
                             type="number"
                             bsSize="sm"
                             min={1}
-                            max={48}
+
                             value={configData.khoangCachGiuaCacVongGio}
                             onChange={(e) => setConfigData({ ...configData, khoangCachGiuaCacVongGio: Number(e.target.value) })}
                           />
@@ -769,7 +994,7 @@ export default function AdminMonTheThaoPage() {
                             type="number"
                             bsSize="sm"
                             min={15}
-                            max={360}
+
                             step={15}
                             value={configData.nghiToiThieuGiua2TranPhut}
                             onChange={(e) => setConfigData({ ...configData, nghiToiThieuGiua2TranPhut: Number(e.target.value) })}

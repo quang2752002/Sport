@@ -2,9 +2,9 @@ import { api } from '../lib/api';
 import { VongDau, CreateUpdateVongDau } from '../types/vongDau';
 
 export const vongDauService = {
-  /** Lấy danh sách vòng đấu của nội dung thi đấu */
-  getAll: async (noiDungThiDauId?: number) => {
-    const res = await api.get<VongDau[]>('/api/vongdau', { params: { noiDungThiDauId } });
+  /** Lấy danh sách vòng đấu của môn thể thao trong giải */
+  getAll: async (giaiDauMonTheThaoId?: number) => {
+    const res = await api.get<VongDau[]>('/api/vongdau', { params: { giaiDauMonTheThaoId } });
     return res.data;
   },
 

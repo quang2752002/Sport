@@ -10,15 +10,19 @@ export const monTheThaoService = {
     keyword?: string;
     danhMucId?: number;
     trangThai?: boolean;
+    gioiTinh?: string;
   }) => {
     const res = await api.get<PagedResult<MonTheThao>>('/api/monthethao/paged', { params });
     return res.data;
   },
 
-  /** Lấy tất cả môn thể thao hoạt động, có thể lọc theo danh mục */
-  getAll: async (danhMucId?: number) => {
+  /** Lấy tất cả môn thể thao hoạt động, có thể lọc theo danh mục hoặc giới tính */
+  getAll: async (danhMucId?: number, gioiTinh?: string) => {
     const res = await api.get<MonTheThao[]>('/api/monthethao', {
-      params: danhMucId ? { danhMucId } : undefined,
+      params: {
+        ...(danhMucId ? { danhMucId } : {}),
+        ...(gioiTinh ? { gioiTinh } : {}),
+      },
     });
     return res.data;
   },

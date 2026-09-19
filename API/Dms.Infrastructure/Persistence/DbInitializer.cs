@@ -344,35 +344,7 @@ namespace Dms.Infrastructure.Persistence
                 await context.GiaiDauMonTheThaos.AddRangeAsync(gdmBongDa, gdmCauLong);
                 await context.SaveChangesAsync();
 
-                // 7. Nội dung thi đấu (NoiDungThiDau)
-                var ndBongDaNam = new NoiDungThiDau
-                {
-                    GiaiDauMonTheThaoId = gdmBongDa.Id,
-                    Ma = "BD_NAM_S7",
-                    Ten = "Bóng đá nam 7 người",
-                    GioiTinh = "Nam",
-                    LoaiThiDau = "TapThe",
-                    HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.KetHopVongBangVaLoaiTrucTiep,
-                    SoLuongToiThieu = 7,
-                    SoLuongToiDa = 14,
-                    TrangThai = true
-                };
-                var ndCauLongDonNam = new NoiDungThiDau
-                {
-                    GiaiDauMonTheThaoId = gdmCauLong.Id,
-                    Ma = "CL_DON_NAM",
-                    Ten = "Đơn nam Cầu lông",
-                    GioiTinh = "Nam",
-                    LoaiThiDau = "CaNhan",
-                    HinhThucThiDau = Dms.Domain.Enums.HinhThucThiDau.LoaiTrucTiep,
-                    SoLuongToiThieu = 1,
-                    SoLuongToiDa = 1,
-                    TrangThai = true
-                };
-                await context.NoiDungThiDaus.AddRangeAsync(ndBongDaNam, ndCauLongDonNam);
-                await context.SaveChangesAsync();
-
-                // 8. Cụm Sân & Sân Đấu (CumSan, SanDau)
+                // 7. Cụm Sân & Sân Đấu (CumSan, SanDau)
                 var cumSanPhuTho = new CumSan { Ma = "CS_PHUTHO", Ten = "Khu liên hợp thể thao Phú Thọ", DiaChi = "Số 1 Lữ Gia, P.15, Q.11, TP.HCM", SoLuongSan = 5, TrangThai = true };
                 await context.CumSans.AddAsync(cumSanPhuTho);
                 await context.SaveChangesAsync();
@@ -409,10 +381,10 @@ namespace Dms.Infrastructure.Persistence
                 await context.SaveChangesAsync();
 
                 // 11. Đăng ký thi đấu & Chi tiết đăng ký (DangKyThiDau, ChiTietDangKyThiDau)
-                var dkBk = new DangKyThiDau { NoiDungThiDauId = ndBongDaNam.Id, DoiId = doiBk.Id, SoDangKy = "DK_BK_BD", TenDangKy = "Đội tuyển Bóng đá ĐH Bách Khoa", TrangThai = "DaDuyet", NgayDangKy = now.AddDays(-15) };
-                var dkUeh = new DangKyThiDau { NoiDungThiDauId = ndBongDaNam.Id, DoiId = doiUeh.Id, SoDangKy = "DK_UEH_BD", TenDangKy = "Đội tuyển Bóng đá ĐH Kinh Tế", TrangThai = "DaDuyet", NgayDangKy = now.AddDays(-14) };
-                var dkCauLong1 = new DangKyThiDau { NoiDungThiDauId = ndCauLongDonNam.Id, SoDangKy = "DK_CL_VDV1", TenDangKy = "Nguyễn Văn Quang (BK)", TrangThai = "DaDuyet", NgayDangKy = now.AddDays(-12) };
-                var dkCauLong2 = new DangKyThiDau { NoiDungThiDauId = ndCauLongDonNam.Id, SoDangKy = "DK_CL_VDV3", TenDangKy = "Phạm Minh Triết (UEH)", TrangThai = "DaDuyet", NgayDangKy = now.AddDays(-12) };
+                var dkBk = new DangKyThiDau { GiaiDauMonTheThaoId = gdmBongDa.Id, DoiId = doiBk.Id, SoDangKy = "DK_BK_BD", TenDangKy = "Đội tuyển Bóng đá ĐH Bách Khoa", TrangThai = "DaDuyet", NgayDangKy = now.AddDays(-15) };
+                var dkUeh = new DangKyThiDau { GiaiDauMonTheThaoId = gdmBongDa.Id, DoiId = doiUeh.Id, SoDangKy = "DK_UEH_BD", TenDangKy = "Đội tuyển Bóng đá ĐH Kinh Tế", TrangThai = "DaDuyet", NgayDangKy = now.AddDays(-14) };
+                var dkCauLong1 = new DangKyThiDau { GiaiDauMonTheThaoId = gdmCauLong.Id, SoDangKy = "DK_CL_VDV1", TenDangKy = "Nguyễn Văn Quang (BK)", TrangThai = "DaDuyet", NgayDangKy = now.AddDays(-12) };
+                var dkCauLong2 = new DangKyThiDau { GiaiDauMonTheThaoId = gdmCauLong.Id, SoDangKy = "DK_CL_VDV3", TenDangKy = "Phạm Minh Triết (UEH)", TrangThai = "DaDuyet", NgayDangKy = now.AddDays(-12) };
                 await context.DangKyThiDaus.AddRangeAsync(dkBk, dkUeh, dkCauLong1, dkCauLong2);
                 await context.SaveChangesAsync();
 
@@ -426,7 +398,7 @@ namespace Dms.Infrastructure.Persistence
                 await context.SaveChangesAsync();
 
                 // 12. Bảng đấu & Thành viên bảng (BangDau, ThanhVienBang)
-                var bangA = new BangDau { NoiDungThiDauId = ndBongDaNam.Id, Ma = "BANG_A", Ten = "Bảng A Bóng Đá", ThuTu = 1 };
+                var bangA = new BangDau { GiaiDauMonTheThaoId = gdmBongDa.Id, Ma = "BANG_A", Ten = "Bảng A Bóng Đá", ThuTu = 1 };
                 await context.BangDaus.AddAsync(bangA);
                 await context.SaveChangesAsync();
 
@@ -436,15 +408,15 @@ namespace Dms.Infrastructure.Persistence
                 await context.SaveChangesAsync();
 
                 // 13. Vòng đấu (VongDau)
-                var vongBang = new VongDau { NoiDungThiDauId = ndBongDaNam.Id, Ten = "Vòng Bảng", LoaiVong = "VongBang", ThuTu = 1 };
-                var vongChungKet = new VongDau { NoiDungThiDauId = ndBongDaNam.Id, Ten = "Trận Chung Kết", LoaiVong = "ChungKet", ThuTu = 2 };
+                var vongBang = new VongDau { GiaiDauMonTheThaoId = gdmBongDa.Id, Ten = "Vòng Bảng", LoaiVong = "VongBang", ThuTu = 1 };
+                var vongChungKet = new VongDau { GiaiDauMonTheThaoId = gdmBongDa.Id, Ten = "Trận Chung Kết", LoaiVong = "ChungKet", ThuTu = 2 };
                 await context.VongDaus.AddRangeAsync(vongBang, vongChungKet);
                 await context.SaveChangesAsync();
 
                 // 14. Trận đấu & Phân công trọng tài (TranDau, PhanCongTrongTai)
                 var tranBong1 = new TranDau
                 {
-                    NoiDungThiDauId = ndBongDaNam.Id,
+                    GiaiDauMonTheThaoId = gdmBongDa.Id,
                     VongDauId = vongBang.Id,
                     BangDauId = bangA.Id,
                     SanDauId = sanBong1.Id,
@@ -494,7 +466,7 @@ namespace Dms.Infrastructure.Persistence
                 var huyChuongVang = new HuyChuong
                 {
                     GiaiDauId = giaiHoiThao.Id,
-                    NoiDungThiDauId = ndBongDaNam.Id,
+                    GiaiDauMonTheThaoId = gdmBongDa.Id,
                     DangKyThiDauId = dkBk.Id,
                     LoaiHuyChuongId = lhcVang.Id,
                     XepHang = 1,
@@ -504,7 +476,7 @@ namespace Dms.Infrastructure.Persistence
                 var huyChuongBac = new HuyChuong
                 {
                     GiaiDauId = giaiHoiThao.Id,
-                    NoiDungThiDauId = ndBongDaNam.Id,
+                    GiaiDauMonTheThaoId = gdmBongDa.Id,
                     DangKyThiDauId = dkUeh.Id,
                     LoaiHuyChuongId = lhcBac.Id,
                     XepHang = 2,

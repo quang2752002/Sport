@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import {
   Calendar,
   Clock,
@@ -32,6 +33,7 @@ import {
   Building,
   User,
   Award,
+  ExternalLink,
 } from 'lucide-react';
 import {
   Row,
@@ -81,6 +83,7 @@ import {
   AssignTrongTai,
   ConflictDetail,
   TournamentConflictReport,
+  CauHinhLichThiDau,
 } from '@/types';
 import { HinhThucThiDauLabels } from '@/types/hinhThucThiDau';
 
@@ -146,6 +149,9 @@ export default function LichThiDauPage() {
     thoiGianNghiToiThieuVdvPhut: number;
     canBangTaiSanDau: boolean;
     canBangTaiTrongTai: boolean;
+    soDoiMoiBangVaoVongTrong: number;
+    layDoiThu3TotNhat: boolean;
+    soDoiThu3TotNhat: number;
   }>({
     startDate: new Date().toISOString().split('T')[0],
     startTime: '08:00',
@@ -164,6 +170,9 @@ export default function LichThiDauPage() {
     thoiGianNghiToiThieuVdvPhut: 60,
     canBangTaiSanDau: true,
     canBangTaiTrongTai: true,
+    soDoiMoiBangVaoVongTrong: 2,
+    layDoiThu3TotNhat: false,
+    soDoiThu3TotNhat: 0,
   });
 
   // Manual Match Modal
@@ -213,6 +222,44 @@ export default function LichThiDauPage() {
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [distributeGroupCount, setDistributeGroupCount] = useState<number>(2);
 
+  // Current selected tournament object
+  const currentTournament = useMemo(() => {
+    return tournaments.find((t) => t.id === Number(selectedTournamentId));
+  }, [tournaments, selectedTournamentId]);
+
+  // Current sport schedule configuration from CauHinhLichThiDau
+  const [sportScheduleConfig, setSportScheduleConfig] = useState<CauHinhLichThiDau | null>(null);
+  const [loadingSportConfig, setLoadingSportConfig] = useState<boolean>(false);
+
+  // Ưu tiên Khoảng cách giữa các vòng (giờ) trước rồi mới Thời gian nghỉ tối thiểu giữa 2 trận (phút)
+  const effectiveRestInfo = useMemo(() => {
+    if (sportScheduleConfig?.khoangCachGiuaCacVongGio && sportScheduleConfig.khoangCachGiuaCacVongGio > 0) {
+      const minutes = sportScheduleConfig.khoangCachGiuaCacVongGio * 60;
+      return {
+        minutes,
+        source: 'khoangCachVong' as const,
+        label: `${minutes} phút (${sportScheduleConfig.khoangCachGiuaCacVongGio} giờ - Khoảng cách giữa các vòng)`,
+      };
+    }
+    const minutes = sportScheduleConfig?.nghiToiThieuGiua2TranPhut || autoScheduleConfig.thoiGianNghiToiThieuVdvPhut || 60;
+    return {
+      minutes,
+      source: 'nghiToiThieu2Tran' as const,
+      label: `${minutes} phút (Nghỉ tối thiểu giữa 2 trận)`,
+    };
+  }, [sportScheduleConfig, autoScheduleConfig.thoiGianNghiToiThieuVdvPhut]);
+
+  // Sync tournament start date with autoScheduleConfig.startDate
+  useEffect(() => {
+    if (currentTournament?.ngayBatDau) {
+      const d = new Date(currentTournament.ngayBatDau).toISOString().split('T')[0];
+      setAutoScheduleConfig((prev) => ({
+        ...prev,
+        startDate: d,
+      }));
+    }
+  }, [currentTournament]);
+
   // Current selected event object
   const currentEvent = useMemo(() => {
     return events.find((e) => e.id === Number(selectedEventId));
@@ -233,6 +280,51 @@ export default function LichThiDauPage() {
     const ht = currentEvent.hinhThucThiDau;
     return ht === 'LoaiTrucTiep' || ht === 'NhanhThangNhanhThua' || !ht;
   }, [currentEvent]);
+
+  // Dự kiến số đội và sơ đồ vòng loại trực tiếp khi ở thể thức Kết hợp vòng bảng & loại trực tiếp
+  const predictedAdvancingInfo = useMemo(() => {
+    if (currentEvent?.hinhThucThiDau !== 'KetHopVongBangVaLoaiTrucTiep') return null;
+
+    let estNumGroups = groups.length;
+    if (estNumGroups === 0 && autoScheduleConfig.autoCreateGroups) {
+      const totalTeams = registeredTeams.length;
+      const perGroup = autoScheduleConfig.teamsPerGroup || 4;
+      estNumGroups = Math.max(1, Math.ceil(totalTeams / perGroup));
+    }
+    if (estNumGroups === 0) estNumGroups = 2;
+
+    const soDoiMoiBang = autoScheduleConfig.soDoiMoiBangVaoVongTrong || 2;
+    const soDoiThu3 = (soDoiMoiBang >= 2 && autoScheduleConfig.layDoiThu3TotNhat) ? (autoScheduleConfig.soDoiThu3TotNhat || 0) : 0;
+    const totalAdvancing = (estNumGroups * soDoiMoiBang) + soDoiThu3;
+
+    let bracketDesc = '';
+    if (totalAdvancing <= 2) {
+      bracketDesc = 'Trận Chung kết (2 đội)';
+    } else if (totalAdvancing <= 4) {
+      bracketDesc = 'Bán kết (2 trận) ➔ Tranh hạng 3-4 ➔ Chung kết';
+    } else if (totalAdvancing <= 8) {
+      bracketDesc = 'Tứ kết (4 trận) ➔ Bán kết ➔ Tranh hạng 3-4 ➔ Chung kết';
+    } else {
+      bracketDesc = 'Vòng 1/8 (8 trận) ➔ Tứ kết ➔ Bán kết ➔ Tranh hạng 3-4 ➔ Chung kết';
+    }
+
+    return {
+      estNumGroups,
+      soDoiMoiBang,
+      soDoiThu3,
+      totalAdvancing,
+      bracketDesc,
+    };
+  }, [
+    currentEvent,
+    groups.length,
+    registeredTeams.length,
+    autoScheduleConfig.autoCreateGroups,
+    autoScheduleConfig.teamsPerGroup,
+    autoScheduleConfig.soDoiMoiBangVaoVongTrong,
+    autoScheduleConfig.layDoiThu3TotNhat,
+    autoScheduleConfig.soDoiThu3TotNhat,
+  ]);
 
   // Initial Load: Tournaments
   useEffect(() => {
@@ -277,7 +369,7 @@ export default function LichThiDauPage() {
     loadTournamentData();
   }, [loadTournamentData]);
 
-  // When selected tournament changes -> Load events
+  // When selected tournament changes -> Load events / sports
   useEffect(() => {
     if (!selectedTournamentId) {
       setEvents([]);
@@ -286,15 +378,32 @@ export default function LichThiDauPage() {
     }
     const loadEvents = async () => {
       try {
-        const data = await noiDungThiDauService.getAll({ giaiDauId: Number(selectedTournamentId) });
-        setEvents(data);
-        if (data.length > 0) {
-          setSelectedEventId(data[0].id);
+        let sports: any[] = [];
+        const tourDetail = await giaiDauService.getById(Number(selectedTournamentId));
+        if (tourDetail?.monTheThaos && tourDetail.monTheThaos.length > 0) {
+          sports = tourDetail.monTheThaos.map((m) => ({
+            id: m.id,
+            giaiDauMonTheThaoId: m.id,
+            monTheThaoId: m.monTheThaoId,
+            ten: m.ten,
+            tenMonTheThao: m.ten,
+            ma: m.ma,
+            laMonDongDoi: m.laMonDongDoi,
+            hinhThucThiDau: m.hinhThucThiDau || 'LoaiTrucTiep',
+          }));
+        } else {
+          const data = await noiDungThiDauService.getAll({ giaiDauId: Number(selectedTournamentId) }).catch(() => []);
+          sports = data || [];
+        }
+
+        setEvents(sports);
+        if (sports.length > 0) {
+          setSelectedEventId(sports[0].id);
         } else {
           setSelectedEventId('');
         }
       } catch (err) {
-        console.error('Lỗi khi tải danh sách nội dung thi đấu:', err);
+        console.error('Lỗi khi tải danh sách môn thi đấu:', err);
       }
     };
     loadEvents();
@@ -314,10 +423,10 @@ export default function LichThiDauPage() {
     try {
       const eId = Number(selectedEventId);
       const [matchesRes, groupsRes, roundsRes, teamsRes, venuesRes, refereesRes] = await Promise.all([
-        tranDauService.getAll({ noiDungThiDauId: eId }),
+        tranDauService.getAll({ giaiDauMonTheThaoId: eId }),
         bangDauService.getAll(eId),
         vongDauService.getAll(eId),
-        dangKyThiDauService.getAll({ noiDungThiDauId: eId }),
+        dangKyThiDauService.getAll({ giaiDauMonTheThaoId: eId }),
         sanDauService.getAll(),
         trongTaiService.getAll(),
       ]);
@@ -337,20 +446,28 @@ export default function LichThiDauPage() {
         : venuesRes;
 
       if (monId) {
+        setLoadingSportConfig(true);
         cauHinhLichThiDauService.getByMonTheThao(monId).then((config) => {
+          setSportScheduleConfig(config || null);
           if (config) {
-            setAutoScheduleConfig((prev) => ({
-              ...prev,
-              startTime: config.caSangBatDau || prev.startTime,
-              endTime: config.caChieuKetThuc || prev.endTime,
-              matchDuration: config.thoiLuongTranMacDinhPhut || prev.matchDuration,
-              breakDuration: config.thoiGianDemDonSanPhut ?? prev.breakDuration,
-              soHiepDau: config.soHiepDauMacDinh || prev.soHiepDau,
-              thoiGianMoiHiepPhut: config.thoiGianMoiHiepPhut || prev.thoiGianMoiHiepPhut,
-              thoiGianNghiToiThieuVdvPhut: config.nghiToiThieuGiua2TranPhut || prev.thoiGianNghiToiThieuVdvPhut,
-              selectedVenueIds: compatibleVenues.map((v) => v.id),
-              selectedRefereeIds: refereesRes.map((r) => r.id),
-            }));
+            setAutoScheduleConfig((prev) => {
+              const calculatedRest = (config.khoangCachGiuaCacVongGio && config.khoangCachGiuaCacVongGio > 0)
+                ? config.khoangCachGiuaCacVongGio * 60
+                : (config.nghiToiThieuGiua2TranPhut || prev.thoiGianNghiToiThieuVdvPhut || 60);
+
+              return {
+                ...prev,
+                startTime: config.caSangBatDau || prev.startTime,
+                endTime: config.caChieuKetThuc || prev.endTime,
+                matchDuration: config.thoiLuongTranMacDinhPhut || prev.matchDuration,
+                breakDuration: config.thoiGianDemDonSanPhut ?? prev.breakDuration,
+                soHiepDau: config.soHiepDauMacDinh || prev.soHiepDau,
+                thoiGianMoiHiepPhut: config.thoiGianMoiHiepPhut || prev.thoiGianMoiHiepPhut,
+                thoiGianNghiToiThieuVdvPhut: calculatedRest,
+                selectedVenueIds: compatibleVenues.map((v) => v.id),
+                selectedRefereeIds: refereesRes.map((r) => r.id),
+              };
+            });
           } else {
             setAutoScheduleConfig((prev) => ({
               ...prev,
@@ -358,8 +475,14 @@ export default function LichThiDauPage() {
               selectedRefereeIds: refereesRes.map((r) => r.id),
             }));
           }
+        }).catch((err) => {
+          console.error('Lỗi khi tải cấu hình lịch môn thể thao:', err);
+          setSportScheduleConfig(null);
+        }).finally(() => {
+          setLoadingSportConfig(false);
         });
       } else {
+        setSportScheduleConfig(null);
         setAutoScheduleConfig((prev) => ({
           ...prev,
           selectedVenueIds: compatibleVenues.map((v) => v.id),
@@ -442,13 +565,24 @@ export default function LichThiDauPage() {
 
     setAutoScheduleSubmitting(true);
     try {
+      const tStart = currentTournament?.ngayBatDau
+        ? new Date(currentTournament.ngayBatDau).toISOString().split('T')[0]
+        : (autoScheduleConfig.startDate || new Date().toISOString().split('T')[0]);
+
+      const effectiveMatchDuration = sportScheduleConfig?.thoiLuongTranMacDinhPhut
+        ? sportScheduleConfig.thoiLuongTranMacDinhPhut
+        : (sportScheduleConfig?.soHiepDauMacDinh && sportScheduleConfig?.thoiGianMoiHiepPhut
+            ? sportScheduleConfig.soHiepDauMacDinh * sportScheduleConfig.thoiGianMoiHiepPhut
+            : (autoScheduleConfig.matchDuration || 60));
+
       const payload: AutoScheduleRequest = {
+        giaiDauMonTheThaoId: Number(selectedEventId),
         noiDungThiDauId: Number(selectedEventId),
-        ngayBatDau: autoScheduleConfig.startDate,
-        gioBatDauMoiNgay: autoScheduleConfig.startTime,
-        gioKetThucMoiNgay: autoScheduleConfig.endTime,
-        thoiLuongTranPhut: Number(autoScheduleConfig.matchDuration),
-        nghiGiuaTranPhut: Number(autoScheduleConfig.breakDuration),
+        ngayBatDau: tStart,
+        gioBatDauMoiNgay: sportScheduleConfig?.caSangBatDau || autoScheduleConfig.startTime || '08:00',
+        gioKetThucMoiNgay: sportScheduleConfig?.caChieuKetThuc || autoScheduleConfig.endTime || '17:30',
+        thoiLuongTranPhut: Number(effectiveMatchDuration),
+        nghiGiuaTranPhut: Number(sportScheduleConfig?.thoiGianDemDonSanPhut ?? autoScheduleConfig.breakDuration ?? 15),
         sanDauIds: autoScheduleConfig.selectedVenueIds,
         trongTaiIds: autoScheduleConfig.selectedRefereeIds,
         soTrongTaiMoiTran: Number(autoScheduleConfig.refereesPerMatch),
@@ -456,11 +590,18 @@ export default function LichThiDauPage() {
         soDoiMoiBang: Number(autoScheduleConfig.teamsPerGroup),
         xoaLichCu: autoScheduleConfig.clearOldMatches,
         tranhTrungLichVdv: autoScheduleConfig.avoidAthleteConflict,
-        thoiGianNghiToiThieuVdvPhut: Number(autoScheduleConfig.thoiGianNghiToiThieuVdvPhut),
+        thoiGianNghiToiThieuVdvPhut: Number(effectiveRestInfo.minutes),
+        khoangCachGiuaCacVongGio: Number(sportScheduleConfig?.khoangCachGiuaCacVongGio ?? 0),
         canBangTaiSanDau: autoScheduleConfig.canBangTaiSanDau,
         canBangTaiTrongTai: autoScheduleConfig.canBangTaiTrongTai,
-        soHiepDau: Number(autoScheduleConfig.soHiepDau),
-        thoiGianMoiHiepPhut: Number(autoScheduleConfig.thoiGianMoiHiepPhut),
+        soHiepDau: Number(sportScheduleConfig?.soHiepDauMacDinh ?? autoScheduleConfig.soHiepDau ?? 0),
+        thoiGianMoiHiepPhut: Number(sportScheduleConfig?.thoiGianMoiHiepPhut ?? autoScheduleConfig.thoiGianMoiHiepPhut ?? 0),
+        soDoiMoiBangVaoVongTrong: currentEvent?.hinhThucThiDau === 'KetHopVongBangVaLoaiTrucTiep'
+          ? Number(autoScheduleConfig.soDoiMoiBangVaoVongTrong || 2)
+          : 2,
+        soDoiThu3TotNhat: (currentEvent?.hinhThucThiDau === 'KetHopVongBangVaLoaiTrucTiep' && autoScheduleConfig.layDoiThu3TotNhat)
+          ? Number(autoScheduleConfig.soDoiThu3TotNhat || 0)
+          : 0,
       };
 
       const res = await tranDauService.autoSchedule(payload);
@@ -615,6 +756,7 @@ export default function LichThiDauPage() {
       const endDateTime = `${matchForm.matchDate}T${matchForm.endTime}:00`;
 
       const payload: CreateUpdateTranDau = {
+        giaiDauMonTheThaoId: Number(selectedEventId),
         noiDungThiDauId: Number(selectedEventId),
         vongDauId: Number(matchForm.roundId),
         bangDauId: matchForm.groupId ? Number(matchForm.groupId) : null,
@@ -840,16 +982,18 @@ export default function LichThiDauPage() {
 
   // Handlers for teams
   const handleViewTeamMatches = (team: DangKyThiDau) => {
-    if (team.noiDungThiDauId !== Number(selectedEventId)) {
-      setSelectedEventId(team.noiDungThiDauId);
+    const targetEventId = team.giaiDauMonTheThaoId ?? team.noiDungThiDauId ?? '';
+    if (targetEventId && targetEventId !== Number(selectedEventId)) {
+      setSelectedEventId(targetEventId);
     }
     setSearchKeyword(team.tenDoi || team.tenDangKy || '');
     setActiveTab('list');
   };
 
   const handleQuickScheduleMatchForTeam = (team: DangKyThiDau) => {
-    if (team.noiDungThiDauId !== Number(selectedEventId)) {
-      setSelectedEventId(team.noiDungThiDauId);
+    const targetEventId = team.giaiDauMonTheThaoId ?? team.noiDungThiDauId ?? '';
+    if (targetEventId && targetEventId !== Number(selectedEventId)) {
+      setSelectedEventId(targetEventId);
     }
     setEditingMatchId(null);
     setConflictWarning([]);
@@ -1002,8 +1146,8 @@ export default function LichThiDauPage() {
                   <Trophy size={18} />
                 </div>
                 <div>
-                  <h6 className="fw-bold mb-0 text-dark">Nội Dung Thi Đấu Trong Giải ({events.length})</h6>
-                  <small className="text-muted">Chọn nội dung để xem lịch thi đấu, phân công sân và danh sách đội đăng ký</small>
+                  <h6 className="fw-bold mb-0 text-dark">Môn Thi Đấu Trong Giải ({events.length})</h6>
+                  <small className="text-muted">Chọn môn thi đấu để xem lịch thi đấu, phân công sân và danh sách đội đăng ký</small>
                 </div>
               </div>
 
@@ -2426,7 +2570,7 @@ export default function LichThiDauPage() {
           </div>
         </ModalHeader>
         <ModalBody className="p-4">
-          <Alert color={isKnockout ? 'warning' : 'primary'} className="d-flex align-items-center gap-2 mb-3 py-2 px-3 rounded-3" style={{ fontSize: '12px' }}>
+          <Alert color={isKnockout ? 'warning' : currentEvent?.hinhThucThiDau === 'KetHopVongBangVaLoaiTrucTiep' ? 'info' : 'primary'} className="d-flex align-items-center gap-2 mb-3 py-2 px-3 rounded-3" style={{ fontSize: '12px' }}>
             <Info size={16} className="flex-shrink-0" />
             <div>
               {isKnockout ? (
@@ -2435,6 +2579,11 @@ export default function LichThiDauPage() {
                   Hệ thống <strong>không chia bảng đấu</strong>, mà bắt cặp đối đầu loại trực tiếp:
                   Xếp cặp lấy đội thắng vào vòng trong (<strong>Vòng loại → Bán kết 2 cặp (khi còn 4 đội) → Chung kết (Tranh HCV và Tranh HCĐ)</strong>).
                   Các nhánh sau tự động bảo đảm khoảng nghỉ và phân bổ sân bãi, trọng tài tối ưu.
+                </>
+              ) : currentEvent?.hinhThucThiDau === 'KetHopVongBangVaLoaiTrucTiep' ? (
+                <>
+                  Thể thức <strong>Kết hợp vòng bảng & loại trực tiếp</strong>:{' '}
+                  Hệ thống sẽ <strong>chia bảng và áp dụng Round-Robin vòng bảng</strong>, đồng thời tự động xếp lịch sẵn toàn bộ các vòng sau (<strong>Tứ kết, Bán kết, Trận tranh hạng 3 - 4 và Chung kết</strong>) theo nhánh đấu chuẩn.
                 </>
               ) : (
                 <>
@@ -2449,94 +2598,111 @@ export default function LichThiDauPage() {
 
 
           <Row className="g-3">
-            {/* Start Date & Time */}
-            <Col xs={12} md={4}>
-              <Label className="small fw-semibold">Ngày bắt đầu</Label>
-              <Input
-                type="date"
-                bsSize="sm"
-                value={autoScheduleConfig.startDate}
-                onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, startDate: e.target.value })}
-              />
-            </Col>
+            {/* Cấu hình tự động theo môn từ CauHinhLichThiDau & Giải đấu */}
+            <Col xs={12}>
+              <div className="p-3 rounded-3 border bg-light shadow-sm">
+                <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                  <div className="d-flex align-items-center gap-2">
+                    <Sliders size={16} className="text-primary" />
+                    <span className="fw-bold text-dark small">
+                      Thông số xếp lịch theo Môn thi đấu & Giải đấu
+                    </span>
+                  </div>
+                  <Badge color={sportScheduleConfig ? 'success' : 'secondary'} pill className="px-2.5 py-1">
+                    {sportScheduleConfig ? 'Đã liên kết CauHinhLichThiDau' : 'Cấu hình mặc định hệ thống'}
+                  </Badge>
+                </div>
 
-            <Col xs={6} md={4}>
-              <Label className="small fw-semibold">Giờ bắt đầu mỗi ngày</Label>
-              <Input
-                type="time"
-                bsSize="sm"
-                value={autoScheduleConfig.startTime}
-                onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, startTime: e.target.value })}
-              />
-            </Col>
+                <Row className="g-2 text-muted" style={{ fontSize: '12.5px' }}>
+                  <Col xs={12} md={4}>
+                    <div className="p-2 rounded border bg-white h-100">
+                      <div className="text-secondary small d-flex align-items-center gap-1">
+                        <Calendar size={12} className="text-primary" />
+                        <span>Ngày bắt đầu giải:</span>
+                      </div>
+                      <div className="fw-bold text-dark mt-1">
+                        {currentTournament?.ngayBatDau
+                          ? new Date(currentTournament.ngayBatDau).toLocaleDateString('vi-VN')
+                          : autoScheduleConfig.startDate}
+                      </div>
+                    </div>
+                  </Col>
+                  <Col xs={6} md={4}>
+                    <div className="p-2 rounded border bg-white h-100">
+                      <div className="text-secondary small d-flex align-items-center gap-1">
+                        <Clock size={12} className="text-info" />
+                        <span>Khung giờ thi đấu:</span>
+                      </div>
+                      <div className="fw-bold text-dark mt-1">
+                        {sportScheduleConfig?.caSangBatDau || autoScheduleConfig.startTime || '08:00'} - {sportScheduleConfig?.caChieuKetThuc || autoScheduleConfig.endTime || '17:30'}
+                      </div>
+                      <div className="text-muted" style={{ fontSize: '10.5px' }}>
+                        (Sáng: {sportScheduleConfig?.caSangBatDau || '08:00'}-{sportScheduleConfig?.caSangKetThuc || '11:30'} | Chiều: {sportScheduleConfig?.caChieuBatDau || '14:00'}-{sportScheduleConfig?.caChieuKetThuc || '17:30'})
+                      </div>
+                    </div>
+                  </Col>
+                  <Col xs={6} md={4}>
+                    <div className="p-2 rounded border bg-white h-100">
+                      <div className="text-secondary small d-flex align-items-center gap-1">
+                        <Zap size={12} className="text-warning" />
+                        <span>Thời lượng & Nghỉ:</span>
+                      </div>
+                      <div className="fw-bold text-dark mt-1">
+                        {(sportScheduleConfig?.thoiLuongTranMacDinhPhut || autoScheduleConfig.matchDuration || 60)} phút / trận
+                      </div>
+                      <div className="text-muted" style={{ fontSize: '10.5px' }}>
+                        Nghỉ đệm giữa 2 trận: {sportScheduleConfig?.thoiGianDemDonSanPhut ?? autoScheduleConfig.breakDuration ?? 15} phút
+                      </div>
+                    </div>
+                  </Col>
+                  <Col xs={12} md={6}>
+                    <div className="p-2 rounded border bg-white h-100">
+                      <div className="text-secondary small d-flex align-items-center gap-1">
+                        <Award size={12} className="text-danger" />
+                        <span>Quy cách hiệp đấu:</span>
+                      </div>
+                      <div className="fw-bold text-dark mt-1">
+                        {sportScheduleConfig && sportScheduleConfig.soHiepDauMacDinh > 0
+                          ? `${sportScheduleConfig.soHiepDauMacDinh} hiệp (${sportScheduleConfig.thoiGianMoiHiepPhut} phút/hiệp)`
+                          : autoScheduleConfig.soHiepDau > 0
+                            ? `${autoScheduleConfig.soHiepDau} hiệp (${autoScheduleConfig.thoiGianMoiHiepPhut} phút/hiệp)`
+                            : 'Không phân hiệp riêng (theo thời lượng trận)'}
+                      </div>
+                    </div>
+                  </Col>
+                  <Col xs={12} md={6}>
+                    <div className="p-2 rounded border bg-white h-100">
+                      <div className="text-secondary small d-flex align-items-center gap-1">
+                        <Users size={12} className="text-success" />
+                        <span>Nghỉ tối thiểu giữa 2 trận của VĐV:</span>
+                      </div>
+                      <div className="fw-bold text-dark mt-1">
+                        {effectiveRestInfo.minutes} phút
+                        {effectiveRestInfo.source === 'khoangCachVong' ? (
+                          <span className="text-primary fw-normal ms-1" style={{ fontSize: '11px' }}>
+                            ({sportScheduleConfig?.khoangCachGiuaCacVongGio} giờ - ưu tiên Khoảng cách giữa các vòng)
+                          </span>
+                        ) : (
+                          <span className="text-muted fw-normal ms-1" style={{ fontSize: '11px' }}>
+                            (theo Nghỉ tối thiểu 2 trận)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
 
-            <Col xs={6} md={4}>
-              <Label className="small fw-semibold">Giờ kết thúc mỗi ngày</Label>
-              <Input
-                type="time"
-                bsSize="sm"
-                value={autoScheduleConfig.endTime}
-                onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, endTime: e.target.value })}
-              />
-            </Col>
-
-            {/* Match Duration & Break */}
-            <Col xs={6} md={3}>
-              <Label className="small fw-semibold">Thời lượng mỗi trận (phút)</Label>
-              <Input
-                type="number"
-                bsSize="sm"
-                min={15}
-                max={360}
-                value={autoScheduleConfig.matchDuration}
-                onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, matchDuration: Number(e.target.value) })}
-              />
-            </Col>
-
-            <Col xs={6} md={3}>
-              <Label className="small fw-semibold">Thời gian nghỉ giữa trận (phút)</Label>
-              <Input
-                type="number"
-                bsSize="sm"
-                min={0}
-                max={60}
-                value={autoScheduleConfig.breakDuration}
-                onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, breakDuration: Number(e.target.value) })}
-              />
-            </Col>
-
-            {/* Hiệp đấu configuration */}
-            <Col xs={6} md={3}>
-              <Label className="small fw-semibold d-flex align-items-center gap-1">
-                <span>Số hiệp đấu</span>
-              </Label>
-              <Input
-                type="number"
-                bsSize="sm"
-                min={1}
-                max={10}
-                value={autoScheduleConfig.soHiepDau}
-                onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, soHiepDau: Number(e.target.value) })}
-              />
-            </Col>
-
-            <Col xs={6} md={3}>
-              <Label className="small fw-semibold">Thời gian mỗi hiệp (phút)</Label>
-              <Input
-                type="number"
-                bsSize="sm"
-                min={1}
-                max={90}
-                value={autoScheduleConfig.thoiGianMoiHiepPhut}
-                onChange={(e) => {
-                  const hiep = Number(e.target.value);
-                  setAutoScheduleConfig({
-                    ...autoScheduleConfig,
-                    thoiGianMoiHiepPhut: hiep,
-                    matchDuration: hiep * autoScheduleConfig.soHiepDau,
-                  });
-                }}
-              />
+                <div className="mt-2 pt-2 border-top d-flex justify-content-between align-items-center text-secondary" style={{ fontSize: '11px' }}>
+                  <span>
+                    <Info size={12} className="me-1 text-info" />
+                    Các thông số ngày, giờ và hiệp đấu được áp dụng tự động từ bảng cấu hình <strong>CauHinhLichThiDau</strong> của môn và ngày giải đấu.
+                  </span>
+                  <Link href="/admin/mon-the-thao" target="_blank" className="text-primary text-decoration-none d-flex align-items-center gap-1">
+                    <span>Cấu hình môn</span>
+                    <ExternalLink size={12} />
+                  </Link>
+                </div>
+              </div>
             </Col>
 
             {/* Group stage configuration if applicable */}
@@ -2570,6 +2736,146 @@ export default function LichThiDauPage() {
                         <option value={5}>5 đội / bảng</option>
                         <option value={6}>6 đội / bảng</option>
                       </Input>
+                    </div>
+                  )}
+                </div>
+              </Col>
+            )}
+
+            {/* Advancing criteria to Knockout Stage if KetHopVongBangVaLoaiTrucTiep */}
+            {currentEvent?.hinhThucThiDau === 'KetHopVongBangVaLoaiTrucTiep' && (
+              <Col xs={12}>
+                <div className="p-3 rounded-3 border bg-light">
+                  <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                    <div className="d-flex align-items-center gap-2">
+                      <Trophy size={16} className="text-warning" />
+                      <span className="fw-bold small text-dark">Tiêu chí Đội vượt qua Vòng Bảng vào Vòng Loại Trực Tiếp</span>
+                    </div>
+                    {predictedAdvancingInfo && (
+                      <Badge color="primary" pill className="px-2.5 py-1">
+                        {predictedAdvancingInfo.totalAdvancing} đội vào vòng trong
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Option 1: Top N per group */}
+                  <div className="mb-3">
+                    <Label className="small fw-semibold mb-1 text-secondary">Số lượng đội đi tiếp từ mỗi bảng:</Label>
+                    <div className="d-flex flex-column flex-sm-row gap-2">
+                      <div
+                        className={`p-2.5 rounded-3 border cursor-pointer flex-fill d-flex align-items-start gap-2.5 transition-all ${
+                          autoScheduleConfig.soDoiMoiBangVaoVongTrong === 2
+                            ? 'border-primary bg-primary bg-opacity-10 shadow-sm'
+                            : 'bg-white'
+                        }`}
+                        onClick={() => setAutoScheduleConfig({ ...autoScheduleConfig, soDoiMoiBangVaoVongTrong: 2 })}
+                      >
+                        <input
+                          type="radio"
+                          name="soDoiMoiBang"
+                          checked={autoScheduleConfig.soDoiMoiBangVaoVongTrong === 2}
+                          onChange={() => {}}
+                          className="form-check-input mt-1"
+                        />
+                        <div>
+                          <div className="fw-bold small text-dark">Lấy Đội Nhất & Nhì mỗi bảng (2 đội / bảng)</div>
+                          <div className="text-muted" style={{ fontSize: '11px' }}>
+                            Mô hình chuẩn: các đội Nhất và Nhì bảng phân nhánh chéo vào Tứ kết / Bán kết / Chung kết.
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`p-2.5 rounded-3 border cursor-pointer flex-fill d-flex align-items-start gap-2.5 transition-all ${
+                          autoScheduleConfig.soDoiMoiBangVaoVongTrong === 1
+                            ? 'border-primary bg-primary bg-opacity-10 shadow-sm'
+                            : 'bg-white'
+                        }`}
+                        onClick={() =>
+                          setAutoScheduleConfig({
+                            ...autoScheduleConfig,
+                            soDoiMoiBangVaoVongTrong: 1,
+                            layDoiThu3TotNhat: false,
+                            soDoiThu3TotNhat: 0,
+                          })
+                        }
+                      >
+                        <input
+                          type="radio"
+                          name="soDoiMoiBang"
+                          checked={autoScheduleConfig.soDoiMoiBangVaoVongTrong === 1}
+                          onChange={() => {}}
+                          className="form-check-input mt-1"
+                        />
+                        <div>
+                          <div className="fw-bold small text-dark">Chỉ lấy Đội Nhất mỗi bảng (1 đội / bảng)</div>
+                          <div className="text-muted" style={{ fontSize: '11px' }}>
+                            Chỉ các đội đầu bảng mới giành vé vào thẳng Bán kết / Chung kết.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Option 2: Wildcard 3rd-placed teams */}
+                  {autoScheduleConfig.soDoiMoiBangVaoVongTrong >= 2 && (
+                    <div className="pt-2 border-top">
+                      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div className="form-check mb-0">
+                          <Input
+                            type="checkbox"
+                            id="layDoiThu3"
+                            checked={autoScheduleConfig.layDoiThu3TotNhat}
+                            onChange={(e) =>
+                              setAutoScheduleConfig({
+                                ...autoScheduleConfig,
+                                layDoiThu3TotNhat: e.target.checked,
+                                soDoiThu3TotNhat: e.target.checked ? (autoScheduleConfig.soDoiThu3TotNhat || 4) : 0,
+                              })
+                            }
+                          />
+                          <Label check htmlFor="layDoiThu3" className="small fw-semibold cursor-pointer mb-0">
+                            Lấy thêm các đội thứ 3 có thành tích tốt nhất (Vé vớt - Wildcard)
+                          </Label>
+                        </div>
+
+                        {autoScheduleConfig.layDoiThu3TotNhat && (
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="small text-muted">Số đội thứ 3 lấy thêm:</span>
+                            <Input
+                              type="select"
+                              bsSize="sm"
+                              style={{ width: '120px' }}
+                              value={autoScheduleConfig.soDoiThu3TotNhat}
+                              onChange={(e) =>
+                                setAutoScheduleConfig({ ...autoScheduleConfig, soDoiThu3TotNhat: Number(e.target.value) })
+                              }
+                            >
+                              <option value={1}>1 đội thứ 3</option>
+                              <option value={2}>2 đội thứ 3</option>
+                              <option value={4}>4 đội thứ 3 (EURO)</option>
+                            </Input>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-muted ms-4 mt-1" style={{ fontSize: '11px' }}>
+                        Ví dụ mô hình EURO: 6 bảng lấy 12 đội (Nhất + Nhì) + 4 đội thứ 3 tốt nhất = 16 đội vào Vòng 1/8.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Live preview banner */}
+                  {predictedAdvancingInfo && (
+                    <div className="mt-3 p-2 bg-white rounded-2 border d-flex align-items-center justify-content-between flex-wrap gap-2">
+                      <div className="d-flex align-items-center gap-2 small">
+                        <Layers size={14} className="text-primary flex-shrink-0" />
+                        <span className="text-muted">Sơ đồ Knock-out sinh tự động:</span>
+                        <span className="fw-semibold text-primary">{predictedAdvancingInfo.bracketDesc}</span>
+                      </div>
+                      <div className="text-muted font-monospace" style={{ fontSize: '11px' }}>
+                        ({predictedAdvancingInfo.estNumGroups} bảng × {predictedAdvancingInfo.soDoiMoiBang}
+                        {predictedAdvancingInfo.soDoiThu3 > 0 ? ` + ${predictedAdvancingInfo.soDoiThu3} thứ 3` : ''}) = {predictedAdvancingInfo.totalAdvancing} đội
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2670,20 +2976,17 @@ export default function LichThiDauPage() {
 
                 {autoScheduleConfig.avoidAthleteConflict && (
                   <div className="d-flex align-items-center gap-2 mt-2 pt-2 border-top ps-4">
-                    <Label className="small fw-semibold mb-0" style={{ whiteSpace: 'nowrap' }}>
+                    <span className="small text-secondary fw-semibold">
                       Thời gian nghỉ tối thiểu giữa 2 trận:
-                    </Label>
-                    <Input
-                      type="number"
-                      bsSize="sm"
-                      style={{ width: '100px' }}
-                      min={0}
-                      max={240}
-                      step={15}
-                      value={autoScheduleConfig.thoiGianNghiToiThieuVdvPhut}
-                      onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, thoiGianNghiToiThieuVdvPhut: Number(e.target.value) })}
-                    />
-                    <span className="small text-muted">phút</span>
+                    </span>
+                    <Badge color="primary" className="px-2.5 py-1 fw-bold">
+                      {effectiveRestInfo.minutes} phút
+                    </Badge>
+                    <span className="small text-muted" style={{ fontSize: '11px' }}>
+                      {effectiveRestInfo.source === 'khoangCachVong'
+                        ? `(Ưu tiên theo ${sportScheduleConfig?.khoangCachGiuaCacVongGio} giờ Khoảng cách giữa các vòng)`
+                        : `(Theo ${effectiveRestInfo.minutes} phút Nghỉ tối thiểu giữa 2 trận của môn)`}
+                    </span>
                   </div>
                 )}
               </div>

@@ -26,17 +26,20 @@ namespace API.Controllers
             [FromQuery] int pageSize = 10,
             [FromQuery] string? keyword = null,
             [FromQuery] int? danhMucId = null,
-            [FromQuery] bool? trangThai = null)
+            [FromQuery] bool? trangThai = null,
+            [FromQuery] string? gioiTinh = null)
         {
-            var result = await _service.GetPagedAsync(pageIndex, pageSize, keyword, danhMucId, trangThai);
+            var result = await _service.GetPagedAsync(pageIndex, pageSize, keyword, danhMucId, trangThai, gioiTinh);
             return Ok(result);
         }
 
         [HttpGet]
         [Authorize(Policy = Permissions.MonTheThao.View)]
-        public async Task<IActionResult> GetAll([FromQuery] int? danhMucId = null)
+        public async Task<IActionResult> GetAll(
+            [FromQuery] int? danhMucId = null,
+            [FromQuery] string? gioiTinh = null)
         {
-            var result = await _service.GetAllAsync(danhMucId);
+            var result = await _service.GetAllAsync(danhMucId, gioiTinh);
             return Ok(result);
         }
 

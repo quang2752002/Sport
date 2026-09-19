@@ -26,11 +26,11 @@ namespace API.Controllers
             [FromQuery] int pageSize = 10,
             [FromQuery] string? keyword = null,
             [FromQuery] int? giaiDauId = null,
-            [FromQuery] int? noiDungThiDauId = null,
+            [FromQuery] int? giaiDauMonTheThaoId = null,
             [FromQuery] int? donViId = null,
             [FromQuery] string? trangThai = null)
         {
-            var result = await _dangKyThiDauService.GetPagedAsync(pageIndex, pageSize, keyword, giaiDauId, noiDungThiDauId, donViId, trangThai);
+            var result = await _dangKyThiDauService.GetPagedAsync(pageIndex, pageSize, keyword, giaiDauId, giaiDauMonTheThaoId, donViId, trangThai);
             return Ok(result);
         }
 
@@ -38,7 +38,7 @@ namespace API.Controllers
         [Authorize(Policy = Permissions.DangKyThiDau.View)]
         public async Task<IActionResult> GetAll(
             [FromQuery] int? giaiDauId = null,
-            [FromQuery] int? noiDungThiDauId = null,
+            [FromQuery] int? giaiDauMonTheThaoId = null,
             [FromQuery] int? donViId = null)
         {
             int? effectiveDonViId = donViId;
@@ -50,7 +50,7 @@ namespace API.Controllers
                     effectiveDonViId = cid;
                 }
             }
-            var result = await _dangKyThiDauService.GetAllAsync(giaiDauId, noiDungThiDauId, effectiveDonViId);
+            var result = await _dangKyThiDauService.GetAllAsync(giaiDauId, giaiDauMonTheThaoId, effectiveDonViId);
             return Ok(result);
         }
 

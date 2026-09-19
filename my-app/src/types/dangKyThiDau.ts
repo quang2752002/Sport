@@ -1,6 +1,7 @@
 export interface DangKyThiDau {
   id: number;
-  noiDungThiDauId: number;
+  giaiDauMonTheThaoId?: number;
+  noiDungThiDauId?: number;
   tenNoiDung?: string;
   giaiDauId?: number;
   tenGiaiDau?: string;
@@ -23,7 +24,8 @@ export interface DangKyThiDau {
 }
 
 export interface CreateUpdateDangKyThiDau {
-  noiDungThiDauId: number;
+  giaiDauMonTheThaoId?: number;
+  noiDungThiDauId?: number;
   doiId?: number;
   /** Nếu true: backend tự tạo Doi từ tenDoi + vanDongVienIds */
   tuDongTaoDoi?: boolean;

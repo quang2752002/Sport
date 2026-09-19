@@ -7,9 +7,9 @@ import {
 } from '../types/bangDau';
 
 export const bangDauService = {
-  /** Lấy danh sách bảng đấu của nội dung thi đấu */
-  getAll: async (noiDungThiDauId?: number) => {
-    const res = await api.get<BangDau[]>('/api/bangdau', { params: { noiDungThiDauId } });
+  /** Lấy danh sách bảng đấu của môn thể thao trong giải */
+  getAll: async (giaiDauMonTheThaoId?: number) => {
+    const res = await api.get<BangDau[]>('/api/bangdau', { params: { giaiDauMonTheThaoId } });
     return res.data;
   },
 

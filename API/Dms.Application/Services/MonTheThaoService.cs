@@ -27,7 +27,8 @@ namespace Dms.Application.Services
             int pageSize,
             string? keyword = null,
             int? danhMucId = null,
-            bool? trangThai = null)
+            bool? trangThai = null,
+            string? gioiTinh = null)
         {
             var pagedEntities = await _unitOfWork.MonTheThaos.GetPagedAsync(
                 pageIndex,
@@ -35,7 +36,8 @@ namespace Dms.Application.Services
                 predicate: m => m.IsDeleted != true &&
                                 (string.IsNullOrEmpty(keyword) || m.Ten.Contains(keyword) || m.Ma.Contains(keyword)) &&
                                 (!danhMucId.HasValue || m.DanhMucId == danhMucId.Value) &&
-                                (!trangThai.HasValue || m.TrangThai == trangThai.Value),
+                                (!trangThai.HasValue || m.TrangThai == trangThai.Value) &&
+                                (string.IsNullOrEmpty(gioiTinh) || m.GioiTinh == gioiTinh),
                 orderBy: q => q.OrderBy(m => m.Ma),
                 includes: m => m.DanhMuc
             );
@@ -44,11 +46,12 @@ namespace Dms.Application.Services
             return new PagedResult<MonTheThaoDto>(dtos, pagedEntities.TotalCount, pageIndex, pageSize);
         }
 
-        public async Task<IEnumerable<MonTheThaoDto>> GetAllAsync(int? danhMucId = null)
+        public async Task<IEnumerable<MonTheThaoDto>> GetAllAsync(int? danhMucId = null, string? gioiTinh = null)
         {
             var items = await _unitOfWork.MonTheThaos.FindAsync(
                 m => m.IsDeleted != true && m.TrangThai &&
-                     (!danhMucId.HasValue || m.DanhMucId == danhMucId.Value)
+                     (!danhMucId.HasValue || m.DanhMucId == danhMucId.Value) &&
+                     (string.IsNullOrEmpty(gioiTinh) || m.GioiTinh == gioiTinh)
             );
             return _mapper.Map<IEnumerable<MonTheThaoDto>>(items.OrderBy(m => m.Ten));
         }

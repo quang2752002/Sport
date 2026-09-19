@@ -30,7 +30,8 @@ export interface ThanhPhanTranDauItem {
 
 export interface TranDau {
   id: number;
-  noiDungThiDauId: number;
+  giaiDauMonTheThaoId?: number;
+  noiDungThiDauId?: number;
   tenNoiDung?: string;
   giaiDauId?: number;
   tenGiaiDau?: string;
@@ -67,7 +68,8 @@ export interface TranDau {
 }
 
 export interface CreateUpdateTranDau {
-  noiDungThiDauId: number;
+  giaiDauMonTheThaoId?: number;
+  noiDungThiDauId?: number;
   vongDauId: number;
   bangDauId?: number | null;
   sanDauId?: number | null;
@@ -84,7 +86,8 @@ export interface CreateUpdateTranDau {
 }
 
 export interface AutoScheduleRequest {
-  noiDungThiDauId: number;
+  giaiDauMonTheThaoId?: number;
+  noiDungThiDauId?: number;
   ngayBatDau: string;
   gioBatDauMoiNgay: string;
   gioKetThucMoiNgay: string;
@@ -100,8 +103,11 @@ export interface AutoScheduleRequest {
   soHiepDau?: number;
   thoiGianMoiHiepPhut?: number;
   thoiGianNghiToiThieuVdvPhut?: number;
+  khoangCachGiuaCacVongGio?: number;
   canBangTaiTrongTai?: boolean;
   canBangTaiSanDau?: boolean;
+  soDoiMoiBangVaoVongTrong?: number;
+  soDoiThu3TotNhat?: number;
 }
 
 export interface AutoScheduleResult {

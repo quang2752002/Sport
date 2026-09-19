@@ -6,7 +6,11 @@ export interface MonTheThao {
   ten: string;
   moTa?: string;
   laMonDongDoi: boolean;
+  gioiTinh: string;
   hinhThucThiDau?: string;
+  soLuongVanDongVienToiThieu?: number;
+  soLuongVanDongVienToiDa?: number;
+  soDoiToiDa?: number;
   trangThai: boolean;
   created?: string;
   lastModified?: string;
@@ -18,6 +22,10 @@ export interface CreateUpdateMonTheThao {
   ten: string;
   moTa?: string;
   laMonDongDoi: boolean;
+  gioiTinh?: string;
   hinhThucThiDau?: string;
+  soLuongVanDongVienToiThieu?: number;
+  soLuongVanDongVienToiDa?: number;
+  soDoiToiDa?: number;
   trangThai: boolean;
 }

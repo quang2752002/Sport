@@ -18,15 +18,15 @@ namespace Dms.Application.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<IEnumerable<BangDauDto>> GetAllAsync(int? noiDungThiDauId = null)
+        public async Task<IEnumerable<BangDauDto>> GetAllAsync(int? giaiDauMonTheThaoId = null)
         {
             var paged = await _unitOfWork.BangDaus.GetPagedAsync(
                 pageIndex: 1,
                 pageSize: 500,
                 predicate: b => b.IsDeleted != true &&
-                                (!noiDungThiDauId.HasValue || b.NoiDungThiDauId == noiDungThiDauId.Value),
+                                (!giaiDauMonTheThaoId.HasValue || b.GiaiDauMonTheThaoId == giaiDauMonTheThaoId.Value),
                 orderBy: q => q.OrderBy(b => b.ThuTu).ThenBy(b => b.Ten),
-                b => b.NoiDungThiDau,
+                b => b.GiaiDauMonTheThao,
                 b => b.ThanhVienBangs
             );
 
@@ -36,7 +36,7 @@ namespace Dms.Application.Services
             // Lấy thêm thông tin DangKyThiDau để hiển thị tên đội / đơn vị
             var dangKyList = await _unitOfWork.DangKyThiDaus.GetPagedAsync(
                 1, 1000,
-                predicate: d => d.IsDeleted != true && (!noiDungThiDauId.HasValue || d.NoiDungThiDauId == noiDungThiDauId.Value),
+                predicate: d => d.IsDeleted != true && (!giaiDauMonTheThaoId.HasValue || d.GiaiDauMonTheThaoId == giaiDauMonTheThaoId.Value),
                 orderBy: null,
                 d => d.Doi!,
                 d => d.ChiTietDangKyThiDaus
@@ -77,8 +77,8 @@ namespace Dms.Application.Services
                 dtos.Add(new BangDauDto
                 {
                     Id = b.Id,
-                    NoiDungThiDauId = b.NoiDungThiDauId,
-                    TenNoiDung = b.NoiDungThiDau?.Ten,
+                    GiaiDauMonTheThaoId = b.GiaiDauMonTheThaoId,
+                    TenMonTheThao = b.GiaiDauMonTheThao?.MonTheThao?.Ten,
                     Ma = b.Ma,
                     Ten = b.Ten,
                     ThuTu = b.ThuTu,
@@ -99,14 +99,14 @@ namespace Dms.Application.Services
                 pageSize: 1,
                 predicate: b => b.Id == id && b.IsDeleted != true,
                 orderBy: null,
-                b => b.NoiDungThiDau,
+                b => b.GiaiDauMonTheThao,
                 b => b.ThanhVienBangs
             );
 
             var b = paged.Items.FirstOrDefault();
             if (b == null) return null;
 
-            var list = await GetAllAsync(b.NoiDungThiDauId);
+            var list = await GetAllAsync(b.GiaiDauMonTheThaoId);
             return list.FirstOrDefault(x => x.Id == id);
         }
 
@@ -114,7 +114,7 @@ namespace Dms.Application.Services
         {
             var entity = new BangDau
             {
-                NoiDungThiDauId = dto.NoiDungThiDauId,
+                GiaiDauMonTheThaoId = dto.GiaiDauMonTheThaoId,
                 Ma = string.IsNullOrWhiteSpace(dto.Ma) ? $"BANG_{Guid.NewGuid():N}".Substring(0, 10).ToUpper() : dto.Ma,
                 Ten = dto.Ten.Trim(),
                 ThuTu = dto.ThuTu,
@@ -250,15 +250,15 @@ namespace Dms.Application.Services
         {
             if (dto.SoBang <= 0) dto.SoBang = 2;
 
-            // 1. Lấy danh sách đăng ký đã duyệt của nội dung
+            // 1. Lấy danh sách đăng ký đã duyệt của môn thi đấu
             var dangKyList = (await _unitOfWork.DangKyThiDaus.FindAsync(
-                d => d.NoiDungThiDauId == dto.NoiDungThiDauId && d.IsDeleted != true
+                d => d.GiaiDauMonTheThaoId == dto.GiaiDauMonTheThaoId && d.IsDeleted != true
             )).ToList();
 
             if (!dangKyList.Any()) return new List<BangDauDto>();
 
-            // 2. Xóa các bảng cũ của nội dung này nếu có
-            var oldBangs = (await _unitOfWork.BangDaus.FindAsync(b => b.NoiDungThiDauId == dto.NoiDungThiDauId)).ToList();
+            // 2. Xóa các bảng cũ của môn thi đấu này nếu có
+            var oldBangs = (await _unitOfWork.BangDaus.FindAsync(b => b.GiaiDauMonTheThaoId == dto.GiaiDauMonTheThaoId)).ToList();
             foreach (var b in oldBangs)
             {
                 var oldMembers = (await _unitOfWork.ThanhVienBangs.FindAsync(m => m.BangDauId == b.Id)).ToList();
@@ -277,7 +277,7 @@ namespace Dms.Application.Services
                 char groupChar = (char)('A' + i);
                 var bang = new BangDau
                 {
-                    NoiDungThiDauId = dto.NoiDungThiDauId,
+                    GiaiDauMonTheThaoId = dto.GiaiDauMonTheThaoId,
                     Ma = $"BANG_{groupChar}",
                     Ten = $"{dto.TienToBang}{groupChar}",
                     ThuTu = i + 1,
@@ -306,7 +306,7 @@ namespace Dms.Application.Services
             }
             await _unitOfWork.CompleteAsync();
 
-            return await GetAllAsync(dto.NoiDungThiDauId);
+            return await GetAllAsync(dto.GiaiDauMonTheThaoId);
         }
     }
 }

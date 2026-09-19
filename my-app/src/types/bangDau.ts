@@ -18,7 +18,8 @@ export interface ThanhVienBang {
 
 export interface BangDau {
   id: number;
-  noiDungThiDauId: number;
+  giaiDauMonTheThaoId?: number;
+  noiDungThiDauId?: number;
   tenNoiDung?: string;
   ma: string;
   ten: string;
@@ -30,7 +31,8 @@ export interface BangDau {
 }
 
 export interface CreateUpdateBangDau {
-  noiDungThiDauId: number;
+  giaiDauMonTheThaoId?: number;
+  noiDungThiDauId?: number;
   ma?: string;
   ten: string;
   thuTu: number;
@@ -43,7 +45,8 @@ export interface AssignTeamsToBang {
 }
 
 export interface AutoDistributeBang {
-  noiDungThiDauId: number;
+  giaiDauMonTheThaoId?: number;
+  noiDungThiDauId?: number;
   soBang: number;
   tienToBang?: string;
 }

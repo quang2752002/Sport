@@ -118,10 +118,19 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
         setAvailableMons(monData || []);
 
         if (giaiDauData) {
-          // Format date yyyy-MM-dd cho input date HTML
-          const formatDate = (dateStr?: string) => {
+          // Format date yyyy-MM-dd cho input date HTML (tránh lệch ngày do múi giờ UTC)
+          const formatDate = (dateStr?: string | Date) => {
             if (!dateStr) return '';
-            return new Date(dateStr).toISOString().split('T')[0];
+            if (typeof dateStr === 'string') {
+              const match = dateStr.match(/^\d{4}-\d{2}-\d{2}/);
+              if (match) return match[0];
+            }
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return '';
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
           };
 
           // Map GiaiDauMonTheThaoId -> MonTheThaoId từ giaiDauData.monTheThaos
@@ -188,50 +197,59 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
   }, [id]);
 
   const handleKhoiToggle = (khoiId: number) => {
-    const current = formData.khoiIds || [];
-    if (current.includes(khoiId)) {
-      setFormData({ ...formData, khoiIds: current.filter((i) => i !== khoiId) });
-    } else {
-      setFormData({ ...formData, khoiIds: [...current, khoiId] });
-    }
+    setFormData((prev) => {
+      const current = prev.khoiIds || [];
+      return {
+        ...prev,
+        khoiIds: current.includes(khoiId) ? current.filter((i) => i !== khoiId) : [...current, khoiId],
+      };
+    });
   };
 
   const handleMonToggle = (monId: number) => {
-    const current = formData.monTheThaoIds || [];
-    if (current.includes(monId)) {
-      setFormData({ ...formData, monTheThaoIds: current.filter((i) => i !== monId) });
-    } else {
-      setFormData({ ...formData, monTheThaoIds: [...current, monId] });
-    }
+    setFormData((prev) => {
+      const current = prev.monTheThaoIds || [];
+      return {
+        ...prev,
+        monTheThaoIds: current.includes(monId) ? current.filter((i) => i !== monId) : [...current, monId],
+      };
+    });
   };
 
   const handleSelectAllMons = () => {
-    if ((formData.monTheThaoIds || []).length === availableMons.length) {
-      setFormData({ ...formData, monTheThaoIds: [] });
-    } else {
-      setFormData({ ...formData, monTheThaoIds: availableMons.map((m) => m.id) });
-    }
+    setFormData((prev) => {
+      const current = prev.monTheThaoIds || [];
+      return {
+        ...prev,
+        monTheThaoIds: current.length === availableMons.length ? [] : availableMons.map((m) => m.id),
+      };
+    });
   };
 
   // Quản lý Điều lệ
   const handleAddDieuLe = () => {
-    const newDieuLe: CreateUpdateDieuLeGiaiDau = {
-      tieuDe: '',
-      noiDung: '',
-      tepDinhKem: '',
-      thuTu: (formData.dieuLes?.length || 0) + 1,
-      trangThai: true,
-    };
-    setFormData({
-      ...formData,
-      dieuLes: [...(formData.dieuLes || []), newDieuLe],
+    setFormData((prev) => {
+      const current = prev.dieuLes || [];
+      const newDieuLe: CreateUpdateDieuLeGiaiDau = {
+        tieuDe: '',
+        noiDung: '',
+        tepDinhKem: '',
+        thuTu: current.length + 1,
+        trangThai: true,
+      };
+      return {
+        ...prev,
+        dieuLes: [...current, newDieuLe],
+      };
     });
   };
 
   const handleRemoveDieuLe = (index: number) => {
-    const current = [...(formData.dieuLes || [])];
-    current.splice(index, 1);
-    setFormData({ ...formData, dieuLes: current });
+    setFormData((prev) => {
+      const current = [...(prev.dieuLes || [])];
+      current.splice(index, 1);
+      return { ...prev, dieuLes: current };
+    });
   };
 
   const handleDieuLeChange = (
@@ -239,9 +257,11 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
     field: keyof CreateUpdateDieuLeGiaiDau,
     value: any
   ) => {
-    const current = [...(formData.dieuLes || [])];
-    current[index] = { ...current[index], [field]: value };
-    setFormData({ ...formData, dieuLes: current });
+    setFormData((prev) => {
+      const current = [...(prev.dieuLes || [])];
+      current[index] = { ...current[index], [field]: value };
+      return { ...prev, dieuLes: current };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -339,12 +359,20 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
         </div>
         <div className="d-flex gap-2">
           <Link
-            href={`/admin/noi-dung-thi-dau?giaiDauId=${id}`}
-            className="btn btn-outline-primary rounded-3 px-3 d-inline-flex align-items-center gap-2"
-            title="Quản lý các nội dung thi đấu thuộc giải này"
+            href={`/admin/giai-dau/${id}/du-lieu-thi-dau`}
+            className="btn btn-outline-danger rounded-3 px-3 d-inline-flex align-items-center gap-2"
+            title="Quản lý & xóa các hồ sơ đăng ký, trận đấu để có thể gỡ môn thi đấu"
           >
-            <i className="bi bi-layers"></i>
-            Nội dung thi đấu
+            <i className="bi bi-shield-x"></i>
+            Đăng Ký &amp; Trận Đấu
+          </Link>
+          <Link
+            href={`/quan-ly-giai/lich-thi-dau?giaiDauId=${id}`}
+            className="btn btn-outline-primary rounded-3 px-3 d-inline-flex align-items-center gap-2"
+            title="Xếp lịch thi đấu chi tiết"
+          >
+            <i className="bi bi-calendar3"></i>
+            Lịch Thi Đấu
           </Link>
           <Link href="/admin/giai-dau" className="btn btn-light rounded-3 px-3">
             Hủy bỏ
@@ -362,9 +390,20 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {error && (
-        <div className="alert alert-danger d-flex align-items-center mb-4 rounded-3" role="alert">
-          <i className="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
-          <div>{error}</div>
+        <div className="alert alert-danger d-flex align-items-center justify-content-between mb-4 rounded-3 shadow-sm" role="alert">
+          <div className="d-flex align-items-center">
+            <i className="bi bi-exclamation-triangle-fill me-2 fs-5 text-danger flex-shrink-0"></i>
+            <div>{error}</div>
+          </div>
+          {(error.includes('đăng ký') || error.includes('trận đấu') || error.includes('bảng đấu') || error.includes('bỏ chọn môn')) && (
+            <Link
+              href={`/admin/giai-dau/${id}/du-lieu-thi-dau`}
+              className="btn btn-sm btn-danger rounded-pill px-3 ms-3 text-nowrap d-inline-flex align-items-center gap-1 shadow-sm"
+            >
+              <i className="bi bi-trash3"></i>
+              Mở Trang Xóa Dữ Liệu
+            </Link>
+          )}
         </div>
       )}
 
@@ -390,7 +429,7 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                         type="text"
                         required
                         value={formData.ma}
-                        onChange={(e) => setFormData({ ...formData, ma: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, ma: e.target.value }))}
                         className="rounded-3"
                       />
                     </FormGroup>
@@ -428,7 +467,7 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                           <button
                             type="button"
                             className="btn btn-link btn-sm p-0 text-decoration-none text-primary"
-                            onClick={() => setFormData({ ...formData, slug: generateSlug(formData.ten) })}
+                            onClick={() => setFormData((prev) => ({ ...prev, slug: generateSlug(prev.ten) }))}
                           >
                             <i className="bi bi-arrow-repeat me-1"></i>Tạo lại từ tên
                           </button>
@@ -459,7 +498,7 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                         type="date"
                         required
                         value={formData.ngayBatDau}
-                        onChange={(e) => setFormData({ ...formData, ngayBatDau: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, ngayBatDau: e.target.value }))}
                         className="rounded-3"
                       />
                     </FormGroup>
@@ -474,7 +513,7 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                         type="date"
                         required
                         value={formData.ngayKetThuc}
-                        onChange={(e) => setFormData({ ...formData, ngayKetThuc: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, ngayKetThuc: e.target.value }))}
                         className="rounded-3"
                       />
                     </FormGroup>
@@ -488,7 +527,7 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                         id="input_hanDangKy"
                         type="date"
                         value={formData.hanDangKy || ''}
-                        onChange={(e) => setFormData({ ...formData, hanDangKy: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, hanDangKy: e.target.value }))}
                         className="rounded-3"
                       />
                       <small className="text-muted d-block mt-1" style={{ fontSize: '11px' }}>
@@ -504,7 +543,7 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                         type="text"
                         placeholder="VD: Nhà thi đấu Đa năng Tỉnh..."
                         value={formData.diaDiem}
-                        onChange={(e) => setFormData({ ...formData, diaDiem: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, diaDiem: e.target.value }))}
                         className="rounded-3"
                       />
                     </FormGroup>
@@ -517,7 +556,7 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                         type="textarea"
                         rows={3}
                         value={formData.moTa}
-                        onChange={(e) => setFormData({ ...formData, moTa: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, moTa: e.target.value }))}
                         className="rounded-3"
                       />
                     </FormGroup>
@@ -533,16 +572,26 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                   <h5 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
                     <i className="bi bi-dribbble text-primary"></i> Các Môn Thể Thao Tổ Chức
                   </h5>
-                  <Button
-                    size="sm"
-                    color="outline-primary"
-                    onClick={handleSelectAllMons}
-                    className="rounded-pill px-3"
-                  >
-                    {(formData.monTheThaoIds || []).length === availableMons.length
-                      ? 'Bỏ chọn tất cả'
-                      : 'Chọn tất cả'}
-                  </Button>
+                  <div className="d-flex gap-2">
+                    <Link
+                      href={`/admin/giai-dau/${id}/du-lieu-thi-dau`}
+                      className="btn btn-sm btn-outline-danger rounded-pill px-3 d-inline-flex align-items-center gap-1"
+                      title="Xem và xóa các đăng ký hoặc lịch thi đấu nếu cần gỡ môn"
+                    >
+                      <i className="bi bi-trash3"></i>
+                      Quản lý / Xóa dữ liệu thi đấu
+                    </Link>
+                    <Button
+                      size="sm"
+                      color="outline-primary"
+                      onClick={handleSelectAllMons}
+                      className="rounded-pill px-3"
+                    >
+                      {(formData.monTheThaoIds || []).length === availableMons.length
+                        ? 'Bỏ chọn tất cả'
+                        : 'Chọn tất cả'}
+                    </Button>
+                  </div>
                 </div>
 
                 <p className="text-muted small mb-3">
@@ -857,10 +906,10 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                     type="select"
                     value={formData.trangThai}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
+                      setFormData((prev) => ({
+                        ...prev,
                         trangThai: Number(e.target.value) as TrangThaiGiaiDau,
-                      })
+                      }))
                     }
                     className="rounded-3"
                   >
@@ -888,10 +937,10 @@ export default function EditGiaiDauPage({ params }: { params: Promise<{ id: stri
                     type="select"
                     value={formData.phamVi}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
+                      setFormData((prev) => ({
+                        ...prev,
                         phamVi: Number(e.target.value) as PhamViGiaiDau,
-                      })
+                      }))
                     }
                     className="rounded-3"
                   >

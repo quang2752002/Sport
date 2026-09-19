@@ -81,6 +81,7 @@ export interface GiaiDauMonTheThao {
   laMonDongDoi: boolean;
   tenDanhMuc?: string;
   hinhThucThiDau?: string;
+  gioiTinh?: string;
 }
 
 export interface CreateUpdateGiaiDau {
