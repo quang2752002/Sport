@@ -108,6 +108,17 @@ export interface AutoScheduleRequest {
   canBangTaiSanDau?: boolean;
   soDoiMoiBangVaoVongTrong?: number;
   soDoiThu3TotNhat?: number;
+  // Leaderboard (TinhDiemXepHang)
+  soVdvMoiLuotThi?: number;
+  soVongThi?: number;
+  phuongThucPhanNhom?: string;
+  // Round Robin (VongBang = 2)
+  soLuotDau?: number;
+  cheDoVongBang?: string;
+  soBang?: number;
+  diemThang?: number;
+  diemHoa?: number;
+  diemThua?: number;
 }
 
 export interface AutoScheduleResult {

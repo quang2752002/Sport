@@ -376,6 +376,57 @@ namespace Dms.Application.DTOs
         public int SoTranToiDaMoiTrongTaiMoiNgay { get; set; } = 4;
         /// <summary>Thời gian đệm dọn sân / vệ sinh giữa các trận (phút)</summary>
         public int ThoiGianDemDonSanPhut { get; set; } = 15;
+
+        // --- Leaderboard / TinhDiemXepHang (Bơi lội, Điền kinh...) Parameters ---
+        /// <summary>
+        /// Số VĐV / làn / vị trí thi đấu mỗi lượt thi (Heat size).
+        /// Ví dụ: 8 làn bơi → SoVdvMoiLuotThi = 8. Chỉ áp dụng cho TinhDiemXepHang.
+        /// </summary>
+        public int SoVdvMoiLuotThi { get; set; } = 8;
+
+        /// <summary>
+        /// Số vòng thi (1: Chung kết thẳng; 2: Vòng loại → Chung kết; 3: Sơ loại → Bán kết → Chung kết).
+        /// Chỉ áp dụng cho TinhDiemXepHang.
+        /// </summary>
+        public int SoVongThi { get; set; } = 1;
+
+        /// <summary>
+        /// Phương thức phân nhóm VĐV vào lượt thi:
+        /// "random" (bốc thăm ngẫu nhiên) | "registration_order" (theo thứ tự đăng ký) | "performance_seed" (xếp hạt giống - mạnh nhất vào lượt cuối).
+        /// Chỉ áp dụng cho TinhDiemXepHang.
+        /// </summary>
+        public string PhuongThucPhanNhom { get; set; } = "random";
+
+        // --- Round Robin / VongBang (Vòng tròn tính điểm) Parameters ---
+        /// <summary>
+        /// Số lượt thi đấu vòng tròn (1 = 1 lượt / Lượt đi; 2 = 2 lượt / Lượt đi - Lượt về). Mặc định: 1
+        /// </summary>
+        public int SoLuotDau { get; set; } = 1;
+
+        /// <summary>
+        /// Chế độ chia bảng: "single_group" (1 bảng đấu duy nhất gồm tất cả đội) | "multi_groups" (chia nhiều bảng đấu)
+        /// </summary>
+        public string CheDoVongBang { get; set; } = "single_group";
+
+        /// <summary>
+        /// Số bảng đấu chỉ định khi chia nhiều bảng (0 = tự động tính theo SoDoiMoiBang)
+        /// </summary>
+        public int SoBang { get; set; } = 0;
+
+        /// <summary>
+        /// Điểm số cho trận Thắng (mặc định: 3)
+        /// </summary>
+        public decimal DiemThang { get; set; } = 3;
+
+        /// <summary>
+        /// Điểm số cho trận Hòa (mặc định: 1)
+        /// </summary>
+        public decimal DiemHoa { get; set; } = 1;
+
+        /// <summary>
+        /// Điểm số cho trận Thua (mặc định: 0)
+        /// </summary>
+        public decimal DiemThua { get; set; } = 0;
     }
 
     public class AutoScheduleResultDto

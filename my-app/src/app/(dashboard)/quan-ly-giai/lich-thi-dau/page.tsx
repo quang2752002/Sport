@@ -152,6 +152,17 @@ export default function LichThiDauPage() {
     soDoiMoiBangVaoVongTrong: number;
     layDoiThu3TotNhat: boolean;
     soDoiThu3TotNhat: number;
+    // Leaderboard (TinhDiemXepHang) specific
+    soVdvMoiLuotThi: number;
+    phuongThucPhanNhom: 'random' | 'registration_order' | 'performance_seed';
+    soVongThi: number;
+    // Round Robin (VongBang = 2) specific
+    soLuotDau: number;
+    cheDoVongBang: 'single_group' | 'multi_groups';
+    heThongDiem: string;
+    diemThang: number;
+    diemHoa: number;
+    diemThua: number;
   }>({
     startDate: new Date().toISOString().split('T')[0],
     startTime: '08:00',
@@ -173,6 +184,17 @@ export default function LichThiDauPage() {
     soDoiMoiBangVaoVongTrong: 2,
     layDoiThu3TotNhat: false,
     soDoiThu3TotNhat: 0,
+    // Leaderboard defaults
+    soVdvMoiLuotThi: 8,
+    phuongThucPhanNhom: 'random',
+    soVongThi: 1,
+    // Round Robin (VongBang = 2) defaults
+    soLuotDau: 1,
+    cheDoVongBang: 'single_group',
+    heThongDiem: '3_1_0',
+    diemThang: 3,
+    diemHoa: 1,
+    diemThua: 0,
   });
 
   // Manual Match Modal
@@ -281,6 +303,11 @@ export default function LichThiDauPage() {
     return ht === 'LoaiTrucTiep' || ht === 'NhanhThangNhanhThua' || !ht;
   }, [currentEvent]);
 
+  // Thể thức tính điểm xếp hạng / tính giờ - thành tích (bơi lội, điền kinh...)
+  const isLeaderboard = useMemo(() => {
+    return currentEvent?.hinhThucThiDau === 'TinhDiemXepHang';
+  }, [currentEvent]);
+
   // Dự kiến số đội và sơ đồ vòng loại trực tiếp khi ở thể thức Kết hợp vòng bảng & loại trực tiếp
   const predictedAdvancingInfo = useMemo(() => {
     if (currentEvent?.hinhThucThiDau !== 'KetHopVongBangVaLoaiTrucTiep') return null;
@@ -324,6 +351,93 @@ export default function LichThiDauPage() {
     autoScheduleConfig.soDoiMoiBangVaoVongTrong,
     autoScheduleConfig.layDoiThu3TotNhat,
     autoScheduleConfig.soDoiThu3TotNhat,
+  ]);
+
+  // Live preview cho Leaderboard (tính số lượt thi, số ngày, tổng thời gian dự kiến)
+  const leaderboardPreview = useMemo(() => {
+    if (!isLeaderboard) return null;
+    const totalVdv = registeredTeams.length;
+    const heatSize = Math.max(1, autoScheduleConfig.soVdvMoiLuotThi);
+    const heatsPerVong = Math.ceil(totalVdv / heatSize);
+    const totalHeats = heatsPerVong * autoScheduleConfig.soVongThi;
+    const minutesPerHeat = (sportScheduleConfig?.thoiLuongTranMacDinhPhut || autoScheduleConfig.matchDuration || 5) +
+      (sportScheduleConfig?.thoiGianDemDonSanPhut ?? autoScheduleConfig.breakDuration ?? 10);
+    const totalMinutes = totalHeats * minutesPerHeat;
+    const startH = (sportScheduleConfig?.caSangBatDau || autoScheduleConfig.startTime || '08:00').split(':').map(Number);
+    const endH = (sportScheduleConfig?.caChieuKetThuc || autoScheduleConfig.endTime || '17:30').split(':').map(Number);
+    const dailyMinutes = (endH[0] * 60 + endH[1]) - (startH[0] * 60 + startH[1]);
+    const estimatedDays = dailyMinutes > 0 ? Math.ceil(totalMinutes / dailyMinutes) : 1;
+    return { totalVdv, heatSize, heatsPerVong, totalHeats, minutesPerHeat, totalMinutes, estimatedDays };
+  }, [
+    isLeaderboard,
+    registeredTeams.length,
+    autoScheduleConfig.soVdvMoiLuotThi,
+    autoScheduleConfig.soVongThi,
+    autoScheduleConfig.matchDuration,
+    autoScheduleConfig.breakDuration,
+    autoScheduleConfig.startTime,
+    autoScheduleConfig.endTime,
+    sportScheduleConfig,
+  ]);
+
+  // Thể thức vòng tròn tính điểm (VongBang = 2)
+  const isRoundRobin = useMemo(() => {
+    return currentEvent?.hinhThucThiDau === 'VongBang';
+  }, [currentEvent]);
+
+  // Live preview cho Vòng tròn tính điểm (Round Robin)
+  const roundRobinPreview = useMemo(() => {
+    if (!isRoundRobin) return null;
+    const totalTeams = registeredTeams.length;
+    const isSingleGroup = autoScheduleConfig.cheDoVongBang === 'single_group';
+    const teamsPerGroup = autoScheduleConfig.teamsPerGroup || 4;
+    const numGroups = isSingleGroup ? 1 : Math.max(1, Math.ceil(totalTeams / teamsPerGroup));
+    const teamsInGroup = isSingleGroup ? totalTeams : Math.min(totalTeams, teamsPerGroup);
+    // Trong Round Robin: nếu N chẵn thì N-1 vòng; nếu N lẻ thì N vòng
+    const roundsPerLuot = teamsInGroup > 1 ? (teamsInGroup % 2 === 0 ? teamsInGroup - 1 : teamsInGroup) : 0;
+    const soLuot = autoScheduleConfig.soLuotDau || 1;
+    const totalRounds = roundsPerLuot * soLuot;
+    const matchesPerGroup = teamsInGroup > 1
+      ? Math.floor((teamsInGroup * (teamsInGroup - 1)) / 2) * soLuot
+      : 0;
+    const totalMatches = isSingleGroup ? matchesPerGroup : matchesPerGroup * numGroups;
+    const matchMinutes = (sportScheduleConfig?.thoiLuongTranMacDinhPhut || autoScheduleConfig.matchDuration || 60) +
+      (sportScheduleConfig?.thoiGianDemDonSanPhut ?? autoScheduleConfig.breakDuration ?? 15);
+    const courtsCount = Math.max(1, venues.length);
+    const startH = (sportScheduleConfig?.caSangBatDau || autoScheduleConfig.startTime || '08:00').split(':').map(Number);
+    const endH = (sportScheduleConfig?.caChieuKetThuc || autoScheduleConfig.endTime || '17:30').split(':').map(Number);
+    const dailyMinutes = Math.max(60, (endH[0] * 60 + endH[1]) - (startH[0] * 60 + startH[1]));
+    const matchesPerCourtPerDay = Math.max(1, Math.floor(dailyMinutes / matchMinutes));
+    const totalMatchesCapacityPerDay = matchesPerCourtPerDay * courtsCount;
+
+    const estimatedDays = (sportScheduleConfig?.moiVongMotNgay ?? true)
+      ? Math.max(1, totalRounds)
+      : Math.max(1, Math.ceil(totalMatches / totalMatchesCapacityPerDay));
+
+    return {
+      totalTeams,
+      isSingleGroup,
+      numGroups,
+      teamsInGroup,
+      roundsPerLuot,
+      soLuot,
+      totalRounds,
+      matchesPerGroup,
+      totalMatches,
+      estimatedDays,
+    };
+  }, [
+    isRoundRobin,
+    registeredTeams.length,
+    autoScheduleConfig.cheDoVongBang,
+    autoScheduleConfig.teamsPerGroup,
+    autoScheduleConfig.soLuotDau,
+    autoScheduleConfig.matchDuration,
+    autoScheduleConfig.breakDuration,
+    autoScheduleConfig.startTime,
+    autoScheduleConfig.endTime,
+    sportScheduleConfig,
+    venues.length,
   ]);
 
   // Initial Load: Tournaments
@@ -602,6 +716,16 @@ export default function LichThiDauPage() {
         soDoiThu3TotNhat: (currentEvent?.hinhThucThiDau === 'KetHopVongBangVaLoaiTrucTiep' && autoScheduleConfig.layDoiThu3TotNhat)
           ? Number(autoScheduleConfig.soDoiThu3TotNhat || 0)
           : 0,
+        // Leaderboard parameters (TinhDiemXepHang)
+        soVdvMoiLuotThi: isLeaderboard ? Number(autoScheduleConfig.soVdvMoiLuotThi || 8) : undefined,
+        soVongThi: isLeaderboard ? Number(autoScheduleConfig.soVongThi || 1) : undefined,
+        phuongThucPhanNhom: isLeaderboard ? autoScheduleConfig.phuongThucPhanNhom : undefined,
+        // Round Robin parameters (VongBang = 2)
+        soLuotDau: isRoundRobin ? Number(autoScheduleConfig.soLuotDau || 1) : 1,
+        cheDoVongBang: isRoundRobin ? autoScheduleConfig.cheDoVongBang : undefined,
+        diemThang: isRoundRobin ? Number(autoScheduleConfig.diemThang ?? 3) : undefined,
+        diemHoa: isRoundRobin ? Number(autoScheduleConfig.diemHoa ?? 1) : undefined,
+        diemThua: isRoundRobin ? Number(autoScheduleConfig.diemThua ?? 0) : undefined,
       };
 
       const res = await tranDauService.autoSchedule(payload);
@@ -1111,6 +1235,30 @@ export default function LichThiDauPage() {
                 <Award size={14} className="text-warning" />
                 <span>Thể thức:</span>
                 <strong className="text-warning">Loại trực tiếp (Knockout)</strong>
+              </div>
+            )}
+
+            {isRoundRobin && (
+              <div className="d-flex align-items-center gap-1.5 text-white-50">
+                <Award size={14} className="text-success" />
+                <span>Thể thức:</span>
+                <strong className="text-success">🔄 Vòng Tròn Tính Điểm (Round Robin)</strong>
+              </div>
+            )}
+
+            {currentEvent?.hinhThucThiDau === 'KetHopVongBangVaLoaiTrucTiep' && (
+              <div className="d-flex align-items-center gap-1.5 text-white-50">
+                <Award size={14} className="text-info" />
+                <span>Thể thức:</span>
+                <strong className="text-info">🏆 Vòng Bảng + Knockout</strong>
+              </div>
+            )}
+
+            {isLeaderboard && (
+              <div className="d-flex align-items-center gap-1.5 text-white-50">
+                <Award size={14} className="text-info" />
+                <span>Thể thức:</span>
+                <strong className="text-info">🏊 Thi Thành Tích (Leaderboard)</strong>
               </div>
             )}
 
@@ -2140,27 +2288,53 @@ export default function LichThiDauPage() {
                             <Table size="sm" className="align-middle mb-0" style={{ fontSize: '12px' }}>
                               <thead className="table-light">
                                 <tr>
-                                  <th style={{ width: '35px' }}>#</th>
+                                  <th style={{ width: '40px' }} className="text-center">#</th>
                                   <th>Tên Đội / VĐV</th>
                                   <th>Đơn Vị</th>
-                                  <th className="text-center">Số Trận</th>
-                                  <th className="text-center">Điểm</th>
+                                  <th className="text-center" title="Số trận đã đấu" style={{ width: '50px' }}>ST</th>
+                                  <th className="text-center text-success" title="Số trận thắng" style={{ width: '45px' }}>T</th>
+                                  <th className="text-center text-secondary" title="Số trận hòa" style={{ width: '45px' }}>H</th>
+                                  <th className="text-center text-danger" title="Số trận bại" style={{ width: '45px' }}>B</th>
+                                  <th className="text-center text-muted" title="Hiệu số điểm/bàn thắng" style={{ width: '55px' }}>+/-</th>
+                                  <th className="text-center" title="Tổng điểm" style={{ width: '60px' }}>Điểm</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {g.thanhViens && g.thanhViens.length > 0 ? (
-                                  g.thanhViens.map((tv, idx) => (
-                                    <tr key={tv.id}>
-                                      <td className="fw-bold text-muted">{idx + 1}</td>
-                                      <td className="fw-semibold text-dark">{tv.tenDoi || tv.tenDangKy}</td>
-                                      <td className="text-muted">{tv.tenDonVi || '--'}</td>
-                                      <td className="text-center font-monospace">{tv.soTran}</td>
-                                      <td className="text-center fw-bold text-primary font-monospace">{tv.diem}</td>
-                                    </tr>
-                                  ))
+                                  g.thanhViens.map((tv, idx) => {
+                                    const hieuSo = (tv.diemGhiDuoc ?? 0) - (tv.diemBiGhi ?? 0);
+                                    return (
+                                      <tr key={tv.id} className={idx === 0 ? 'table-warning bg-opacity-25' : ''}>
+                                        <td className="text-center fw-bold">
+                                          {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                                        </td>
+                                        <td className="fw-semibold text-dark">
+                                          {tv.tenDoi || tv.tenDangKy}
+                                          {idx === 0 && (
+                                            <Badge color="warning" pill className="ms-1 px-1.5 py-0.5 text-dark" style={{ fontSize: '9px' }}>
+                                              Dẫn đầu
+                                            </Badge>
+                                          )}
+                                        </td>
+                                        <td className="text-muted small">{tv.tenDonVi || '--'}</td>
+                                        <td className="text-center font-monospace">{tv.soTran}</td>
+                                        <td className="text-center font-monospace fw-semibold text-success">{tv.soThang ?? 0}</td>
+                                        <td className="text-center font-monospace text-secondary">{tv.soHoa ?? 0}</td>
+                                        <td className="text-center font-monospace text-danger">{tv.soThua ?? 0}</td>
+                                        <td className={`text-center font-monospace small ${hieuSo > 0 ? 'text-success' : hieuSo < 0 ? 'text-danger' : 'text-muted'}`}>
+                                          {hieuSo > 0 ? `+${hieuSo}` : hieuSo}
+                                        </td>
+                                        <td className="text-center font-monospace">
+                                          <Badge color="primary" pill className="px-2 py-1 fw-bold fs-7">
+                                            {tv.diem}
+                                          </Badge>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })
                                 ) : (
                                   <tr>
-                                    <td colSpan={5} className="text-center py-3 text-muted">
+                                    <td colSpan={9} className="text-center py-3 text-muted">
                                       Bảng đấu chưa có đội
                                     </td>
                                   </tr>
@@ -2570,10 +2744,33 @@ export default function LichThiDauPage() {
           </div>
         </ModalHeader>
         <ModalBody className="p-4">
-          <Alert color={isKnockout ? 'warning' : currentEvent?.hinhThucThiDau === 'KetHopVongBangVaLoaiTrucTiep' ? 'info' : 'primary'} className="d-flex align-items-center gap-2 mb-3 py-2 px-3 rounded-3" style={{ fontSize: '12px' }}>
+          <Alert
+            color={
+              isLeaderboard ? 'success' :
+              isRoundRobin ? 'success' :
+              isKnockout ? 'warning' :
+              currentEvent?.hinhThucThiDau === 'KetHopVongBangVaLoaiTrucTiep' ? 'info' : 'primary'
+            }
+            className="d-flex align-items-center gap-2 mb-3 py-2 px-3 rounded-3"
+            style={{ fontSize: '12px' }}
+          >
             <Info size={16} className="flex-shrink-0" />
             <div>
-              {isKnockout ? (
+              {isLeaderboard ? (
+                <>
+                  Thể thức <strong>Tính điểm xếp hạng / Tính giờ - Thành tích (Leaderboard)</strong>:{' '}
+                  Hệ thống phân VĐV thành các <strong>Lượt thi (Heat)</strong> theo số làn / vị trí khả dụng.
+                  Kết quả xếp hạng theo <strong>thành tích tốt nhất</strong> (thời gian, điểm số).
+                  Phù hợp: <strong>Bơi lội, Điền kinh, Cử tạ, Bắn súng, Thể dục nghệ thuật...</strong>
+                </>
+              ) : isRoundRobin ? (
+                <>
+                  Thể thức <strong>Vòng Tròn Tính Điểm (Round Robin)</strong>:{' '}
+                  Tất cả các đội thi đấu vòng tròn tính điểm (xếp hạng: <strong>Điểm số &gt; Đối đầu &gt; Hiệu số (+/-)</strong>).
+                  Đội có tổng điểm cao nhất khi kết thúc các vòng sẽ vô địch (<strong>không qua loại trực tiếp</strong>).
+                  Hệ thống hỗ trợ <strong>1 lượt (Lượt đi)</strong> hoặc <strong>2 lượt (Lượt đi - Lượt về)</strong> và tối ưu hóa sân bãi, thời gian nghỉ giữa các vòng.
+                </>
+              ) : isKnockout ? (
                 <>
                   Thể thức <strong>{HinhThucThiDauLabels[currentEvent?.hinhThucThiDau || ''] || 'Loại trực tiếp (Knockout)'}</strong>:{' '}
                   Hệ thống <strong>không chia bảng đấu</strong>, mà bắt cặp đối đầu loại trực tiếp:
@@ -2594,6 +2791,248 @@ export default function LichThiDauPage() {
               )}
             </div>
           </Alert>
+
+          {/* ===== LEADERBOARD (TinhDiemXepHang) SPECIFIC CONFIG PANEL ===== */}
+          {isLeaderboard && (
+            <div
+              className="rounded-4 border mb-3 overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                borderColor: '#86efac',
+              }}
+            >
+              {/* Header */}
+              <div
+                className="px-3 py-2 d-flex align-items-center justify-content-between"
+                style={{ background: 'linear-gradient(90deg, #16a34a 0%, #059669 100%)' }}
+              >
+                <div className="d-flex align-items-center gap-2 text-white">
+                  <Zap size={15} />
+                  <span className="fw-bold" style={{ fontSize: '13px' }}>Cấu Hình Lượt Thi (Heat) — Thi Thành Tích</span>
+                </div>
+                <Badge color="light" className="text-success px-2 py-1 fw-bold" style={{ fontSize: '11px' }}>
+                  {registeredTeams.length} VĐV đăng ký
+                </Badge>
+              </div>
+
+              <div className="p-3">
+                <Row className="g-3">
+                  {/* Số VĐV / Làn mỗi lượt thi */}
+                  <Col xs={12} md={4}>
+                    <div className="p-3 rounded-3 bg-white border h-100 d-flex flex-column">
+                      <div className="d-flex align-items-center gap-2 mb-2">
+                        <div
+                          className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                          style={{ width: '32px', height: '32px', background: '#dcfce7', color: '#16a34a' }}
+                        >
+                          <Users size={15} />
+                        </div>
+                        <div>
+                          <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>Số VĐV / Làn / Lượt thi</div>
+                          <div className="text-muted" style={{ fontSize: '11px' }}>Số làn bơi, đường chạy, v.v.</div>
+                        </div>
+                      </div>
+                      <div className="d-flex align-items-center gap-2 mt-auto">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={30}
+                          className="form-control form-control-sm text-center fw-bold fs-5 border-success"
+                          style={{ maxWidth: '80px' }}
+                          value={autoScheduleConfig.soVdvMoiLuotThi}
+                          onChange={(e) =>
+                            setAutoScheduleConfig({ ...autoScheduleConfig, soVdvMoiLuotThi: Math.max(1, Number(e.target.value)) })
+                          }
+                        />
+                        <div className="small text-muted">
+                          <div>VĐV / lượt thi</div>
+                          {leaderboardPreview && (
+                            <div className="text-success fw-semibold">
+                              → {leaderboardPreview.heatsPerVong} lượt / vòng
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Quick preset buttons */}
+                      <div className="d-flex flex-wrap gap-1 mt-2">
+                        {[4, 6, 8, 10].map((n) => (
+                          <Badge
+                            key={n}
+                            color={autoScheduleConfig.soVdvMoiLuotThi === n ? 'success' : 'light'}
+                            className={`cursor-pointer px-2 py-1 border ${autoScheduleConfig.soVdvMoiLuotThi === n ? 'text-white' : 'text-secondary'}`}
+                            style={{ fontSize: '11px' }}
+                            onClick={() => setAutoScheduleConfig({ ...autoScheduleConfig, soVdvMoiLuotThi: n })}
+                          >
+                            {n} làn
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </Col>
+
+                  {/* Số vòng thi */}
+                  <Col xs={12} md={4}>
+                    <div className="p-3 rounded-3 bg-white border h-100 d-flex flex-column">
+                      <div className="d-flex align-items-center gap-2 mb-2">
+                        <div
+                          className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                          style={{ width: '32px', height: '32px', background: '#dbeafe', color: '#2563eb' }}
+                        >
+                          <Layers size={15} />
+                        </div>
+                        <div>
+                          <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>Số Vòng Thi</div>
+                          <div className="text-muted" style={{ fontSize: '11px' }}>Sơ loại → Chung kết</div>
+                        </div>
+                      </div>
+                      <div className="d-flex flex-column gap-1.5 mt-auto">
+                        {[
+                          { val: 1, label: '1 vòng', sub: 'Chung kết trực tiếp (1 lần thi)' },
+                          { val: 2, label: '2 vòng', sub: 'Vòng loại → Chung kết' },
+                          { val: 3, label: '3 vòng', sub: 'Sơ loại → Bán kết → CK' },
+                        ].map((opt) => (
+                          <div
+                            key={opt.val}
+                            className={`p-2 rounded-2 border cursor-pointer d-flex align-items-center gap-2 ${
+                              autoScheduleConfig.soVongThi === opt.val
+                                ? 'border-primary bg-primary bg-opacity-10'
+                                : 'bg-white'
+                            }`}
+                            onClick={() => setAutoScheduleConfig({ ...autoScheduleConfig, soVongThi: opt.val })}
+                          >
+                            <input
+                              type="radio"
+                              readOnly
+                              checked={autoScheduleConfig.soVongThi === opt.val}
+                              className="form-check-input flex-shrink-0"
+                              style={{ marginTop: 0 }}
+                            />
+                            <div>
+                              <div className="fw-semibold" style={{ fontSize: '12px' }}>{opt.label}</div>
+                              <div className="text-muted" style={{ fontSize: '10.5px' }}>{opt.sub}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </Col>
+
+                  {/* Phương thức phân nhóm */}
+                  <Col xs={12} md={4}>
+                    <div className="p-3 rounded-3 bg-white border h-100 d-flex flex-column">
+                      <div className="d-flex align-items-center gap-2 mb-2">
+                        <div
+                          className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                          style={{ width: '32px', height: '32px', background: '#fef3c7', color: '#d97706' }}
+                        >
+                          <Shuffle size={15} />
+                        </div>
+                        <div>
+                          <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>Phương Thức Phân Nhóm</div>
+                          <div className="text-muted" style={{ fontSize: '11px' }}>Cách chia VĐV vào lượt thi</div>
+                        </div>
+                      </div>
+                      <div className="d-flex flex-column gap-1.5 mt-auto">
+                        {[
+                          { val: 'random', label: '🎲 Bốc thăm ngẫu nhiên', sub: 'Chia đều ngẫu nhiên vào từng lượt' },
+                          { val: 'registration_order', label: '📋 Theo thứ tự đăng ký', sub: 'Đăng ký trước → lượt thi trước' },
+                          { val: 'performance_seed', label: '🏆 Xếp hạt giống thành tích', sub: 'VĐV mạnh nhất vào lượt cuối' },
+                        ].map((opt) => (
+                          <div
+                            key={opt.val}
+                            className={`p-2 rounded-2 border cursor-pointer d-flex align-items-center gap-2 ${
+                              autoScheduleConfig.phuongThucPhanNhom === opt.val
+                                ? 'border-warning bg-warning bg-opacity-10'
+                                : 'bg-white'
+                            }`}
+                            onClick={() =>
+                              setAutoScheduleConfig({
+                                ...autoScheduleConfig,
+                                phuongThucPhanNhom: opt.val as 'random' | 'registration_order' | 'performance_seed',
+                              })
+                            }
+                          >
+                            <input
+                              type="radio"
+                              readOnly
+                              checked={autoScheduleConfig.phuongThucPhanNhom === opt.val}
+                              className="form-check-input flex-shrink-0"
+                              style={{ marginTop: 0 }}
+                            />
+                            <div>
+                              <div className="fw-semibold" style={{ fontSize: '11.5px' }}>{opt.label}</div>
+                              <div className="text-muted" style={{ fontSize: '10.5px' }}>{opt.sub}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+
+                {/* Live Preview Panel */}
+                {leaderboardPreview && leaderboardPreview.totalVdv > 0 && (
+                  <div
+                    className="mt-3 p-3 rounded-3 border d-flex flex-wrap gap-3 align-items-start"
+                    style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', borderColor: '#334155' }}
+                  >
+                    <div className="d-flex align-items-center gap-2 text-white mb-1 w-100">
+                      <CalendarDays size={15} className="text-green-400" style={{ color: '#4ade80' }} />
+                      <span className="fw-bold" style={{ fontSize: '12.5px' }}>📊 Dự kiến Lịch Thi Đấu</span>
+                    </div>
+                    {[
+                      {
+                        icon: <Users size={14} />,
+                        label: 'Tổng VĐV',
+                        value: `${leaderboardPreview.totalVdv} người`,
+                        color: '#4ade80',
+                      },
+                      {
+                        icon: <Layers size={14} />,
+                        label: `Lượt thi / vòng (⌈${leaderboardPreview.totalVdv}÷${leaderboardPreview.heatSize}⌉)`,
+                        value: `${leaderboardPreview.heatsPerVong} lượt`,
+                        color: '#60a5fa',
+                      },
+                      {
+                        icon: <Flag size={14} />,
+                        label: `Tổng lượt thi (×${autoScheduleConfig.soVongThi} vòng)`,
+                        value: `${leaderboardPreview.totalHeats} lượt`,
+                        color: '#f59e0b',
+                      },
+                      {
+                        icon: <Clock size={14} />,
+                        label: 'Thời gian / lượt',
+                        value: `${leaderboardPreview.minutesPerHeat} phút`,
+                        color: '#a78bfa',
+                      },
+                      {
+                        icon: <CalendarDays size={14} />,
+                        label: 'Dự kiến số ngày',
+                        value: `${leaderboardPreview.estimatedDays} ngày`,
+                        color: '#fb7185',
+                      },
+                    ].map((stat, i) => (
+                      <div key={i} className="d-flex flex-column align-items-start" style={{ minWidth: '120px' }}>
+                        <div className="d-flex align-items-center gap-1 mb-0.5" style={{ color: '#94a3b8', fontSize: '11px' }}>
+                          <span style={{ color: stat.color }}>{stat.icon}</span>
+                          <span>{stat.label}</span>
+                        </div>
+                        <div className="fw-bold" style={{ fontSize: '15px', color: stat.color }}>
+                          {stat.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {leaderboardPreview && leaderboardPreview.totalVdv === 0 && (
+                  <div className="mt-3 p-2 rounded-3 border border-warning bg-warning bg-opacity-10 d-flex align-items-center gap-2 small text-warning">
+                    <AlertTriangle size={14} />
+                    <span>Chưa có VĐV đã duyệt đăng ký trong nội dung này. Vui lòng duyệt đăng ký trước khi xếp lịch.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
 
 
@@ -2705,8 +3144,291 @@ export default function LichThiDauPage() {
               </div>
             </Col>
 
-            {/* Group stage configuration if applicable */}
-            {hasGroupStage && (
+            {/* Cấu hình chuyên biệt cho Vòng Tròn Tính Điểm (Round Robin) */}
+            {isRoundRobin && (
+              <Col xs={12}>
+                <div className="p-3.5 rounded-3 border bg-light bg-opacity-75">
+                  <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <div className="d-flex align-items-center gap-2">
+                      <Layers size={16} className="text-success" />
+                      <span className="fw-bold small text-dark">Cấu Hình Thể Thức Vòng Tròn Tính Điểm (Round Robin)</span>
+                    </div>
+                    <Badge color="success" pill className="px-2.5 py-1">
+                      {autoScheduleConfig.soLuotDau === 2 ? 'Lượt đi & Lượt về' : '1 Lượt (Single Round Robin)'}
+                    </Badge>
+                  </div>
+
+                  {/* 1. Chế độ bảng đấu */}
+                  <div className="mb-3">
+                    <Label className="small fw-semibold mb-1 text-secondary">Mô hình phân bảng:</Label>
+                    <div className="d-flex flex-column flex-sm-row gap-2">
+                      <div
+                        className={`p-2.5 rounded-3 border cursor-pointer flex-fill d-flex align-items-start gap-2.5 transition-all ${
+                          autoScheduleConfig.cheDoVongBang === 'single_group'
+                            ? 'border-success bg-success bg-opacity-10 shadow-sm'
+                            : 'bg-white'
+                        }`}
+                        onClick={() => setAutoScheduleConfig({ ...autoScheduleConfig, cheDoVongBang: 'single_group' })}
+                      >
+                        <input
+                          type="radio"
+                          name="cheDoVongBang"
+                          checked={autoScheduleConfig.cheDoVongBang === 'single_group'}
+                          onChange={() => {}}
+                          className="form-check-input mt-1"
+                        />
+                        <div>
+                          <div className="fw-bold small text-dark">1 Bảng duy nhất (Tất cả gặp nhau)</div>
+                          <div className="text-muted" style={{ fontSize: '11px' }}>
+                            Tất cả {registeredTeams.length} đội/VĐV gom chung 1 bảng xoay vòng, đội điểm cao nhất vô địch.
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`p-2.5 rounded-3 border cursor-pointer flex-fill d-flex align-items-start gap-2.5 transition-all ${
+                          autoScheduleConfig.cheDoVongBang === 'multi_groups'
+                            ? 'border-success bg-success bg-opacity-10 shadow-sm'
+                            : 'bg-white'
+                        }`}
+                        onClick={() => setAutoScheduleConfig({ ...autoScheduleConfig, cheDoVongBang: 'multi_groups' })}
+                      >
+                        <input
+                          type="radio"
+                          name="cheDoVongBang"
+                          checked={autoScheduleConfig.cheDoVongBang === 'multi_groups'}
+                          onChange={() => {}}
+                          className="form-check-input mt-1"
+                        />
+                        <div>
+                          <div className="fw-bold small text-dark">Chia thành nhiều bảng đấu</div>
+                          <div className="text-muted" style={{ fontSize: '11px' }}>
+                            Chia thành Bảng A, B, C... thi đấu vòng tròn tính điểm trong từng bảng.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {autoScheduleConfig.cheDoVongBang === 'multi_groups' && (
+                      <div className="d-flex align-items-center gap-2 mt-2.5 ps-1">
+                        <Label className="small mb-0 text-secondary">Số đội mỗi bảng:</Label>
+                        <Input
+                          type="select"
+                          bsSize="sm"
+                          style={{ width: '130px' }}
+                          value={autoScheduleConfig.teamsPerGroup}
+                          onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, teamsPerGroup: Number(e.target.value) })}
+                        >
+                          <option value={3}>3 đội / bảng</option>
+                          <option value={4}>4 đội / bảng</option>
+                          <option value={5}>5 đội / bảng</option>
+                          <option value={6}>6 đội / bảng</option>
+                        </Input>
+                        <span className="text-muted small">
+                          (Dự kiến: {Math.max(1, Math.ceil(registeredTeams.length / (autoScheduleConfig.teamsPerGroup || 4)))} bảng)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 2. Số lượt thi đấu */}
+                  <div className="mb-3">
+                    <Label className="small fw-semibold mb-1 text-secondary">Số lượt thi đấu (Vòng xoay):</Label>
+                    <div className="d-flex flex-column flex-sm-row gap-2">
+                      <div
+                        className={`p-2.5 rounded-3 border cursor-pointer flex-fill d-flex align-items-start gap-2.5 transition-all ${
+                          autoScheduleConfig.soLuotDau === 1
+                            ? 'border-success bg-success bg-opacity-10 shadow-sm'
+                            : 'bg-white'
+                        }`}
+                        onClick={() => setAutoScheduleConfig({ ...autoScheduleConfig, soLuotDau: 1 })}
+                      >
+                        <input
+                          type="radio"
+                          name="soLuotDau"
+                          checked={autoScheduleConfig.soLuotDau === 1}
+                          onChange={() => {}}
+                          className="form-check-input mt-1"
+                        />
+                        <div>
+                          <div className="fw-bold small text-dark">1 Lượt (Lượt đi - Single Round Robin)</div>
+                          <div className="text-muted" style={{ fontSize: '11px' }}>
+                            Mỗi cặp đấu chỉ gặp nhau 1 lần duy nhất trong giải.
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`p-2.5 rounded-3 border cursor-pointer flex-fill d-flex align-items-start gap-2.5 transition-all ${
+                          autoScheduleConfig.soLuotDau === 2
+                            ? 'border-success bg-success bg-opacity-10 shadow-sm'
+                            : 'bg-white'
+                        }`}
+                        onClick={() => setAutoScheduleConfig({ ...autoScheduleConfig, soLuotDau: 2 })}
+                      >
+                        <input
+                          type="radio"
+                          name="soLuotDau"
+                          checked={autoScheduleConfig.soLuotDau === 2}
+                          onChange={() => {}}
+                          className="form-check-input mt-1"
+                        />
+                        <div>
+                          <div className="fw-bold small text-dark">2 Lượt (Lượt đi & Lượt về - Double Round Robin)</div>
+                          <div className="text-muted" style={{ fontSize: '11px' }}>
+                            Mỗi cặp đội gặp nhau 2 lần, đảo vai trò Đội 1 (Home) và Đội 2 (Away).
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Quy chuẩn tính điểm */}
+                  <div className="mb-2">
+                    <Label className="small fw-semibold mb-1 text-secondary">Quy chuẩn điểm số xếp hạng:</Label>
+                    <div className="d-flex flex-wrap gap-2 mb-2">
+                      {[
+                        { key: '3_1_0', label: 'Bóng đá / Futsal (3 - 1 - 0)', win: 3, draw: 1, loss: 0 },
+                        { key: '2_1_0', label: 'Bóng chuyền / Bóng rổ (2 - 1 - 0)', win: 2, draw: 1, loss: 0 },
+                        { key: '1_0.5_0', label: 'Cờ vua / Cờ tướng (1 - 0.5 - 0)', win: 1, draw: 0.5, loss: 0 },
+                        { key: '1_0', label: 'Bóng bàn / Cầu lông (1 - 0)', win: 1, draw: 0, loss: 0 },
+                        { key: 'custom', label: 'Tùy chỉnh...', win: autoScheduleConfig.diemThang, draw: autoScheduleConfig.diemHoa, loss: autoScheduleConfig.diemThua },
+                      ].map((p) => (
+                        <Button
+                          key={p.key}
+                          size="sm"
+                          color={autoScheduleConfig.heThongDiem === p.key ? 'success' : 'light'}
+                          className={`rounded-pill px-3 py-1 ${autoScheduleConfig.heThongDiem === p.key ? 'text-white' : 'text-secondary border'}`}
+                          style={{ fontSize: '11px' }}
+                          onClick={() => {
+                            setAutoScheduleConfig({
+                              ...autoScheduleConfig,
+                              heThongDiem: p.key,
+                              diemThang: p.win,
+                              diemHoa: p.draw,
+                              diemThua: p.loss,
+                            });
+                          }}
+                        >
+                          {p.label}
+                        </Button>
+                      ))}
+                    </div>
+
+                    <div className="d-flex align-items-center gap-3 bg-white p-2.5 rounded-3 border">
+                      <div className="d-flex align-items-center gap-1.5">
+                        <span className="small fw-semibold text-success">Thắng:</span>
+                        <Input
+                          type="number"
+                          step="0.5"
+                          bsSize="sm"
+                          style={{ width: '65px' }}
+                          value={autoScheduleConfig.diemThang}
+                          disabled={autoScheduleConfig.heThongDiem !== 'custom'}
+                          onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, diemThang: Number(e.target.value) })}
+                        />
+                        <span className="small text-muted">điểm</span>
+                      </div>
+                      <div className="d-flex align-items-center gap-1.5">
+                        <span className="small fw-semibold text-secondary">Hòa:</span>
+                        <Input
+                          type="number"
+                          step="0.5"
+                          bsSize="sm"
+                          style={{ width: '65px' }}
+                          value={autoScheduleConfig.diemHoa}
+                          disabled={autoScheduleConfig.heThongDiem !== 'custom'}
+                          onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, diemHoa: Number(e.target.value) })}
+                        />
+                        <span className="small text-muted">điểm</span>
+                      </div>
+                      <div className="d-flex align-items-center gap-1.5">
+                        <span className="small fw-semibold text-danger">Thua:</span>
+                        <Input
+                          type="number"
+                          step="0.5"
+                          bsSize="sm"
+                          style={{ width: '65px' }}
+                          value={autoScheduleConfig.diemThua}
+                          disabled={autoScheduleConfig.heThongDiem !== 'custom'}
+                          onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, diemThua: Number(e.target.value) })}
+                        />
+                        <span className="small text-muted">điểm</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-muted mt-2" style={{ fontSize: '11px' }}>
+                    ℹ️ <em>Tiêu chí xếp hạng khi bằng điểm: <strong>Điểm số ➔ Đối đầu trực tiếp ➔ Hiệu số (+/-) ➔ Tổng điểm/bàn thắng ghi được</strong>.</em>
+                  </div>
+                </div>
+              </Col>
+            )}
+
+            {/* Live preview cho Round Robin */}
+            {isRoundRobin && roundRobinPreview && (
+              <Col xs={12}>
+                <div
+                  className="p-3 rounded-3 text-white shadow-sm"
+                  style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 100%)' }}
+                >
+                  <div className="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom border-white border-opacity-25">
+                    <div className="d-flex align-items-center gap-1.5">
+                      <Zap size={14} className="text-warning" />
+                      <span className="fw-bold small">Dự Báo Lịch Thi Đấu Vòng Tròn (Live Preview)</span>
+                    </div>
+                    <Badge color="light" pill className="text-dark fw-bold px-2.5 py-1" style={{ fontSize: '10px' }}>
+                      Cập nhật tức thời
+                    </Badge>
+                  </div>
+                  <Row className="g-2 text-center" style={{ fontSize: '12px' }}>
+                    <Col xs={4} md={2}>
+                      <div className="text-white-50" style={{ fontSize: '10px' }}>ĐỘI THAM GIA</div>
+                      <div className="fw-bold fs-6 text-white">{roundRobinPreview.totalTeams}</div>
+                      <div className="text-white-50" style={{ fontSize: '9.5px' }}>đội đăng ký</div>
+                    </Col>
+                    <Col xs={4} md={2}>
+                      <div className="text-white-50" style={{ fontSize: '10px' }}>BẢNG ĐẤU</div>
+                      <div className="fw-bold fs-6 text-warning">
+                        {roundRobinPreview.isSingleGroup ? '1 Bảng' : `${roundRobinPreview.numGroups} Bảng`}
+                      </div>
+                      <div className="text-white-50" style={{ fontSize: '9.5px' }}>
+                        {roundRobinPreview.teamsInGroup} đội/bảng
+                      </div>
+                    </Col>
+                    <Col xs={4} md={2}>
+                      <div className="text-white-50" style={{ fontSize: '10px' }}>LƯỢT ĐẤU</div>
+                      <div className="fw-bold fs-6 text-info">
+                        {roundRobinPreview.soLuot === 2 ? '2 lượt' : '1 lượt'}
+                      </div>
+                      <div className="text-white-50" style={{ fontSize: '9.5px' }}>
+                        {roundRobinPreview.soLuot === 2 ? 'Lượt đi + về' : 'Lượt đi'}
+                      </div>
+                    </Col>
+                    <Col xs={4} md={2}>
+                      <div className="text-white-50" style={{ fontSize: '10px' }}>TỔNG SỐ VÒNG</div>
+                      <div className="fw-bold fs-6 text-white">{roundRobinPreview.totalRounds}</div>
+                      <div className="text-white-50" style={{ fontSize: '9.5px' }}>vòng đấu xoay</div>
+                    </Col>
+                    <Col xs={4} md={2}>
+                      <div className="text-white-50" style={{ fontSize: '10px' }}>TỔNG SỐ TRẬN</div>
+                      <div className="fw-bold fs-6 text-warning">{roundRobinPreview.totalMatches}</div>
+                      <div className="text-white-50" style={{ fontSize: '9.5px' }}>trận thi đấu</div>
+                    </Col>
+                    <Col xs={4} md={2}>
+                      <div className="text-white-50" style={{ fontSize: '10px' }}>DỰ KIẾN</div>
+                      <div className="fw-bold fs-6 text-success bg-white px-1.5 py-0.5 rounded-pill d-inline-block">
+                        ~{roundRobinPreview.estimatedDays} ngày
+                      </div>
+                      <div className="text-white-50" style={{ fontSize: '9.5px' }}>thời gian thi đấu</div>
+                    </Col>
+                  </Row>
+                </div>
+              </Col>
+            )}
+
+            {/* Group stage configuration if applicable — chỉ hiện cho Kết hợp Vòng bảng & Loại trực tiếp */}
+            {hasGroupStage && !isLeaderboard && !isRoundRobin && (
               <Col xs={12}>
                 <div className="p-3 rounded-3 bg-light border">
                   <div className="form-check mb-2">
@@ -2742,8 +3464,8 @@ export default function LichThiDauPage() {
               </Col>
             )}
 
-            {/* Advancing criteria to Knockout Stage if KetHopVongBangVaLoaiTrucTiep */}
-            {currentEvent?.hinhThucThiDau === 'KetHopVongBangVaLoaiTrucTiep' && (
+            {/* Advancing criteria to Knockout Stage if KetHopVongBangVaLoaiTrucTiep — ẩn với Leaderboard */}
+            {currentEvent?.hinhThucThiDau === 'KetHopVongBangVaLoaiTrucTiep' && !isLeaderboard && (
               <Col xs={12}>
                 <div className="p-3 rounded-3 border bg-light">
                   <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
@@ -2955,42 +3677,63 @@ export default function LichThiDauPage() {
               </div>
             </Col>
 
-            {/* Avoid athlete conflict checkbox & Rest time */}
-            <Col xs={12}>
-              <div className="p-2.5 rounded-3 border bg-light">
-                <div className="form-check mb-1">
-                  <Input
-                    type="checkbox"
-                    id="avoidAthleteConflict"
-                    className="ms-0 me-2"
-                    checked={autoScheduleConfig.avoidAthleteConflict}
-                    onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, avoidAthleteConflict: e.target.checked })}
-                  />
-                  <Label check htmlFor="avoidAthleteConflict" className="small text-primary fw-bold cursor-pointer">
-                    Tự động kiểm tra & tránh trùng khung giờ cho VĐV (Smart CSP)
-                  </Label>
-                </div>
-                <div className="text-muted small ps-4" style={{ fontSize: '11px', lineHeight: 1.4 }}>
-                  Hệ thống nhận diện cùng một VĐV khi trùng số CCCD (hoặc cùng mã VĐV), đối soát lịch toàn bộ các môn khác và tự động dời ca giờ tránh xung đột.
-                </div>
-
-                {autoScheduleConfig.avoidAthleteConflict && (
-                  <div className="d-flex align-items-center gap-2 mt-2 pt-2 border-top ps-4">
-                    <span className="small text-secondary fw-semibold">
-                      Thời gian nghỉ tối thiểu giữa 2 trận:
-                    </span>
-                    <Badge color="primary" className="px-2.5 py-1 fw-bold">
-                      {effectiveRestInfo.minutes} phút
-                    </Badge>
-                    <span className="small text-muted" style={{ fontSize: '11px' }}>
-                      {effectiveRestInfo.source === 'khoangCachVong'
-                        ? `(Ưu tiên theo ${sportScheduleConfig?.khoangCachGiuaCacVongGio} giờ Khoảng cách giữa các vòng)`
-                        : `(Theo ${effectiveRestInfo.minutes} phút Nghỉ tối thiểu giữa 2 trận của môn)`}
-                    </span>
+            {/* Avoid athlete conflict checkbox & Rest time — ẩn với Leaderboard (VĐV không thi trùng giờ cùng lúc) */}
+            {!isLeaderboard && (
+              <Col xs={12}>
+                <div className="p-2.5 rounded-3 border bg-light">
+                  <div className="form-check mb-1">
+                    <Input
+                      type="checkbox"
+                      id="avoidAthleteConflict"
+                      className="ms-0 me-2"
+                      checked={autoScheduleConfig.avoidAthleteConflict}
+                      onChange={(e) => setAutoScheduleConfig({ ...autoScheduleConfig, avoidAthleteConflict: e.target.checked })}
+                    />
+                    <Label check htmlFor="avoidAthleteConflict" className="small text-primary fw-bold cursor-pointer">
+                      Tự động kiểm tra & tránh trùng khung giờ cho VĐV (Smart CSP)
+                    </Label>
                   </div>
-                )}
-              </div>
-            </Col>
+                  <div className="text-muted small ps-4" style={{ fontSize: '11px', lineHeight: 1.4 }}>
+                    Hệ thống nhận diện cùng một VĐV khi trùng số CCCD (hoặc cùng mã VĐV), đối soát lịch toàn bộ các môn khác và tự động dời ca giờ tránh xung đột.
+                  </div>
+
+                  {autoScheduleConfig.avoidAthleteConflict && (
+                    <div className="d-flex align-items-center gap-2 mt-2 pt-2 border-top ps-4">
+                      <span className="small text-secondary fw-semibold">
+                        Thời gian nghỉ tối thiểu giữa 2 trận:
+                      </span>
+                      <Badge color="primary" className="px-2.5 py-1 fw-bold">
+                        {effectiveRestInfo.minutes} phút
+                      </Badge>
+                      <span className="small text-muted" style={{ fontSize: '11px' }}>
+                        {effectiveRestInfo.source === 'khoangCachVong'
+                          ? `(Ưu tiên theo ${sportScheduleConfig?.khoangCachGiuaCacVongGio} giờ Khoảng cách giữa các vòng)`
+                          : `(Theo ${effectiveRestInfo.minutes} phút Nghỉ tối thiểu giữa 2 trận của môn)`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </Col>
+            )}
+
+            {/* Leaderboard: thông tin thay thế cho mục tránh trùng VĐV */}
+            {isLeaderboard && (
+              <Col xs={12}>
+                <div
+                  className="p-2.5 rounded-3 border d-flex align-items-start gap-2"
+                  style={{ background: '#f0fdf4', borderColor: '#86efac', fontSize: '12px' }}
+                >
+                  <CheckCircle size={15} className="text-success flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="fw-semibold text-success mb-0.5">Kiểm tra xung đột lịch thi đấu</div>
+                    <div className="text-muted">
+                      Với thể thức Thi Thành Tích, mỗi VĐV tham gia <strong>một lượt thi riêng biệt</strong>.
+                      Hệ thống tự động đảm bảo VĐV thi đa môn không bị trùng khung giờ giữa các nội dung khác nhau trong cùng giải.
+                    </div>
+                  </div>
+                </div>
+              </Col>
+            )}
 
             {/* Load balancing options */}
             <Col xs={12}>
