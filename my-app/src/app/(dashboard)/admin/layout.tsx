@@ -131,37 +131,6 @@ const adminNavigation: NavItem[] = [
       },
     ],
   },
-  {
-    title: 'Cổng Các Phân Hệ',
-    icon: 'bi bi-grid-fill',
-    children: [
-      {
-        title: 'Đơn vị / Đoàn thi đấu',
-        href: '/don-vi',
-        icon: 'bi bi-building',
-      },
-      {
-        title: 'Ban tổ chức giải',
-        href: '/quan-ly-giai',
-        icon: 'bi bi-diagram-3',
-      },
-      {
-        title: 'Trưởng ban trọng tài',
-        href: '/truong-ban-trong-tai',
-        icon: 'bi bi-award',
-      },
-      {
-        title: 'Trọng tài điều hành',
-        href: '/trong-tai',
-        icon: 'bi bi-whistle',
-      },
-      {
-        title: 'Thư ký giải đấu',
-        href: '/thu-ky',
-        icon: 'bi bi-journal-check',
-      },
-    ],
-  },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -14,7 +14,6 @@ import {
   Label,
   Input,
   Spinner,
-  Badge,
 } from 'reactstrap';
 import { giaiDauService, khoiService, monTheThaoService } from '@/services';
 import {
@@ -30,12 +29,15 @@ import { useAuth, useToast } from '@/context/AuthContext';
 import { Permissions } from '@/constants/permissions';
 import { generateSlug } from '@/lib/slug';
 
-export default function CreateGiaiDauPage() {
+export default function EditGiaiDauPage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = use(params);
+  const id = Number(unwrappedParams.id);
+
   const router = useRouter();
   const { hasPermission, user } = useAuth();
   const toast = useToast();
   const isAdmin = (user?.roles || []).some((r) => String(r).toLowerCase() === 'admin');
-  const canCreate = isAdmin || hasPermission(Permissions.GiaiDau.Create);
+  const canEdit = isAdmin || hasPermission(Permissions.GiaiDau.Edit);
 
   const [formData, setFormData] = useState<CreateUpdateGiaiDau>({
     ma: '',
@@ -47,6 +49,7 @@ export default function CreateGiaiDauPage() {
     diaDiem: '',
     phamVi: PhamViGiaiDau.TatCa,
     trangThai: TrangThaiGiaiDau.Nhap,
+    hinhAnh: '',
     khoiIds: [],
     monTheThaoIds: [],
     dieuLes: [],
@@ -102,33 +105,74 @@ export default function CreateGiaiDauPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [khoiData, monData] = await Promise.all([
+        const [khoiData, monData, giaiDauData] = await Promise.all([
           khoiService.getAll(),
           monTheThaoService.getAll(),
+          giaiDauService.getById(id),
         ]);
+
         setAvailableKhois(khoiData || []);
-        const mons = monData || [];
-        setAvailableMons(mons);
-        // Mặc định tích chọn tất cả các môn thể thao tổ chức khi thêm mới
-        setFormData((prev) => ({
-          ...prev,
-          monTheThaoIds: mons.map((m) => m.id),
-        }));
+        setAvailableMons(monData || []);
+
+        if (giaiDauData) {
+          // Format date yyyy-MM-dd cho input date HTML (tránh lệch ngày do múi giờ UTC)
+          const formatDate = (dateStr?: string | Date) => {
+            if (!dateStr) return '';
+            if (typeof dateStr === 'string') {
+              const match = dateStr.match(/^\d{4}-\d{2}-\d{2}/);
+              if (match) return match[0];
+            }
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return '';
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          };
+
+          setFormData({
+            ma: giaiDauData.ma || '',
+            ten: giaiDauData.ten || '',
+            slug: giaiDauData.slug || '',
+            moTa: giaiDauData.moTa || '',
+            hinhAnh: giaiDauData.hinhAnh || '',
+            ngayBatDau: formatDate(giaiDauData.ngayBatDau),
+            ngayKetThuc: formatDate(giaiDauData.ngayKetThuc),
+            hanDangKy: formatDate(giaiDauData.hanDangKy),
+            diaDiem: giaiDauData.diaDiem || '',
+            phamVi: giaiDauData.phamVi,
+            trangThai: giaiDauData.trangThai,
+            khoiIds: Array.from(new Set(giaiDauData.khoiIds || [])),
+            monTheThaoIds: Array.from(new Set(giaiDauData.monTheThaoIds || [])),
+            dieuLes: (giaiDauData.dieuLeGiaiDaus || []).map((dl) => ({
+              id: dl.id,
+              tieuDe: dl.tieuDe,
+              noiDung: dl.noiDung,
+              tepDinhKem: dl.tepDinhKem,
+              thuTu: dl.thuTu,
+              trangThai: dl.trangThai,
+            })),
+          });
+        }
       } catch (err: any) {
-        console.error('Lỗi khi nạp dữ liệu danh mục:', err);
+        console.error('Lỗi khi nạp dữ liệu giải đấu:', err);
+        setError(err?.message || 'Không thể tải thông tin giải đấu.');
       } finally {
         setLoadingInitial(false);
       }
     }
-    loadData();
-  }, []);
+
+    if (id) {
+      loadData();
+    }
+  }, [id]);
 
   const handleKhoiToggle = (khoiId: number) => {
     setFormData((prev) => {
       const current = prev.khoiIds || [];
       return {
         ...prev,
-        khoiIds: current.includes(khoiId) ? current.filter((id) => id !== khoiId) : [...current, khoiId],
+        khoiIds: current.includes(khoiId) ? current.filter((i) => i !== khoiId) : [...current, khoiId],
       };
     });
   };
@@ -138,7 +182,7 @@ export default function CreateGiaiDauPage() {
       const current = prev.monTheThaoIds || [];
       return {
         ...prev,
-        monTheThaoIds: current.includes(monId) ? current.filter((id) => id !== monId) : [...current, monId],
+        monTheThaoIds: current.includes(monId) ? current.filter((i) => i !== monId) : [...current, monId],
       };
     });
   };
@@ -153,7 +197,7 @@ export default function CreateGiaiDauPage() {
     });
   };
 
-  // Quản lý danh sách Điều lệ giải đấu
+  // Quản lý Điều lệ
   const handleAddDieuLe = () => {
     setFormData((prev) => {
       const current = prev.dieuLes || [];
@@ -241,14 +285,14 @@ export default function CreateGiaiDauPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await giaiDauService.create(formData);
-      toast.success('Thêm mới giải đấu thành công!', 'Hoàn tất');
-      router.push('/admin/giai-dau');
+      await giaiDauService.update(id, formData);
+      toast.success('Cập nhật giải đấu thành công!', 'Hoàn tất');
+      router.push('/quan-ly-giai/giai-dau');
     } catch (err: any) {
-      console.error('Lỗi khi thêm giải đấu:', err);
-      const msg = err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi lưu giải đấu.';
+      console.error('Lỗi khi cập nhật giải đấu:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi cập nhật giải đấu.';
       setError(msg);
-      toast.error(msg, 'Lỗi lưu giải đấu');
+      toast.error(msg, 'Lỗi cập nhật giải đấu');
     } finally {
       setSubmitting(false);
     }
@@ -258,7 +302,7 @@ export default function CreateGiaiDauPage() {
     return (
       <div className="text-center py-5">
         <Spinner color="primary" />
-        <p className="mt-2 text-muted small">Đang nạp thông tin danh mục...</p>
+        <p className="mt-2 text-muted small">Đang nạp dữ liệu giải đấu...</p>
       </div>
     );
   }
@@ -269,45 +313,74 @@ export default function CreateGiaiDauPage() {
       <div className="d-flex align-items-center justify-content-between mb-4">
         <div className="d-flex align-items-center gap-3">
           <Link
-            href="/admin/giai-dau"
+            href="/quan-ly-giai/giai-dau"
             className="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
             style={{ width: '38px', height: '38px' }}
           >
             <i className="bi bi-arrow-left fs-5"></i>
           </Link>
           <div>
-            <h4 className="fw-bold mb-0 text-dark">Thêm Mới Giải Đấu</h4>
+            <h4 className="fw-bold mb-0 text-dark">
+              Chỉnh Sửa Giải Đấu <span className="text-primary font-monospace">#{formData.ma}</span>
+            </h4>
             <span className="text-muted small">
-              Tạo giải đấu thể thao mới cùng các môn thi đấu &amp; văn bản điều lệ
+              Cập nhật thông tin, danh sách môn thể thao &amp; các điều lệ của giải đấu
             </span>
           </div>
         </div>
         <div className="d-flex gap-2">
-          <Link href="/admin/giai-dau" className="btn btn-light rounded-3 px-3">
+          <Link
+            href={`/quan-ly-giai/giai-dau/${id}/du-lieu-thi-dau`}
+            className="btn btn-outline-danger rounded-3 px-3 d-inline-flex align-items-center gap-2"
+            title="Quản lý & xóa các hồ sơ đăng ký, trận đấu để có thể gỡ môn thi đấu"
+          >
+            <i className="bi bi-shield-x"></i>
+            Đăng Ký &amp; Trận Đấu
+          </Link>
+          <Link
+            href={`/quan-ly-giai/lich-thi-dau?giaiDauId=${id}`}
+            className="btn btn-outline-primary rounded-3 px-3 d-inline-flex align-items-center gap-2"
+            title="Xếp lịch thi đấu chi tiết"
+          >
+            <i className="bi bi-calendar3"></i>
+            Lịch Thi Đấu
+          </Link>
+          <Link href="/quan-ly-giai/giai-dau" className="btn btn-light rounded-3 px-3">
             Hủy bỏ
           </Link>
           <Button
             color="primary"
             onClick={handleSubmit}
-            disabled={submitting || !canCreate}
+            disabled={submitting || !canEdit}
             className="rounded-3 px-4 fw-semibold d-inline-flex align-items-center gap-2"
           >
-            {submitting ? <Spinner size="sm" /> : <i className="bi bi-check-lg"></i>}
-            Lưu Giải Đấu
+            {submitting ? <Spinner size="sm" /> : <i className="bi bi-save"></i>}
+            Cập Nhật Giải Đấu
           </Button>
         </div>
       </div>
 
       {error && (
-        <div className="alert alert-danger d-flex align-items-center mb-4 rounded-3" role="alert">
-          <i className="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
-          <div>{error}</div>
+        <div className="alert alert-danger d-flex align-items-center justify-content-between mb-4 rounded-3 shadow-sm" role="alert">
+          <div className="d-flex align-items-center">
+            <i className="bi bi-exclamation-triangle-fill me-2 fs-5 text-danger flex-shrink-0"></i>
+            <div>{error}</div>
+          </div>
+          {(error.includes('đăng ký') || error.includes('trận đấu') || error.includes('bảng đấu') || error.includes('bỏ chọn môn')) && (
+            <Link
+              href={`/quan-ly-giai/giai-dau/${id}/du-lieu-thi-dau`}
+              className="btn btn-sm btn-danger rounded-pill px-3 ms-3 text-nowrap d-inline-flex align-items-center gap-1 shadow-sm"
+            >
+              <i className="bi bi-trash3"></i>
+              Mở Trang Xóa Dữ Liệu
+            </Link>
+          )}
         </div>
       )}
 
       <Form onSubmit={handleSubmit}>
         <Row className="g-4">
-          {/* CỘT TRÁI: THÔNG TIN CƠ BẢN VÀ MÔN THI ĐẤU */}
+          {/* CỘT TRÁI */}
           <Col lg={8}>
             {/* THÔNG TIN CHUNG */}
             <Card className="border-0 shadow-sm rounded-4 mb-4">
@@ -326,9 +399,8 @@ export default function CreateGiaiDauPage() {
                         id="input_ma"
                         type="text"
                         required
-                        placeholder="VD: GD_2026_01"
                         value={formData.ma}
-                        onChange={(e) => setFormData({ ...formData, ma: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, ma: e.target.value }))}
                         className="rounded-3"
                       />
                     </FormGroup>
@@ -342,14 +414,12 @@ export default function CreateGiaiDauPage() {
                         id="input_ten"
                         type="text"
                         required
-                        placeholder="VD: Hội thao Đại hội Thể dục Thể thao Toàn tỉnh 2026"
                         value={formData.ten}
                         onChange={(e) => {
                           const newTen = e.target.value;
                           setFormData((prev) => ({
                             ...prev,
                             ten: newTen,
-                            // Tự sinh slug theo tên nếu người dùng chưa can thiệp sâu
                             slug: generateSlug(newTen),
                           }));
                         }}
@@ -364,7 +434,15 @@ export default function CreateGiaiDauPage() {
                         <Label className="fw-semibold small mb-0">
                           Đường dẫn thân thiện SEO (Slug URL) <span className="text-danger">*</span>
                         </Label>
-                        <small className="text-muted">Đường dẫn hiển thị công khai cho người dùng &amp; Google</small>
+                        <div className="d-flex align-items-center gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-link btn-sm p-0 text-decoration-none text-primary"
+                            onClick={() => setFormData((prev) => ({ ...prev, slug: generateSlug(prev.ten) }))}
+                          >
+                            <i className="bi bi-arrow-repeat me-1"></i>Tạo lại từ tên
+                          </button>
+                        </div>
                       </div>
                       <div className="input-group">
                         <span className="input-group-text bg-light text-muted small border-end-0">
@@ -373,7 +451,7 @@ export default function CreateGiaiDauPage() {
                         <Input
                           type="text"
                           readOnly
-                          placeholder="Tự động tạo từ tên giải đấu..."
+                          placeholder="ten-giai-dau-2026"
                           value={formData.slug || ''}
                           className="rounded-end-3 font-monospace small bg-light text-muted"
                         />
@@ -391,7 +469,7 @@ export default function CreateGiaiDauPage() {
                         type="date"
                         required
                         value={formData.ngayBatDau}
-                        onChange={(e) => setFormData({ ...formData, ngayBatDau: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, ngayBatDau: e.target.value }))}
                         className="rounded-3"
                       />
                     </FormGroup>
@@ -406,7 +484,7 @@ export default function CreateGiaiDauPage() {
                         type="date"
                         required
                         value={formData.ngayKetThuc}
-                        onChange={(e) => setFormData({ ...formData, ngayKetThuc: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, ngayKetThuc: e.target.value }))}
                         className="rounded-3"
                       />
                     </FormGroup>
@@ -420,7 +498,7 @@ export default function CreateGiaiDauPage() {
                         id="input_hanDangKy"
                         type="date"
                         value={formData.hanDangKy || ''}
-                        onChange={(e) => setFormData({ ...formData, hanDangKy: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, hanDangKy: e.target.value }))}
                         className="rounded-3"
                       />
                       <small className="text-muted d-block mt-1" style={{ fontSize: '11px' }}>
@@ -434,9 +512,9 @@ export default function CreateGiaiDauPage() {
                       <Label className="fw-semibold small">Địa điểm tổ chức</Label>
                       <Input
                         type="text"
-                        placeholder="VD: Trung tâm Huấn luyện &amp; Thi đấu TDTT Tỉnh..."
+                        placeholder="VD: Nhà thi đấu Đa năng Tỉnh..."
                         value={formData.diaDiem}
-                        onChange={(e) => setFormData({ ...formData, diaDiem: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, diaDiem: e.target.value }))}
                         className="rounded-3"
                       />
                     </FormGroup>
@@ -448,9 +526,8 @@ export default function CreateGiaiDauPage() {
                       <Input
                         type="textarea"
                         rows={3}
-                        placeholder="Mô tả mục đích, ý nghĩa và thông tin tổng quát giải đấu..."
                         value={formData.moTa}
-                        onChange={(e) => setFormData({ ...formData, moTa: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, moTa: e.target.value }))}
                         className="rounded-3"
                       />
                     </FormGroup>
@@ -466,16 +543,26 @@ export default function CreateGiaiDauPage() {
                   <h5 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
                     <i className="bi bi-dribbble text-primary"></i> Các Môn Thể Thao Tổ Chức
                   </h5>
-                  <Button
-                    size="sm"
-                    color="outline-primary"
-                    onClick={handleSelectAllMons}
-                    className="rounded-pill px-3"
-                  >
-                    {(formData.monTheThaoIds || []).length === availableMons.length
-                      ? 'Bỏ chọn tất cả'
-                      : 'Chọn tất cả'}
-                  </Button>
+                  <div className="d-flex gap-2">
+                    <Link
+                      href={`/quan-ly-giai/giai-dau/${id}/du-lieu-thi-dau`}
+                      className="btn btn-sm btn-outline-danger rounded-pill px-3 d-inline-flex align-items-center gap-1"
+                      title="Xem và xóa các đăng ký hoặc lịch thi đấu nếu cần gỡ môn"
+                    >
+                      <i className="bi bi-trash3"></i>
+                      Quản lý / Xóa dữ liệu thi đấu
+                    </Link>
+                    <Button
+                      size="sm"
+                      color="outline-primary"
+                      onClick={handleSelectAllMons}
+                      className="rounded-pill px-3"
+                    >
+                      {(formData.monTheThaoIds || []).length === availableMons.length
+                        ? 'Bỏ chọn tất cả'
+                        : 'Chọn tất cả'}
+                    </Button>
+                  </div>
                 </div>
 
                 <p className="text-muted small mb-3">
@@ -493,8 +580,8 @@ export default function CreateGiaiDauPage() {
                           <div
                             onClick={() => handleMonToggle(mon.id)}
                             className={`p-2.5 rounded-3 border d-flex align-items-center gap-2 cursor-pointer transition-all ${isChecked
-                              ? 'bg-primary-subtle border-primary text-primary fw-semibold'
-                              : 'bg-light border-light-subtle text-dark'
+                                ? 'bg-primary-subtle border-primary text-primary fw-semibold'
+                                : 'bg-light border-light-subtle text-dark'
                               }`}
                             style={{ cursor: 'pointer' }}
                           >
@@ -780,10 +867,10 @@ export default function CreateGiaiDauPage() {
                     type="select"
                     value={formData.trangThai}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
+                      setFormData((prev) => ({
+                        ...prev,
                         trangThai: Number(e.target.value) as TrangThaiGiaiDau,
-                      })
+                      }))
                     }
                     className="rounded-3"
                   >
@@ -811,10 +898,10 @@ export default function CreateGiaiDauPage() {
                     type="select"
                     value={formData.phamVi}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
+                      setFormData((prev) => ({
+                        ...prev,
                         phamVi: Number(e.target.value) as PhamViGiaiDau,
-                      })
+                      }))
                     }
                     className="rounded-3"
                   >

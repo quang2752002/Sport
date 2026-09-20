@@ -64,12 +64,15 @@ namespace Dms.Application.Services
                     ? (await _unitOfWork.DanhMucMonTheThaos.FindAsync(dm => danhMucIds.Contains(dm.Id) && dm.IsDeleted != true)).ToDictionary(dm => dm.Id, dm => dm.Ten)
                     : new Dictionary<int, string>();
 
-                var groupedMons = gdmList.GroupBy(gm => gm.GiaiDauId).ToDictionary(g => g.Key, g => g.ToList());
+                var groupedMons = gdmList.GroupBy(gm => gm.GiaiDauId).ToDictionary(
+                    g => g.Key, 
+                    g => g.GroupBy(x => x.MonTheThaoId).Select(x => x.First()).ToList()
+                );
                 foreach (var dto in dtos)
                 {
                     if (groupedMons.TryGetValue(dto.Id, out var items))
                     {
-                        dto.MonTheThaoIds = items.Select(x => x.MonTheThaoId).ToList();
+                        dto.MonTheThaoIds = items.Select(x => x.MonTheThaoId).Distinct().ToList();
                         dto.MonTheThaos = items
                             .Where(x => monList.ContainsKey(x.MonTheThaoId))
                             .Select(x =>
@@ -119,12 +122,15 @@ namespace Dms.Application.Services
                     ? (await _unitOfWork.DanhMucMonTheThaos.FindAsync(dm => danhMucIds.Contains(dm.Id) && dm.IsDeleted != true)).ToDictionary(dm => dm.Id, dm => dm.Ten)
                     : new Dictionary<int, string>();
 
-                var groupedMons = gdmList.GroupBy(gm => gm.GiaiDauId).ToDictionary(g => g.Key, g => g.ToList());
+                var groupedMons = gdmList.GroupBy(gm => gm.GiaiDauId).ToDictionary(
+                    g => g.Key, 
+                    g => g.GroupBy(x => x.MonTheThaoId).Select(x => x.First()).ToList()
+                );
                 foreach (var dto in dtos)
                 {
                     if (groupedMons.TryGetValue(dto.Id, out var gItems))
                     {
-                        dto.MonTheThaoIds = gItems.Select(x => x.MonTheThaoId).ToList();
+                        dto.MonTheThaoIds = gItems.Select(x => x.MonTheThaoId).Distinct().ToList();
                         dto.MonTheThaos = gItems
                             .Where(x => monList.ContainsKey(x.MonTheThaoId))
                             .Select(x =>
@@ -165,15 +171,19 @@ namespace Dms.Application.Services
             var giaiDauKhois = await _unitOfWork.GiaiDauKhois.FindAsync(gk => gk.GiaiDauId == id && gk.IsDeleted != true);
             entity.GiaiDauKhois = giaiDauKhois.ToList();
 
-            // Load kèm các môn thể thao tổ chức
-            var giaiDauMons = await _unitOfWork.GiaiDauMonTheThaos.FindAsync(gm => gm.GiaiDauId == id && gm.IsDeleted != true);
-            entity.GiaiDauMonTheThaos = giaiDauMons.ToList();
+            // Load kèm các môn thể thao tổ chức (chỉ lấy 1 bản ghi duy nhất cho mỗi môn)
+            var giaiDauMons = (await _unitOfWork.GiaiDauMonTheThaos.FindAsync(gm => gm.GiaiDauId == id && gm.IsDeleted != true))
+                .GroupBy(gm => gm.MonTheThaoId)
+                .Select(g => g.First())
+                .ToList();
+            entity.GiaiDauMonTheThaos = giaiDauMons;
 
             // Load kèm các điều lệ giải đấu
             var dieuLes = await _unitOfWork.DieuLeGiaiDaus.FindAsync(dl => dl.GiaiDauId == id && dl.IsDeleted != true);
             entity.DieuLeGiaiDaus = dieuLes.OrderBy(dl => dl.ThuTu).ToList();
 
             var dto = _mapper.Map<GiaiDauDto>(entity);
+            dto.MonTheThaoIds = dto.MonTheThaoIds.Distinct().ToList();
 
             // Nạp chi tiết môn thể thao
             if (giaiDauMons.Any())
@@ -273,7 +283,7 @@ namespace Dms.Application.Services
             // 2. Lưu danh sách môn thể thao tổ chức
             if (dto.MonTheThaoIds != null && dto.MonTheThaoIds.Any())
             {
-                foreach (var monId in dto.MonTheThaoIds)
+                foreach (var monId in dto.MonTheThaoIds.Distinct())
                 {
                     await _unitOfWork.GiaiDauMonTheThaos.AddAsync(new GiaiDauMonTheThao
                     {
@@ -402,15 +412,27 @@ namespace Dms.Application.Services
             // Thêm mới hoặc khôi phục các môn được chọn
             foreach (var monId in targetMonIds)
             {
-                var existingGdm = existingMons.FirstOrDefault(m => m.MonTheThaoId == monId);
-                if (existingGdm != null)
+                var matchingGdms = existingMons.Where(m => m.MonTheThaoId == monId).ToList();
+                if (matchingGdms.Any())
                 {
-                    if (existingGdm.IsDeleted == true)
+                    var primary = matchingGdms.First();
+                    if (primary.IsDeleted == true)
                     {
-                        existingGdm.IsDeleted = false;
-                        existingGdm.LastModified = DateTime.UtcNow;
-                        existingGdm.LastModifiedBy = updatedBy;
-                        _unitOfWork.GiaiDauMonTheThaos.Update(existingGdm);
+                        primary.IsDeleted = false;
+                        primary.LastModified = DateTime.UtcNow;
+                        primary.LastModifiedBy = updatedBy;
+                        _unitOfWork.GiaiDauMonTheThaos.Update(primary);
+                    }
+                    // Nếu có các bản ghi phụ bị trùng lặp, đảm bảo chúng bị xóa mềm
+                    foreach (var dup in matchingGdms.Skip(1))
+                    {
+                        if (dup.IsDeleted != true)
+                        {
+                            dup.IsDeleted = true;
+                            dup.LastModified = DateTime.UtcNow;
+                            dup.LastModifiedBy = updatedBy;
+                            _unitOfWork.GiaiDauMonTheThaos.Update(dup);
+                        }
                     }
                 }
                 else

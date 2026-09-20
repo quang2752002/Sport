@@ -243,7 +243,7 @@ export default function CreateGiaiDauPage() {
     try {
       await giaiDauService.create(formData);
       toast.success('Thêm mới giải đấu thành công!', 'Hoàn tất');
-      router.push('/admin/giai-dau');
+      router.push('/quan-ly-giai/giai-dau');
     } catch (err: any) {
       console.error('Lỗi khi thêm giải đấu:', err);
       const msg = err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi lưu giải đấu.';
@@ -269,7 +269,7 @@ export default function CreateGiaiDauPage() {
       <div className="d-flex align-items-center justify-content-between mb-4">
         <div className="d-flex align-items-center gap-3">
           <Link
-            href="/admin/giai-dau"
+            href="/quan-ly-giai/giai-dau"
             className="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
             style={{ width: '38px', height: '38px' }}
           >
@@ -283,7 +283,7 @@ export default function CreateGiaiDauPage() {
           </div>
         </div>
         <div className="d-flex gap-2">
-          <Link href="/admin/giai-dau" className="btn btn-light rounded-3 px-3">
+          <Link href="/quan-ly-giai/giai-dau" className="btn btn-light rounded-3 px-3">
             Hủy bỏ
           </Link>
           <Button

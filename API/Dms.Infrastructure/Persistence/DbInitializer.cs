@@ -127,7 +127,17 @@ namespace Dms.Infrastructure.Persistence
                 [Dms.Application.Common.AppRoles.Referee] = new()
                 {
                     Dms.Application.Common.Permissions.TranDau.View,
-                    Dms.Application.Common.Permissions.TranDau.UpdateScore
+                    Dms.Application.Common.Permissions.TranDau.UpdateScore,
+                    Dms.Application.Common.Permissions.GiaiDau.View,
+                    Dms.Application.Common.Permissions.MonTheThao.View,
+                    Dms.Application.Common.Permissions.SanDau.View,
+                    Dms.Application.Common.Permissions.TrongTai.View,
+                    Dms.Application.Common.Permissions.BangDau.View,
+                    Dms.Application.Common.Permissions.VongDau.View,
+                    Dms.Application.Common.Permissions.DonVi.View,
+                    Dms.Application.Common.Permissions.Doi.View,
+                    Dms.Application.Common.Permissions.VanDongVien.View,
+                    Dms.Application.Common.Permissions.DangKyThiDau.View
                 },
                 [Dms.Application.Common.AppRoles.Secretary] = new()
                 {

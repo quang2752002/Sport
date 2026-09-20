@@ -225,7 +225,7 @@ export default function DuLieuThiDauPage({ params }: { params: Promise<{ id: str
       <div className="d-flex align-items-center justify-content-between mb-4">
         <div className="d-flex align-items-center gap-3">
           <Link
-            href={`/admin/giai-dau/${id}`}
+            href={`/quan-ly-giai/giai-dau/${id}`}
             className="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
             style={{ width: '38px', height: '38px' }}
             title="Quay lại chỉnh sửa giải đấu"
@@ -250,7 +250,7 @@ export default function DuLieuThiDauPage({ params }: { params: Promise<{ id: str
             <i className="bi bi-calendar3"></i>
             Xếp Lịch Chi Tiết
           </Link>
-          <Link href={`/admin/giai-dau/${id}`} className="btn btn-primary rounded-3 px-3">
+          <Link href={`/quan-ly-giai/giai-dau/${id}`} className="btn btn-primary rounded-3 px-3">
             <i className="bi bi-pencil-square me-1"></i>
             Quay Lại Sửa Giải Đấu
           </Link>

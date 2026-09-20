@@ -1,61 +1,174 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { Permissions } from '@/constants/permissions';
 import {
   Trophy,
-  Calendar,
-  Layers,
-  MapPin,
-  Users,
-  LogOut,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Menu,
   X,
   Home,
   UserCheck,
+  LogOut,
 } from 'lucide-react';
 
-const managerNavItems = [
+interface SubItem {
+  title: string;
+  href: string;
+  icon: string;
+  permission?: string;
+}
+
+interface NavItem {
+  title: string;
+  href?: string;
+  icon: string;
+  permission?: string;
+  children?: SubItem[];
+}
+
+const managerNavigation: NavItem[] = [
   {
     title: 'Tổng quan Giải',
     href: '/quan-ly-giai',
-    icon: Trophy,
+    icon: 'bi bi-speedometer2',
   },
   {
-    title: 'Lịch thi đấu & Bốc thăm',
-    href: '/quan-ly-giai/lich-thi-dau',
-    icon: Calendar,
+    title: 'Điều Hành Thi Đấu',
+    icon: 'bi bi-calendar-event',
+    children: [
+      {
+        title: 'Lịch thi đấu & Bốc thăm',
+        href: '/quan-ly-giai/lich-thi-dau',
+        icon: 'bi bi-calendar3',
+      },
+      {
+        title: 'Bảng thi đấu & Nhánh',
+        href: '/quan-ly-giai/bang-dau',
+        icon: 'bi bi-diagram-3',
+      },
+    ],
   },
   {
-    title: 'Bảng thi đấu & Nhánh',
-    href: '/quan-ly-giai/bang-dau',
-    icon: Layers,
-  },
-  {
-    title: 'Cụm sân & Địa điểm',
-    href: '/quan-ly-giai/san-dau',
-    icon: MapPin,
-  },
-  {
-    title: 'Hồ sơ các Đoàn tham gia',
-    href: '/quan-ly-giai/doan-tham-gia',
-    icon: Users,
+    title: 'Quản trị Thể thao',
+    icon: 'bi bi-trophy',
+    children: [
+      {
+        title: 'Giải đấu',
+        href: '/quan-ly-giai/giai-dau',
+        icon: 'bi bi-trophy-fill',
+        permission: Permissions.GiaiDau.View,
+      },
+      {
+        title: 'Khối tham gia',
+        href: '/quan-ly-giai/khoi',
+        icon: 'bi bi-diagram-2',
+        permission: Permissions.Khoi.View,
+      },
+      {
+        title: 'Đơn vị tham gia',
+        href: '/quan-ly-giai/don-vi',
+        icon: 'bi bi-building',
+        permission: Permissions.DonVi.View,
+      },
+      {
+        title: 'Vận động viên',
+        href: '/quan-ly-giai/van-dong-vien',
+        icon: 'bi bi-person-walking',
+        permission: Permissions.VanDongVien.View,
+      },
+      {
+        title: 'Danh mục môn',
+        href: '/quan-ly-giai/danh-muc-mon-the-thao',
+        icon: 'bi bi-tags',
+        permission: Permissions.DanhMucMonTheThao.View,
+      },
+      {
+        title: 'Môn thi đấu',
+        href: '/quan-ly-giai/mon-the-thao',
+        icon: 'bi bi-dribbble',
+        permission: Permissions.MonTheThao.View,
+      },
+      {
+        title: 'Trọng tài',
+        href: '/quan-ly-giai/trong-tai',
+        icon: 'bi bi-whistle',
+        permission: Permissions.TrongTai.View,
+      },
+      {
+        title: 'Thư ký giải đấu',
+        href: '/quan-ly-giai/thu-ky',
+        icon: 'bi bi-file-earmark-person',
+      },
+      {
+        title: 'Cụm sân',
+        href: '/quan-ly-giai/cum-san',
+        icon: 'bi bi-geo-alt',
+        permission: Permissions.SanDau.View,
+      },
+      {
+        title: 'Sân đấu',
+        href: '/quan-ly-giai/san-dau',
+        icon: 'bi bi-grid-3x3-gap',
+        permission: Permissions.SanDau.View,
+      },
+    ],
   },
 ];
 
 export default function QuanLyGiaiLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isActive = (href: string) => {
+  const isItemActive = (href?: string) => {
+    if (!href) return false;
     if (href === '/quan-ly-giai') return pathname === '/quan-ly-giai';
-    return pathname.startsWith(href);
+    return pathname === href || pathname.startsWith(href + '/');
+  };
+
+  const filteredNav = useMemo(() => {
+    const userRoles = (user?.roles || []).map((r) => String(r).toLowerCase());
+    const isManagerOrAdmin = userRoles.includes('admin') || userRoles.includes('manager');
+
+    const checkAllowed = (item: NavItem | SubItem) => {
+      if (isManagerOrAdmin) return true;
+      if (item.permission) return hasPermission(item.permission);
+      return true;
+    };
+
+    return managerNavigation
+      .map((item) => {
+        if (!checkAllowed(item)) return null;
+        if (item.children) {
+          const validChildren = item.children.filter(checkAllowed);
+          if (validChildren.length === 0) return null;
+          return { ...item, children: validChildren };
+        }
+        return item;
+      })
+      .filter(Boolean) as NavItem[];
+  }, [hasPermission, user]);
+
+  // Quản lý đóng mở submenu
+  const [openGroups, setOpenGroups] = useState<Record<number, boolean>>(() => {
+    const initial: Record<number, boolean> = { 1: true, 2: true };
+    filteredNav.forEach((item, idx) => {
+      if (item.children?.some((child) => isItemActive(child.href))) {
+        initial[idx] = true;
+      }
+    });
+    return initial;
+  });
+
+  const toggleGroup = (idx: number) => {
+    setOpenGroups((prev) => ({ ...prev, [idx]: !prev[idx] }));
   };
 
   return (
@@ -107,21 +220,73 @@ export default function QuanLyGiaiLayout({ children }: { children: React.ReactNo
 
         <div className="donvi-nav">
           <div className="donvi-nav-header">
-            {!collapsed ? 'Điều Hành Giải Đấu' : '•••'}
+            {!collapsed ? 'Hệ Thống Ban Tổ Chức' : '•••'}
           </div>
 
-          {managerNavItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.href);
+          {filteredNav.map((item, idx) => {
+            if (item.children) {
+              const isOpen = !!openGroups[idx];
+              const isChildActive = item.children.some((c) => isItemActive(c.href));
+
+              return (
+                <div key={idx} className="mb-1">
+                  <div
+                    onClick={() => toggleGroup(idx)}
+                    role="button"
+                    className={`donvi-nav-link justify-content-between ${
+                      isChildActive ? 'bg-primary bg-opacity-25 text-white fw-semibold' : ''
+                    }`}
+                    title={collapsed ? item.title : undefined}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="d-flex align-items-center gap-2 overflow-hidden">
+                      <i className={`${item.icon} fs-5 text-secondary`}></i>
+                      {!collapsed && <span className="text-truncate">{item.title}</span>}
+                    </div>
+                    {!collapsed && (
+                      <ChevronDown
+                        size={14}
+                        className="text-secondary transition-all"
+                        style={{
+                          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s ease',
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {!collapsed && isOpen && (
+                    <div className="donvi-submenu">
+                      {item.children.map((child, cIdx) => {
+                        const isCurrent = isItemActive(child.href);
+                        return (
+                          <Link
+                            key={cIdx}
+                            href={child.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={`donvi-sub-link ${isCurrent ? 'active' : ''}`}
+                          >
+                            <i className={`${child.icon} fs-6 flex-shrink-0`}></i>
+                            <span className="text-truncate">{child.title}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            const active = isItemActive(item.href);
             return (
               <Link
-                key={item.href}
-                href={item.href}
+                key={idx}
+                href={item.href || '#'}
                 onClick={() => setMobileMenuOpen(false)}
                 className={`donvi-nav-link ${active ? 'active' : ''}`}
                 title={collapsed ? item.title : undefined}
               >
-                <Icon size={20} className="flex-shrink-0" />
+                <i className={`${item.icon} fs-6 flex-shrink-0`}></i>
                 {!collapsed && <span className="text-truncate">{item.title}</span>}
               </Link>
             );
@@ -170,7 +335,7 @@ export default function QuanLyGiaiLayout({ children }: { children: React.ReactNo
             </button>
             <div className="d-flex align-items-center gap-2">
               <span className="d-none d-sm-inline fw-semibold text-dark" style={{ fontSize: '13px' }}>
-                Phân Hệ Ban Tổ Chức & Quản Lý Giải Đấu
+                Phân Hệ Ban Tổ Chức &amp; Quản Lý Giải Đấu
               </span>
               <span className="d-none d-sm-inline text-muted">•</span>
               <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill fw-semibold">

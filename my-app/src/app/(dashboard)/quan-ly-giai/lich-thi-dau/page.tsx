@@ -3136,7 +3136,7 @@ export default function LichThiDauPage() {
                     <Info size={12} className="me-1 text-info" />
                     Các thông số ngày, giờ và hiệp đấu được áp dụng tự động từ bảng cấu hình <strong>CauHinhLichThiDau</strong> của môn và ngày giải đấu.
                   </span>
-                  <Link href="/admin/mon-the-thao" target="_blank" className="text-primary text-decoration-none d-flex align-items-center gap-1">
+                  <Link href="/quan-ly-giai/mon-the-thao" target="_blank" className="text-primary text-decoration-none d-flex align-items-center gap-1">
                     <span>Cấu hình môn</span>
                     <ExternalLink size={12} />
                   </Link>

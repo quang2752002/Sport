@@ -172,3 +172,73 @@ export interface TournamentConflictReport {
   conflicts: string[];
   chiTietXungDot?: ConflictDetail[];
 }
+
+export interface MatchEvent {
+  id: string;
+  minute: number;
+  type:
+    | 'goal'
+    | 'point'
+    | 'yellow_card'
+    | 'red_card'
+    | 'substitution'
+    | 'foul'
+    | 'timeout'
+    | 'injury'
+    | 'incident'
+    | 'penalty';
+  team: 1 | 2;
+  athleteName?: string;
+  assistName?: string;
+  details?: string;
+  timestamp?: string;
+}
+
+export interface SetScore {
+  setNumber: number;
+  score1: number;
+  score2: number;
+}
+
+export interface MatchScoreDetails {
+  score1: number;
+  score2: number;
+  winner?: 1 | 2 | 'draw';
+  setScores: SetScore[];
+  events: MatchEvent[];
+  notes?: string;
+
+  // Thông tin hoàn thiện trận đấu
+  actualStartTime?: string;
+  actualEndTime?: string;
+  durationMinutes?: number;
+  extraTimeMinutes?: number;
+  weatherCondition?: string; // Ví dụ: Nắng ráo, Mưa nhẹ, Trong nhà thi đấu
+  pitchCondition?: string; // Mặt sân tốt, Bình thường, Trơn ướt
+  spectatorCount?: number; // Số lượng khán giả
+  mvpAthlete?: string; // Vận động viên xuất sắc nhất
+  winMethod?: 'normal' | 'extra_time' | 'penalties' | 'walkover' | 'disqualification';
+  refereeNotes?: string; // Nhận xét của tổ trọng tài
+  supervisorNotes?: string; // Nhận xét của giám sát
+  isFinalized?: boolean; // Đã chốt hoàn thiện trận đấu
+  finalizedAt?: string; // Thời gian chốt
+  finalizedBy?: string; // Người chốt
+
+  signedReferee?: {
+    name: string;
+    signedAt: string;
+  };
+  signedSecretary?: {
+    name: string;
+    signedAt: string;
+  };
+  signedTeam1?: {
+    name: string;
+    signedAt: string;
+  };
+  signedTeam2?: {
+    name: string;
+    signedAt: string;
+  };
+}
+

@@ -6,12 +6,14 @@ import { useAuth, useToast } from '@/context/AuthContext';
 import { giaiDauService } from '@/services/giaiDauService';
 import { vanDongVienService } from '@/services/vanDongVienService';
 import { dangKyThiDauService } from '@/services/dangKyThiDauService';
-import { noiDungThiDauService } from '@/services/noiDungThiDauService';
 import { donViService } from '@/services/donViService';
+import { danhMucMonTheThaoService } from '@/services/danhMucMonTheThaoService';
+import { monTheThaoService } from '@/services/monTheThaoService';
 import { GiaiDau, TrangThaiGiaiDau } from '@/types/giaiDau';
 import { VanDongVien } from '@/types/vanDongVien';
 import { DangKyThiDau } from '@/types/dangKyThiDau';
-import { NoiDungThiDau } from '@/types/noiDungThiDau';
+import { DanhMucMonTheThao } from '@/types/danhMucMonTheThao';
+import { MonTheThao } from '@/types/monTheThao';
 import { DonVi } from '@/types/donVi';
 import {
   Trophy,
@@ -93,7 +95,8 @@ export default function DangKyGiaiDauPage() {
   /* ── State dữ liệu ── */
   const [giaiDau, setGiaiDau] = useState<GiaiDau | null>(null);
   const [athletes, setAthletes] = useState<VanDongVien[]>([]);
-  const [noiDungs, setNoiDungs] = useState<NoiDungThiDau[]>([]);
+  const [allCategories, setAllCategories] = useState<DanhMucMonTheThao[]>([]);
+  const [allSports, setAllSports] = useState<MonTheThao[]>([]);
   const [registrations, setRegistrations] = useState<DangKyThiDau[]>([]);
   const [donVis, setDonVis] = useState<DonVi[]>([]);
   const [currentDonVi, setCurrentDonVi] = useState<DonVi | null>(null);
@@ -108,8 +111,8 @@ export default function DangKyGiaiDauPage() {
 
   /* ── Modal form đăng ký ── */
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedDanhMucId, setSelectedDanhMucId] = useState<number | ''>('');
   const [selectedMonId, setSelectedMonId] = useState<number | ''>('');
-  const [selectedNoiDungId, setSelectedNoiDungId] = useState<number | ''>('');
   const [tenDoi, setTenDoi] = useState('');
   const [formVdvSearch, setFormVdvSearch] = useState('');
   const [selectedVdvs, setSelectedVdvs] = useState<number[]>([]);
@@ -194,14 +197,16 @@ export default function DangKyGiaiDauPage() {
       setLoading(true);
       setVdvError(null);
       try {
-        const [gd, allDonVisRes, nds] = await Promise.allSettled([
+        const [gd, allDonVisRes, categoriesRes, sportsRes] = await Promise.allSettled([
           giaiDauService.getById(giaiDauId),
           donViService.getAll().catch(() => []),
-          noiDungThiDauService.getAll({ giaiDauId }),
+          danhMucMonTheThaoService.getAll().catch(() => []),
+          monTheThaoService.getAll().catch(() => []),
         ]);
 
         if (gd.status === 'fulfilled') setGiaiDau(gd.value);
-        if (nds.status === 'fulfilled') setNoiDungs(nds.value || []);
+        if (categoriesRes.status === 'fulfilled') setAllCategories(categoriesRes.value || []);
+        if (sportsRes.status === 'fulfilled') setAllSports(sportsRes.value || []);
 
         const allDonVis = allDonVisRes.status === 'fulfilled' ? allDonVisRes.value || [] : [];
         setDonVis(allDonVis);
@@ -242,39 +247,65 @@ export default function DangKyGiaiDauPage() {
     })();
   }, [giaiDauId, user, loadDataForUnit]);
 
-  /* ── Môn thi đấu trong giải ── */
-  const monList = useMemo(() => {
-    if (!giaiDau) return [];
-    if (giaiDau.monTheThaos && giaiDau.monTheThaos.length > 0) return giaiDau.monTheThaos;
-    return [];
-  }, [giaiDau]);
+  /* ── Môn thi đấu trong giải (kèm thông tin chi tiết từ allSports) ── */
+  const tournamentSports = useMemo(() => {
+    if (!giaiDau?.monTheThaos) return [];
+    return giaiDau.monTheThaos.map((gm) => {
+      const detail = allSports.find((s) => s.id === gm.monTheThaoId);
+      return {
+        ...gm,
+        danhMucId: detail?.danhMucId,
+        tenDanhMuc: detail?.tenDanhMuc || gm.tenDanhMuc,
+        laMonDongDoi: detail?.laMonDongDoi ?? gm.laMonDongDoi,
+        gioiTinh: detail?.gioiTinh ?? gm.gioiTinh,
+        soLuongVanDongVienToiThieu: detail?.soLuongVanDongVienToiThieu,
+        soLuongVanDongVienToiDa: detail?.soLuongVanDongVienToiDa,
+      };
+    });
+  }, [giaiDau, allSports]);
 
-  /* ── Danh sách nội dung thi đấu khả dụng theo môn ── */
-  const availableNoiDungs = useMemo(() => {
-    if (!selectedMonId) return noiDungs;
-    return noiDungs.filter((nd) => nd.giaiDauMonTheThaoId === Number(selectedMonId));
-  }, [noiDungs, selectedMonId]);
+  const monList = tournamentSports;
 
-  /* ── Nội dung đang chọn trong modal ── */
-  const selectedNoiDung = useMemo(() => {
-    if (!selectedNoiDungId) return null;
-    return noiDungs.find((n) => n.id === Number(selectedNoiDungId)) || null;
-  }, [noiDungs, selectedNoiDungId]);
+  /* ── Danh mục môn thi đấu có trong giải ── */
+  const availableCategories = useMemo(() => {
+    const map = new Map<number, string>();
+    tournamentSports.forEach((m) => {
+      if (m.danhMucId && m.tenDanhMuc) {
+        map.set(m.danhMucId, m.tenDanhMuc);
+      }
+    });
+    if (map.size > 0) {
+      return Array.from(map.entries()).map(([id, ten]) => ({ id, ten }));
+    }
+    return allCategories.map((c) => ({ id: c.id, ten: c.ten }));
+  }, [tournamentSports, allCategories]);
 
-  /* ── Là nội dung thi đấu cá nhân? ── */
+  /* ── Danh sách môn lọc theo danh mục đã chọn ── */
+  const filteredSports = useMemo(() => {
+    if (!selectedDanhMucId) return tournamentSports;
+    return tournamentSports.filter((m) => m.danhMucId === Number(selectedDanhMucId));
+  }, [tournamentSports, selectedDanhMucId]);
+
+  /* ── Môn thi đấu đang chọn trong modal ── */
+  const selectedMon = useMemo(() => {
+    if (!selectedMonId) return null;
+    return tournamentSports.find((m) => m.id === Number(selectedMonId)) || null;
+  }, [tournamentSports, selectedMonId]);
+
+  /* ── Là môn thi đấu cá nhân? ── */
   const isCaNhan = useMemo(() => {
-    if (!selectedNoiDung) return false;
-    return selectedNoiDung.loaiThiDau?.toLowerCase() === 'canhan';
-  }, [selectedNoiDung]);
+    if (!selectedMon) return false;
+    return !selectedMon.laMonDongDoi;
+  }, [selectedMon]);
 
   /* ── Lọc VĐV trong modal form ── */
   const filteredFormVdv = useMemo(() => {
     let list = athletes;
-    // Lọc giới tính nếu được bật và nội dung có yêu cầu cụ thể
-    if (selectedNoiDung && onlyMatchingGender) {
-      if (selectedNoiDung.gioiTinh === 'Nam') {
+    // Lọc giới tính nếu được bật và môn có yêu cầu cụ thể
+    if (selectedMon && onlyMatchingGender) {
+      if (selectedMon.gioiTinh === 'Nam') {
         list = list.filter((a) => a.gioiTinh === 'Nam');
-      } else if (selectedNoiDung.gioiTinh === 'Nu') {
+      } else if (selectedMon.gioiTinh === 'Nu') {
         list = list.filter((a) => a.gioiTinh === 'Nu');
       }
     }
@@ -286,7 +317,7 @@ export default function DangKyGiaiDauPage() {
         a.ma.toLowerCase().includes(kw) ||
         (a.tenDonVi || '').toLowerCase().includes(kw)
     );
-  }, [athletes, selectedNoiDung, onlyMatchingGender, formVdvSearch]);
+  }, [athletes, selectedMon, onlyMatchingGender, formVdvSearch]);
 
   /* ── Danh sách VĐV đã chọn trong modal ── */
   const chosenAthletes = useMemo(() => {
@@ -311,37 +342,38 @@ export default function DangKyGiaiDauPage() {
     );
   }, [registrations, statusFilter]);
 
-  /* ── Danh sách ID các VĐV đã đăng ký trong nội dung đang chọn ── */
-  const registeredVdvIdsInSelectedNoiDung = useMemo(() => {
-    if (!selectedNoiDungId) return new Set<number>();
+  /* ── Danh sách ID các VĐV đã đăng ký trong môn thi đang chọn ── */
+  const registeredVdvIdsInSelectedMon = useMemo(() => {
+    if (!selectedMon) return new Set<number>();
+    const gdmId = selectedMon.id;
     const activeRegs = registrations.filter(
-      (r) => r.noiDungThiDauId === Number(selectedNoiDungId) && r.trangThai !== 'TuChoi'
+      (r) => (r.giaiDauMonTheThaoId ?? r.noiDungThiDauId) === gdmId && r.trangThai !== 'TuChoi'
     );
     const set = new Set<number>();
     activeRegs.forEach((r) => {
       (r.vanDongVienIds || []).forEach((id) => set.add(id));
     });
     return set;
-  }, [registrations, selectedNoiDungId]);
+  }, [registrations, selectedMon]);
 
-  /* ── Toggle chọn VĐV: Chống trường hợp cá nhân mà chọn nhiều VĐV & Chống trùng nội dung ── */
+  /* ── Toggle chọn VĐV: Chống trường hợp cá nhân mà chọn nhiều VĐV & Chống trùng môn ── */
   const toggleVdv = (id: number) => {
-    if (registeredVdvIdsInSelectedNoiDung.has(id)) {
-      showToast('warning', `VĐV này đã đăng ký tham gia nội dung "${selectedNoiDung?.ten || ''}". Không thể đăng ký trùng.`);
+    if (registeredVdvIdsInSelectedMon.has(id)) {
+      showToast('warning', `VĐV này đã đăng ký tham gia môn "${selectedMon?.ten || ''}". Không thể đăng ký trùng.`);
       return;
     }
 
     if (isCaNhan) {
-      // Nội dung cá nhân: chỉ chọn đúng 1 VĐV
+      // Môn cá nhân: chỉ chọn đúng 1 VĐV
       setSelectedVdvs((prev) => (prev.includes(id) ? [] : [id]));
     } else {
-      // Nội dung tập thể/đồng đội: chọn nhiều VĐV theo quy định
+      // Môn tập thể/đồng đội: chọn nhiều VĐV theo quy định
       setSelectedVdvs((prev) => {
         if (prev.includes(id)) {
           return prev.filter((x) => x !== id);
         } else {
-          if (selectedNoiDung?.soLuongToiDa && prev.length >= selectedNoiDung.soLuongToiDa) {
-            showToast('danger', `Nội dung "${selectedNoiDung.ten}" chỉ cho phép tối đa ${selectedNoiDung.soLuongToiDa} VĐV.`);
+          if (selectedMon?.soLuongVanDongVienToiDa && prev.length >= selectedMon.soLuongVanDongVienToiDa) {
+            showToast('danger', `Môn "${selectedMon.ten}" chỉ cho phép tối đa ${selectedMon.soLuongVanDongVienToiDa} VĐV.`);
             return prev;
           }
           return [...prev, id];
@@ -351,22 +383,22 @@ export default function DangKyGiaiDauPage() {
   };
 
   const selectAllFiltered = () => {
-    const selectable = filteredFormVdv.filter(a => !registeredVdvIdsInSelectedNoiDung.has(a.id));
+    const selectable = filteredFormVdv.filter((a) => !registeredVdvIdsInSelectedMon.has(a.id));
     if (selectable.length === 0) {
-      showToast('warning', 'Tất cả VĐV trong danh sách đã được đăng ký cho nội dung này.');
+      showToast('warning', 'Tất cả VĐV trong danh sách đã được đăng ký cho môn thi này.');
       return;
     }
     if (isCaNhan) {
-      // Với nội dung cá nhân, chỉ chọn người đầu tiên chưa đăng ký
+      // Với môn cá nhân, chỉ chọn người đầu tiên chưa đăng ký
       setSelectedVdvs([selectable[0].id]);
-      showToast('warning', 'Nội dung cá nhân chỉ cho phép chọn 1 vận động viên. Đã chọn VĐV hợp lệ đầu tiên.');
+      showToast('warning', 'Môn thi đấu cá nhân chỉ cho phép chọn 1 vận động viên. Đã chọn VĐV hợp lệ đầu tiên.');
       return;
     }
-    const max = selectedNoiDung?.soLuongToiDa;
+    const max = selectedMon?.soLuongVanDongVienToiDa;
     const ids = selectable.map((a) => a.id);
     if (max && ids.length > max) {
       setSelectedVdvs(ids.slice(0, max));
-      showToast('warning', `Đã chọn tối đa ${max} vận động viên theo quy định của nội dung.`);
+      showToast('warning', `Đã chọn tối đa ${max} vận động viên theo quy định của môn thi.`);
     } else {
       setSelectedVdvs(ids);
     }
@@ -376,8 +408,8 @@ export default function DangKyGiaiDauPage() {
 
   /* ── Reset form ── */
   const resetForm = () => {
+    setSelectedDanhMucId('');
     setSelectedMonId('');
-    setSelectedNoiDungId('');
     setTenDoi('');
     setFormVdvSearch('');
     setSelectedVdvs([]);
@@ -413,8 +445,8 @@ export default function DangKyGiaiDauPage() {
       return showToast('danger', `Giải đấu đã quá hạn đăng ký (Hạn chót: ${formatDate(registrationDeadline || '')}). Không thể gửi hồ sơ mới.`);
     }
 
-    if (!selectedNoiDungId || !selectedNoiDung) {
-      return showToast('danger', 'Vui lòng chọn nội dung thi đấu.');
+    if (!selectedMonId || !selectedMon) {
+      return showToast('danger', 'Vui lòng chọn môn thi đấu.');
     }
 
     if (selectedVdvs.length === 0) {
@@ -422,24 +454,24 @@ export default function DangKyGiaiDauPage() {
     }
 
     // Kiểm tra trùng VĐV đã đăng ký
-    const duplicates = selectedVdvs.filter(id => registeredVdvIdsInSelectedNoiDung.has(id));
+    const duplicates = selectedVdvs.filter((id) => registeredVdvIdsInSelectedMon.has(id));
     if (duplicates.length > 0) {
-      const dupNames = athletes.filter(a => duplicates.includes(a.id)).map(a => a.hoTen).join(', ');
-      return showToast('danger', `Vận động viên [${dupNames}] đã đăng ký tham gia nội dung này. Vui lòng bỏ chọn để tiếp tục.`);
+      const dupNames = athletes.filter((a) => duplicates.includes(a.id)).map((a) => a.hoTen).join(', ');
+      return showToast('danger', `Vận động viên [${dupNames}] đã đăng ký tham gia môn thi đấu này. Vui lòng bỏ chọn để tiếp tục.`);
     }
 
     // Kiểm tra tính hợp lệ: Cá nhân chỉ được 1 VĐV
     if (isCaNhan && selectedVdvs.length !== 1) {
-      return showToast('danger', 'Nội dung thi đấu cá nhân chỉ được chọn đúng 1 vận động viên.');
+      return showToast('danger', 'Môn thi đấu cá nhân chỉ được chọn đúng 1 vận động viên.');
     }
 
     // Kiểm tra số lượng tối thiểu và tối đa nếu là đồng đội
     if (!isCaNhan) {
-      if (selectedNoiDung.soLuongToiThieu && selectedVdvs.length < selectedNoiDung.soLuongToiThieu) {
-        return showToast('danger', `Nội dung "${selectedNoiDung.ten}" yêu cầu tối thiểu ${selectedNoiDung.soLuongToiThieu} vận động viên (hiện chọn ${selectedVdvs.length}).`);
+      if (selectedMon.soLuongVanDongVienToiThieu && selectedVdvs.length < selectedMon.soLuongVanDongVienToiThieu) {
+        return showToast('danger', `Môn "${selectedMon.ten}" yêu cầu tối thiểu ${selectedMon.soLuongVanDongVienToiThieu} vận động viên (hiện chọn ${selectedVdvs.length}).`);
       }
-      if (selectedNoiDung.soLuongToiDa && selectedVdvs.length > selectedNoiDung.soLuongToiDa) {
-        return showToast('danger', `Nội dung "${selectedNoiDung.ten}" chỉ cho phép tối đa ${selectedNoiDung.soLuongToiDa} vận động viên.`);
+      if (selectedMon.soLuongVanDongVienToiDa && selectedVdvs.length > selectedMon.soLuongVanDongVienToiDa) {
+        return showToast('danger', `Môn "${selectedMon.ten}" chỉ cho phép tối đa ${selectedMon.soLuongVanDongVienToiDa} vận động viên.`);
       }
     }
 
@@ -448,17 +480,17 @@ export default function DangKyGiaiDauPage() {
       const selectedAthletesList = athletes.filter((a) => selectedVdvs.includes(a.id));
       const autoTenDoi = isCaNhan
         ? selectedAthletesList[0]?.hoTen || ''
-        : (tenDoi.trim() || selectedAthletesList.map(a => a.hoTen).join(' - '));
+        : (tenDoi.trim() || selectedAthletesList.map((a) => a.hoTen).join(' - '));
       const activeDonViId = currentDonVi?.id || user?.donViId || selectedAthletesList[0]?.donViId;
 
       await dangKyThiDauService.create({
-        noiDungThiDauId: selectedNoiDung.id,
+        giaiDauMonTheThaoId: selectedMon.id,
         tuDongTaoDoi: true,
         tenDoi: autoTenDoi,
         donViId: activeDonViId,
         tenDangKy: isCaNhan
-          ? `${selectedAthletesList[0]?.hoTen || 'VĐV'} - ${selectedNoiDung.ten}`
-          : `${autoTenDoi} - ${selectedNoiDung.ten}`,
+          ? `${selectedAthletesList[0]?.hoTen || 'VĐV'} - ${selectedMon.ten}`
+          : `${autoTenDoi} - ${selectedMon.ten}`,
         soDangKy: `DK-${Date.now().toString().slice(-6)}`,
         trangThai: 'DaDuyet', // Mặc định đã duyệt luôn theo yêu cầu
         ngayDangKy: new Date().toISOString(),
@@ -466,7 +498,7 @@ export default function DangKyGiaiDauPage() {
         vanDongVienIds: selectedVdvs,
       });
 
-      showToast('success', `Đã nộp hồ sơ đăng ký nội dung "${selectedNoiDung.ten}" thành công! Hồ sơ đã được duyệt.`);
+      showToast('success', `Đã nộp hồ sơ đăng ký môn "${selectedMon.ten}" thành công! Hồ sơ đã được duyệt.`);
       setModalOpen(false);
       resetForm();
       setActiveTab('hosodagui');
@@ -1093,6 +1125,33 @@ export default function DangKyGiaiDauPage() {
                 </div>
               </div>
 
+              {/* Chọn danh mục môn thể thao */}
+              <div className="col-12 col-md-6">
+                <FormGroup>
+                  <Label className="fw-semibold small">
+                    Danh mục môn thể thao
+                  </Label>
+                  <Input
+                    type="select"
+                    value={selectedDanhMucId}
+                    onChange={(e) => {
+                      const val = e.target.value ? Number(e.target.value) : '';
+                      setSelectedDanhMucId(val);
+                      setSelectedMonId('');
+                      setSelectedVdvs([]);
+                    }}
+                    className="rounded-3"
+                  >
+                    <option value="">-- Tất cả danh mục ({availableCategories.length}) --</option>
+                    {availableCategories.map((dm) => (
+                      <option key={dm.id} value={dm.id}>
+                        {dm.ten}
+                      </option>
+                    ))}
+                  </Input>
+                </FormGroup>
+              </div>
+
               {/* Chọn môn thi */}
               <div className="col-12 col-md-6">
                 <FormGroup>
@@ -1105,55 +1164,28 @@ export default function DangKyGiaiDauPage() {
                     onChange={(e) => {
                       const val = e.target.value ? Number(e.target.value) : '';
                       setSelectedMonId(val);
-                      setSelectedNoiDungId('');
-                      setSelectedVdvs([]);
-                    }}
-                    className="rounded-3"
-                  >
-                    <option value="">-- Tất cả môn thi trong giải --</option>
-                    {monList.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.ten} {m.laMonDongDoi ? '(Đồng đội)' : '(Cá nhân)'}
-                      </option>
-                    ))}
-                  </Input>
-                </FormGroup>
-              </div>
-
-              {/* Chọn nội dung thi đấu */}
-              <div className="col-12 col-md-6">
-                <FormGroup>
-                  <Label className="fw-semibold small">
-                    Nội dung thi đấu <span className="text-danger">*</span>
-                  </Label>
-                  <Input
-                    type="select"
-                    value={selectedNoiDungId}
-                    onChange={(e) => {
-                      const val = e.target.value ? Number(e.target.value) : '';
-                      setSelectedNoiDungId(val);
                       setSelectedVdvs([]);
                     }}
                     required
                     className="rounded-3"
                   >
-                    <option value="">-- Chọn nội dung thi đấu --</option>
-                    {availableNoiDungs.map((nd) => (
-                      <option key={nd.id} value={nd.id}>
-                        {nd.ten} ({nd.loaiThiDau === 'CaNhan' ? 'Cá nhân' : `Tập thể ${nd.soLuongToiThieu || 2}-${nd.soLuongToiDa || '∞'} VĐV`}) • {nd.gioiTinh}
+                    <option value="">-- Chọn môn thi đấu ({filteredSports.length}) --</option>
+                    {filteredSports.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.ten} {m.laMonDongDoi ? '(Đồng đội)' : '(Cá nhân)'} {m.gioiTinh ? `• ${m.gioiTinh}` : ''}
                       </option>
                     ))}
                   </Input>
-                  {availableNoiDungs.length === 0 && (
+                  {filteredSports.length === 0 && (
                     <small className="text-warning d-block mt-1">
-                      ⚠ Môn này chưa có nội dung thi đấu nào được thiết lập.
+                      ⚠ Không có môn thi đấu nào thuộc danh mục này trong giải đấu.
                     </small>
                   )}
                 </FormGroup>
               </div>
 
-              {/* Badge & Quy chế nội dung thi đấu */}
-              {selectedNoiDung && (
+              {/* Badge & Quy chế môn thi đấu */}
+              {selectedMon && (
                 <div className="col-12">
                   <div
                     className="p-3 rounded-3 border d-flex flex-column gap-2"
@@ -1173,20 +1205,41 @@ export default function DangKyGiaiDauPage() {
                             fontSize: '11px',
                           }}
                         >
-                          {isCaNhan ? '👤 Thi đấu cá nhân (1 VĐV)' : `👥 Thi đấu tập thể / Đồng đội (${selectedNoiDung.soLuongToiThieu || 2} - ${selectedNoiDung.soLuongToiDa || '∞'} VĐV)`}
+                          {isCaNhan
+                            ? '👤 Thi đấu cá nhân (1 VĐV)'
+                            : `👥 Thi đấu tập thể / Đồng đội (${selectedMon.soLuongVanDongVienToiThieu || 2} - ${selectedMon.soLuongVanDongVienToiDa || '∞'} VĐV)`}
                         </span>
 
                         <span
                           className="badge px-2 py-1 rounded-pill"
                           style={{
-                            background: selectedNoiDung.gioiTinh === 'Nam' ? '#eff6ff' : selectedNoiDung.gioiTinh === 'Nu' ? '#fdf2f8' : '#f5f3ff',
-                            color: selectedNoiDung.gioiTinh === 'Nam' ? '#2563eb' : selectedNoiDung.gioiTinh === 'Nu' ? '#db2777' : '#7c3aed',
+                            background:
+                              selectedMon.gioiTinh === 'Nam'
+                                ? '#eff6ff'
+                                : selectedMon.gioiTinh === 'Nu'
+                                ? '#fdf2f8'
+                                : '#f5f3ff',
+                            color:
+                              selectedMon.gioiTinh === 'Nam'
+                                ? '#2563eb'
+                                : selectedMon.gioiTinh === 'Nu'
+                                ? '#db2777'
+                                : '#7c3aed',
                             border: '1px solid #e5e7eb',
                             fontSize: '11px',
                           }}
                         >
-                          Giới tính: {selectedNoiDung.gioiTinh}
+                          Giới tính: {selectedMon.gioiTinh === 'Nam' ? 'Nam' : selectedMon.gioiTinh === 'Nu' ? 'Nữ' : 'Hỗn hợp (Nam/Nữ)'}
                         </span>
+
+                        {selectedMon.tenDanhMuc && (
+                          <span
+                            className="badge px-2 py-1 rounded-pill bg-light text-secondary border"
+                            style={{ fontSize: '11px' }}
+                          >
+                            Danh mục: {selectedMon.tenDanhMuc}
+                          </span>
+                        )}
 
                         <span
                           className="badge px-2 py-1 rounded-pill"
@@ -1201,11 +1254,11 @@ export default function DangKyGiaiDauPage() {
                     <div className="small text-secondary" style={{ fontSize: '12px' }}>
                       {isCaNhan ? (
                         <div>
-                          💡 <strong>Quy định:</strong> Nội dung cá nhân <strong>chỉ được chọn đúng 1 Vận động viên</strong>. Hệ thống sẽ tự động tạo bảng Đội (1 VĐV) và duyệt hồ sơ ngay lập tức.
+                          💡 <strong>Quy định:</strong> Môn thi đấu cá nhân <strong>chỉ được chọn đúng 1 Vận động viên</strong>. Hệ thống sẽ tự động lập hồ sơ thi đấu và duyệt ngay lập tức.
                         </div>
                       ) : (
                         <div>
-                          💡 <strong>Quy định:</strong> Nội dung tập thể/đồng đội yêu cầu tối thiểu <strong>{selectedNoiDung.soLuongToiThieu || 2} VĐV</strong>{selectedNoiDung.soLuongToiDa ? ` và tối đa ${selectedNoiDung.soLuongToiDa} VĐV` : ''}. Hệ thống sẽ tạo Đội và danh sách thành viên đội tương ứng.
+                          💡 <strong>Quy định:</strong> Môn thi đấu tập thể/đồng đội yêu cầu tối thiểu <strong>{selectedMon.soLuongVanDongVienToiThieu || 2} VĐV</strong>{selectedMon.soLuongVanDongVienToiDa ? ` và tối đa ${selectedMon.soLuongVanDongVienToiDa} VĐV` : ''}. Hệ thống sẽ tạo Đội và danh sách thành viên đội tương ứng.
                         </div>
                       )}
                     </div>
@@ -1214,7 +1267,7 @@ export default function DangKyGiaiDauPage() {
               )}
 
               {/* Nhập tên đội thi đấu (chỉ cần khi không phải Cá nhân) */}
-              {!isCaNhan && selectedNoiDung && (
+              {!isCaNhan && selectedMon && (
                 <div className="col-12">
                   <FormGroup className="mb-0">
                     <Label className="fw-semibold small">
@@ -1222,7 +1275,7 @@ export default function DangKyGiaiDauPage() {
                     </Label>
                     <Input
                       type="text"
-                      placeholder={`Vd: Đội ${selectedNoiDung.ten}`}
+                      placeholder={`Vd: Đội ${selectedMon.ten}`}
                       value={tenDoi}
                       onChange={(e) => setTenDoi(e.target.value)}
                       className="rounded-3"
@@ -1257,21 +1310,26 @@ export default function DangKyGiaiDauPage() {
                       <span
                         className="badge rounded-pill px-2 py-1"
                         style={{
-                          background: selectedNoiDung && selectedNoiDung.soLuongToiThieu && selectedVdvs.length < selectedNoiDung.soLuongToiThieu
-                            ? '#fffbeb'
-                            : selectedNoiDung && selectedNoiDung.soLuongToiDa && selectedVdvs.length > selectedNoiDung.soLuongToiDa
+                          background:
+                            selectedMon && selectedMon.soLuongVanDongVienToiThieu && selectedVdvs.length < selectedMon.soLuongVanDongVienToiThieu
+                              ? '#fffbeb'
+                              : selectedMon && selectedMon.soLuongVanDongVienToiDa && selectedVdvs.length > selectedMon.soLuongVanDongVienToiDa
                               ? '#fef2f2'
                               : '#ecfdf5',
-                          color: selectedNoiDung && selectedNoiDung.soLuongToiThieu && selectedVdvs.length < selectedNoiDung.soLuongToiThieu
-                            ? '#b45309'
-                            : selectedNoiDung && selectedNoiDung.soLuongToiDa && selectedVdvs.length > selectedNoiDung.soLuongToiDa
+                          color:
+                            selectedMon && selectedMon.soLuongVanDongVienToiThieu && selectedVdvs.length < selectedMon.soLuongVanDongVienToiThieu
+                              ? '#b45309'
+                              : selectedMon && selectedMon.soLuongVanDongVienToiDa && selectedVdvs.length > selectedMon.soLuongVanDongVienToiDa
                               ? '#dc2626'
                               : '#059669',
                           border: '1px solid #e5e7eb',
                           fontSize: '11px',
                         }}
                       >
-                        Đã chọn: {selectedVdvs.length} VĐV {selectedNoiDung?.soLuongToiThieu ? `(Yêu cầu: ${selectedNoiDung.soLuongToiThieu} - ${selectedNoiDung.soLuongToiDa || '∞'})` : ''}
+                        Đã chọn: {selectedVdvs.length} VĐV{' '}
+                        {selectedMon?.soLuongVanDongVienToiThieu
+                          ? `(Yêu cầu: ${selectedMon.soLuongVanDongVienToiThieu} - ${selectedMon.soLuongVanDongVienToiDa || '∞'})`
+                          : ''}
                       </span>
                     )}
                   </div>
@@ -1295,14 +1353,14 @@ export default function DangKyGiaiDauPage() {
                     />
                   </div>
 
-                  {selectedNoiDung && selectedNoiDung.gioiTinh !== 'HonHop' && (
+                  {selectedMon && selectedMon.gioiTinh !== 'HonHop' && selectedMon.gioiTinh !== 'TatCa' && (
                     <button
                       type="button"
                       className={`btn btn-sm rounded-pill px-2.5 ${onlyMatchingGender ? 'btn-primary' : 'btn-outline-secondary'}`}
                       style={{ fontSize: '12px' }}
                       onClick={() => setOnlyMatchingGender(!onlyMatchingGender)}
                     >
-                      {onlyMatchingGender ? `Chỉ hiện VĐV ${selectedNoiDung.gioiTinh}` : 'Hiện tất cả giới tính'}
+                      {onlyMatchingGender ? `Chỉ hiện VĐV ${selectedMon.gioiTinh}` : 'Hiện tất cả giới tính'}
                     </button>
                   )}
 
@@ -1341,10 +1399,12 @@ export default function DangKyGiaiDauPage() {
                   ) : (
                     filteredFormVdv.map((ath) => {
                       const checked = selectedVdvs.includes(ath.id);
-                      const isAlreadyRegistered = registeredVdvIdsInSelectedNoiDung.has(ath.id);
-                      const isGenderMismatch = selectedNoiDung &&
-                        selectedNoiDung.gioiTinh !== 'HonHop' &&
-                        ath.gioiTinh !== selectedNoiDung.gioiTinh;
+                      const isAlreadyRegistered = registeredVdvIdsInSelectedMon.has(ath.id);
+                      const isGenderMismatch =
+                        selectedMon &&
+                        selectedMon.gioiTinh !== 'HonHop' &&
+                        selectedMon.gioiTinh !== 'TatCa' &&
+                        ath.gioiTinh !== selectedMon.gioiTinh;
 
                       return (
                         <div

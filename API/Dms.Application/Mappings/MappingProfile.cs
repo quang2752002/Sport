@@ -32,8 +32,8 @@ namespace Dms.Application.Mappings
             CreateMap<CreateUpdateDieuLeGiaiDauDto, DieuLeGiaiDau>();
 
             CreateMap<GiaiDau, GiaiDauDto>()
-                .ForMember(dest => dest.KhoiIds, opt => opt.MapFrom(src => src.GiaiDauKhois.Select(k => k.KhoiId).ToList()))
-                .ForMember(dest => dest.MonTheThaoIds, opt => opt.MapFrom(src => src.GiaiDauMonTheThaos.Select(m => m.MonTheThaoId).ToList()))
+                .ForMember(dest => dest.KhoiIds, opt => opt.MapFrom(src => src.GiaiDauKhois.Where(k => k.IsDeleted != true).Select(k => k.KhoiId).Distinct().ToList()))
+                .ForMember(dest => dest.MonTheThaoIds, opt => opt.MapFrom(src => src.GiaiDauMonTheThaos.Where(m => m.IsDeleted != true).Select(m => m.MonTheThaoId).Distinct().ToList()))
                 .ForMember(dest => dest.DieuLeGiaiDaus, opt => opt.MapFrom(src => src.DieuLeGiaiDaus.Where(d => d.IsDeleted != true).OrderBy(d => d.ThuTu).ToList()));
             CreateMap<CreateUpdateGiaiDauDto, GiaiDau>();
 
